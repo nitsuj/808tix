@@ -49,4 +49,6 @@ $$;
 revoke all on schema dev from public;
 revoke all on all functions in schema dev from public;
 
--- Typical SQL Editor / postgres superuser can still call these locally.
+-- Local verification runners only (SQL Editor / psql). Not granted to authenticated/anon.
+grant usage on schema dev to postgres, service_role;
+grant execute on all functions in schema dev to postgres, service_role;

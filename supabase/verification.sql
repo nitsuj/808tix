@@ -12,7 +12,7 @@
 
 do $$
 declare
-  v_organizer_id uuid := '00000000-0000-0000-0000-000000000000'; -- REPLACE
+  v_organizer_id uuid := null; -- REPLACE with auth.users id
   v_event_id uuid;
   v_other_event_id uuid;
   v_pass_id uuid;
@@ -21,7 +21,7 @@ declare
   v_valid_count bigint;
   v_already_count bigint;
 begin
-  if v_organizer_id = '00000000-0000-0000-0000-000000000000'::uuid then
+  if v_organizer_id is null then
     raise exception 'Replace v_organizer_id with a real auth.users id before running verification';
   end if;
 
@@ -111,6 +111,8 @@ begin
     raise exception 'Second validate_pass expected already_used, got %', v_result;
   end if;
 
+  reset role;
+
   select valid_count, already_used_count
   into v_valid_count, v_already_count
   from dev.checkin_counts_for_pass(v_pass_id);
@@ -140,6 +142,8 @@ begin
   -- ---------------------------------------------------------------------------
   -- 6. Invalid token
   -- ---------------------------------------------------------------------------
+  reset role;
+
   perform dev.set_auth_as(v_organizer_id);
 
   v_result := public.validate_pass('not-a-real-token', v_event_id);
@@ -150,7 +154,9 @@ begin
   -- ---------------------------------------------------------------------------
   -- 7. Unauthenticated call must fail (production security)
   -- ---------------------------------------------------------------------------
-  perform dev.reset_auth();
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', '', true);
 
   begin
     v_result := public.validate_pass(v_token, v_event_id);
@@ -165,6 +171,8 @@ begin
   -- ---------------------------------------------------------------------------
   -- 8. Client cannot change pass status directly (as authenticated owner)
   -- ---------------------------------------------------------------------------
+  reset role;
+
   perform dev.set_auth_as(v_organizer_id);
 
   begin
@@ -179,7 +187,9 @@ begin
       end if;
   end;
 
-  perform dev.reset_auth();
+  reset role;
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', '', true);
 
   raise notice 'All verification checks passed.';
 end;
