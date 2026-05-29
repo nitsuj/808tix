@@ -10,6 +10,7 @@
     "expo-camera": "~56.0.7",
     "expo-clipboard": "~56.0.3",
     "expo-constants": "~56.0.16",
+    "expo-dev-client": "~56.0.18",
     "expo-device": "~56.0.4",
     "expo-font": "~56.0.5",
     "expo-glass-effect": "~56.0.4",
@@ -43,8 +44,8 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
     "test:supabase": "node ./scripts/test-supabase-connection.mjs"
