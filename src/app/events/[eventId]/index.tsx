@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
@@ -108,9 +108,9 @@ export default function EventDetailScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => Alert.alert('Coming soon', 'Scanner mode is the next step.')}
+            onPress={() => router.push(`/events/${event.id}/scan` as Href)}
             style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.secondaryButtonText}>Scanner Coming Soon</ThemedText>
+            <ThemedText style={styles.secondaryButtonText}>Scanner</ThemedText>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
