@@ -1,43 +1,40 @@
 -- 808Tix MVP: manual verification script
 --
--- Run after migrations (and optional seed) against local Supabase.
---
 -- Prerequisites:
---   1. supabase start
---   2. supabase db reset   (applies migrations)
---   3. Create a test user in Studio Auth (or via signUp) and note the user UUID
---   4. Replace :organizer_id below with that UUID
+--   1. supabase start && supabase db reset
+--   2. Create a test user in Studio Auth and copy the UUID
+--   3. Run supabase/dev/auth_simulation.sql once in this SQL session
+--   4. Replace v_organizer_id below
 --
--- Run in SQL Editor as service role, OR set request.jwt.claim.sub for RPC tests:
---   select set_config('request.jwt.claim.sub', '<organizer-uuid>', true);
---   select set_config('request.jwt.claim.role', 'authenticated', true);
-
--- =============================================================================
--- SETUP (edit organizer id)
--- =============================================================================
--- \set organizer_id '00000000-0000-0000-0000-000000000000'
+-- Why dev helpers are required:
+--   validate_pass uses auth.uid() and is granted to authenticated only.
+--   SQL Editor is not a logged-in app user; dev.set_auth_as() simulates that.
 
 do $$
 declare
   v_organizer_id uuid := '00000000-0000-0000-0000-000000000000'; -- REPLACE
   v_event_id uuid;
+  v_other_event_id uuid;
   v_pass_id uuid;
   v_token text;
   v_result jsonb;
-  v_valid_count int;
-  v_already_count int;
+  v_valid_count bigint;
+  v_already_count bigint;
 begin
   if v_organizer_id = '00000000-0000-0000-0000-000000000000'::uuid then
     raise exception 'Replace v_organizer_id with a real auth.users id before running verification';
   end if;
 
-  -- Ensure profile exists (trigger should have created it on signup)
+  if to_regprocedure('dev.set_auth_as(uuid)') is null then
+    raise exception 'Run supabase/dev/auth_simulation.sql in this session first';
+  end if;
+
   insert into public.profiles (id, email)
   values (v_organizer_id, 'verify@808tix.test')
   on conflict (id) do nothing;
 
   -- ---------------------------------------------------------------------------
-  -- 1. Create event with slug
+  -- 1. Create event with slug (superuser / postgres bypasses RLS for setup)
   -- ---------------------------------------------------------------------------
   insert into public.events (
     organizer_id,
@@ -85,10 +82,8 @@ begin
   raise notice 'pass_id: %, token: %', v_pass_id, v_token;
 
   -- ---------------------------------------------------------------------------
-  -- 3. Guest view (anon) — run separately as anon in Studio if preferred
+  -- 3. Guest view — no auth required; do NOT switch session to anon
   -- ---------------------------------------------------------------------------
-  perform set_config('role', 'anon', true);
-  -- get_pass_by_token works via SECURITY DEFINER; test as superuser here:
   if public.get_pass_by_token(v_token) is null then
     raise exception 'get_pass_by_token returned null for valid token';
   end if;
@@ -98,10 +93,13 @@ begin
   end if;
 
   -- ---------------------------------------------------------------------------
-  -- 4. validate_pass — simulate authenticated organizer
+  -- 4. validate_pass — simulate authenticated organizer (JWT + role)
   -- ---------------------------------------------------------------------------
-  perform set_config('request.jwt.claim.sub', v_organizer_id::text, true);
-  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform dev.set_auth_as(v_organizer_id);
+
+  if auth.uid() is distinct from v_organizer_id then
+    raise exception 'auth simulation failed: auth.uid()=%', auth.uid();
+  end if;
 
   v_result := public.validate_pass(v_token, v_event_id);
   if v_result ->> 'result' <> 'valid' then
@@ -113,11 +111,9 @@ begin
     raise exception 'Second validate_pass expected already_used, got %', v_result;
   end if;
 
-  select count(*) filter (where result = 'valid'),
-         count(*) filter (where result = 'already_used')
+  select valid_count, already_used_count
   into v_valid_count, v_already_count
-  from public.checkins
-  where pass_id = v_pass_id;
+  from dev.checkin_counts_for_pass(v_pass_id);
 
   if v_valid_count <> 1 or v_already_count <> 1 then
     raise exception 'checkins audit mismatch: valid=%, already_used=%', v_valid_count, v_already_count;
@@ -131,12 +127,12 @@ begin
   -- 5. Wrong event
   -- ---------------------------------------------------------------------------
   insert into public.events (organizer_id, slug, name, status)
-  values (v_organizer_id, 'verify-other-night', 'Other Night', 'published');
+  values (v_organizer_id, 'verify-other-night', 'Other Night', 'published')
+  returning id into v_other_event_id;
 
-  v_result := public.validate_pass(
-    v_token,
-    (select id from public.events where slug = 'verify-other-night')
-  );
+  perform dev.set_auth_as(v_organizer_id);
+
+  v_result := public.validate_pass(v_token, v_other_event_id);
   if v_result ->> 'result' <> 'wrong_event' then
     raise exception 'wrong_event test failed, got %', v_result;
   end if;
@@ -144,14 +140,33 @@ begin
   -- ---------------------------------------------------------------------------
   -- 6. Invalid token
   -- ---------------------------------------------------------------------------
+  perform dev.set_auth_as(v_organizer_id);
+
   v_result := public.validate_pass('not-a-real-token', v_event_id);
   if v_result ->> 'result' <> 'invalid' then
     raise exception 'invalid token test failed, got %', v_result;
   end if;
 
   -- ---------------------------------------------------------------------------
-  -- 7. Client cannot change pass status directly
+  -- 7. Unauthenticated call must fail (production security)
   -- ---------------------------------------------------------------------------
+  perform dev.reset_auth();
+
+  begin
+    v_result := public.validate_pass(v_token, v_event_id);
+    raise exception 'Expected unauthenticated validate_pass to fail, got %', v_result;
+  exception
+    when insufficient_privilege then
+      null;
+    when sqlstate '42501' then
+      null;
+  end;
+
+  -- ---------------------------------------------------------------------------
+  -- 8. Client cannot change pass status directly (as authenticated owner)
+  -- ---------------------------------------------------------------------------
+  perform dev.set_auth_as(v_organizer_id);
+
   begin
     update public.passes
     set status = 'active'
@@ -164,12 +179,14 @@ begin
       end if;
   end;
 
+  perform dev.reset_auth();
+
   raise notice 'All verification checks passed.';
 end;
 $$;
 
 -- =============================================================================
--- Optional: slug uniqueness
+-- Optional: slug uniqueness (run separately)
 -- =============================================================================
 -- insert into public.events (organizer_id, slug, name)
 -- values ('<organizer-uuid>', 'verify-summer-show', 'Duplicate')
