@@ -7,11 +7,11 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useAuth } from '@/contexts/auth-context';
@@ -134,22 +134,22 @@ export default function CreateEventScreen() {
               Saved as draft until you publish.
             </ThemedText>
 
-            <ThemedView type="backgroundElement" style={styles.form}>
-              <FormField
+            <ThemedView type="backgroundElement" style={eventFormStyles.form}>
+              <EventFormField
                 error={fieldErrors.eventName}
                 label="Event Name"
                 placeholder="Summer Rooftop Session"
                 value={eventName}
                 onChangeText={setEventName}
               />
-              <FormField
+              <EventFormField
                 error={fieldErrors.venueName}
                 label="Venue Name"
                 placeholder="The Loft"
                 value={venueName}
                 onChangeText={setVenueName}
               />
-              <FormField
+              <EventFormField
                 error={fieldErrors.eventDate}
                 hint="YYYY-MM-DD"
                 label="Event Date"
@@ -157,7 +157,7 @@ export default function CreateEventScreen() {
                 value={eventDate}
                 onChangeText={setEventDate}
               />
-              <FormField
+              <EventFormField
                 error={fieldErrors.startTime}
                 hint="24-hour HH:MM"
                 label="Start Time"
@@ -165,7 +165,7 @@ export default function CreateEventScreen() {
                 value={startTime}
                 onChangeText={setStartTime}
               />
-              <FormField
+              <EventFormField
                 error={fieldErrors.maxPasses}
                 hint="Whole number, minimum 1"
                 keyboardType="number-pad"
@@ -196,49 +196,6 @@ export default function CreateEventScreen() {
         </SafeAreaView>
       </KeyboardAvoidingView>
     </ThemedView>
-  );
-}
-
-type FormFieldProps = {
-  label: string;
-  value: string;
-  placeholder: string;
-  hint?: string;
-  error?: string;
-  keyboardType?: 'default' | 'number-pad';
-  onChangeText: (value: string) => void;
-};
-
-function FormField({
-  label,
-  value,
-  placeholder,
-  hint,
-  error,
-  keyboardType = 'default',
-  onChangeText,
-}: FormFieldProps) {
-  return (
-    <View style={styles.field}>
-      <ThemedText type="smallBold" style={styles.label}>
-        {label}
-      </ThemedText>
-      {hint ? (
-        <ThemedText themeColor="textSecondary" type="small">
-          {hint}
-        </ThemedText>
-      ) : null}
-      <TextInput
-        editable
-        keyboardType={keyboardType}
-        placeholder={placeholder}
-        placeholderTextColor="#666"
-        style={[styles.input, error ? styles.inputError : null]}
-        value={value}
-        onChangeText={onChangeText}
-      />
-      {error ? <ThemedText style={styles.errorText}>{error}</ThemedText> : null}
-    </View>
   );
 }
 
@@ -290,30 +247,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: Spacing.one,
-  },
-  form: {
-    gap: Spacing.three,
-    padding: Spacing.four,
-    borderRadius: Spacing.three,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  label: {
-    marginTop: Spacing.half,
-  },
-  input: {
-    backgroundColor: '#111',
-    borderColor: '#333',
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    color: '#fff',
-    fontSize: 16,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-  },
-  inputError: {
-    borderColor: '#ff6b6b',
   },
   errorText: {
     color: '#ff6b6b',

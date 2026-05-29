@@ -1,12 +1,28 @@
-export type CreateEventFormValues = {
+import type { EventStatus } from '@/lib/database.types';
+
+export type { EventStatus };
+
+export type EventFormValues = {
   eventName: string;
   venueName: string;
   eventDate: string;
   startTime: string;
   maxPasses: string;
+  status: EventStatus;
 };
 
+export type CreateEventFormValues = Omit<EventFormValues, 'status'>;
+
+export type EventFormFieldErrors = Partial<Record<keyof EventFormValues, string>>;
+
 export type CreateEventFieldErrors = Partial<Record<keyof CreateEventFormValues, string>>;
+
+export const EVENT_STATUS_OPTIONS: EventStatus[] = [
+  'draft',
+  'published',
+  'completed',
+  'cancelled',
+];
 
 export function validateCreateEventForm(values: CreateEventFormValues): CreateEventFieldErrors {
   const errors: CreateEventFieldErrors = {};
@@ -35,6 +51,29 @@ export function validateCreateEventForm(values: CreateEventFormValues): CreateEv
     errors.maxPasses = 'Max passes is required.';
   } else if (parseMaxPassesInput(values.maxPasses) === null) {
     errors.maxPasses = 'Enter a whole number of at least 1.';
+  }
+
+  return errors;
+}
+
+export function validateEditEventForm(
+  values: EventFormValues,
+  issuedCount: number,
+): EventFormFieldErrors {
+  const errors: EventFormFieldErrors = {
+    ...validateCreateEventForm(values),
+  };
+
+  if (!EVENT_STATUS_OPTIONS.includes(values.status)) {
+    errors.status = 'Select a valid status.';
+  }
+
+  const capacity = parseMaxPassesInput(values.maxPasses);
+
+  if (capacity === null && !errors.maxPasses) {
+    errors.maxPasses = 'Enter a whole number of at least 1.';
+  } else if (capacity !== null && capacity < issuedCount) {
+    errors.maxPasses = `Max passes cannot be less than ${issuedCount} issued.`;
   }
 
   return errors;

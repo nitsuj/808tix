@@ -131,7 +131,9 @@ export function OrganizerDashboard({
           ) : null}
 
           {!isLoading && !error
-            ? upcomingEvents.map((event) => <EventCard key={event.id} event={event} />)
+            ? upcomingEvents.map((event) => (
+                <EventCard key={event.id} event={event} onPress={() => router.push(`/events/${event.id}` as Href)} />
+              ))
             : null}
         </ScrollView>
       </SafeAreaView>
@@ -139,24 +141,29 @@ export function OrganizerDashboard({
   );
 }
 
-function EventCard({ event }: { event: Event }) {
+function EventCard({ event, onPress }: { event: Event; onPress: () => void }) {
   const dateLabel = formatEventDate(event.event_date, event.start_time);
 
   return (
-    <ThemedView style={styles.eventCard}>
-      <ThemedText style={styles.eventName}>{event.name}</ThemedText>
-      {event.venue_name ? (
+    <Pressable onPress={onPress} style={({ pressed }) => [pressed && styles.eventCardPressed]}>
+      <ThemedView style={styles.eventCard}>
+        <ThemedText style={styles.eventName}>{event.name}</ThemedText>
+        {event.venue_name ? (
+          <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
+            {event.venue_name}
+          </ThemedText>
+        ) : null}
+        {dateLabel ? (
+          <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
+            {dateLabel}
+          </ThemedText>
+        ) : null}
         <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
-          {event.venue_name}
+          {event.capacity} max passes
         </ThemedText>
-      ) : null}
-      {dateLabel ? (
-        <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
-          {dateLabel}
-        </ThemedText>
-      ) : null}
-      <ThemedText style={styles.eventStatus}>{formatStatus(event.status)}</ThemedText>
-    </ThemedView>
+        <ThemedText style={styles.eventStatus}>{formatStatus(event.status)}</ThemedText>
+      </ThemedView>
+    </Pressable>
   );
 }
 
@@ -283,6 +290,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     textAlign: 'center',
+  },
+  eventCardPressed: {
+    opacity: 0.85,
   },
   eventCard: {
     borderColor: '#2a2a2a',
