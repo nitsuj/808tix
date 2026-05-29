@@ -9,6 +9,9 @@ import { Platform } from 'react-native';
 
 export const OrganizerAccent = '#39FF14';
 
+/** Guest / pass screens (fan-facing). */
+export const FanAccent = '#C77DFF';
+
 export const Colors = {
   light: {
     text: '#000000',

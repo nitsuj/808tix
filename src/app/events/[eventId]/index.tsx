@@ -102,9 +102,9 @@ export default function EventDetailScreen() {
           </Pressable>
 
           <Pressable
-            onPress={() => Alert.alert('Coming soon', 'Pass issuance is the next step.')}
+            onPress={() => router.push(`/events/${event.id}/issue` as Href)}
             style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.secondaryButtonText}>Issue Passes Coming Soon</ThemedText>
+            <ThemedText style={styles.secondaryButtonText}>Issue Pass</ThemedText>
           </Pressable>
 
           <Pressable
