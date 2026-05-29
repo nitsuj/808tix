@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
@@ -28,8 +29,18 @@ export default function IndexScreen() {
     );
   }
 
-  if (isAuthenticated) {
-    return <OrganizerHome profileEmail={profile?.email} sessionEmail={session?.user.email} onSignOut={signOut} />;
+  if (isAuthenticated && session?.user.id) {
+    const displayEmail = profile?.email ?? session.user.email ?? 'Unknown';
+    const displayName = profile?.full_name?.trim() || displayEmail;
+
+    return (
+      <OrganizerDashboard
+        displayEmail={displayEmail}
+        displayName={displayName}
+        organizerId={session.user.id}
+        onSignOut={signOut}
+      />
+    );
   }
 
   return <LoginForm onSignIn={signInWithEmail} />;
@@ -135,76 +146,6 @@ function LoginForm({ onSignIn }: LoginFormProps) {
   );
 }
 
-type OrganizerHomeProps = {
-  profileEmail: string | null | undefined;
-  sessionEmail: string | undefined;
-  onSignOut: () => Promise<void>;
-};
-
-function OrganizerHome({ profileEmail, sessionEmail, onSignOut }: OrganizerHomeProps) {
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const displayEmail = profileEmail ?? sessionEmail ?? 'Unknown';
-
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    setErrorMessage(null);
-
-    try {
-      await onSignOut();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Sign out failed.';
-      setErrorMessage(message);
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
-
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="subtitle" style={styles.title}>
-          Organizer
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.homeCard}>
-          <ThemedView style={styles.statusRow}>
-            <ThemedView style={styles.statusDot} />
-            <ThemedText type="smallBold" style={styles.statusText}>
-              Auth connected
-            </ThemedText>
-          </ThemedView>
-
-          <ThemedText themeColor="textSecondary" style={styles.homeLabel}>
-            Signed in as
-          </ThemedText>
-          <ThemedText style={styles.homeEmail}>{displayEmail}</ThemedText>
-
-          {errorMessage ? (
-            <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
-          ) : null}
-
-          <Pressable
-            disabled={isSigningOut}
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-              isSigningOut && styles.primaryButtonDisabled,
-            ]}
-            onPress={handleSignOut}>
-            {isSigningOut ? (
-              <ActivityIndicator color={OrganizerAccent} />
-            ) : (
-              <ThemedText style={styles.secondaryButtonText}>Sign out</ThemedText>
-            )}
-          </Pressable>
-        </ThemedView>
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -276,49 +217,5 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 16,
     fontWeight: '700',
-  },
-  homeCard: {
-    gap: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Spacing.three,
-  },
-  statusRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.two,
-    marginBottom: Spacing.two,
-  },
-  statusDot: {
-    backgroundColor: OrganizerAccent,
-    borderRadius: 6,
-    height: 12,
-    width: 12,
-  },
-  statusText: {
-    color: OrganizerAccent,
-  },
-  homeLabel: {
-    fontSize: 14,
-  },
-  homeEmail: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: Spacing.two,
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    marginTop: Spacing.two,
-    paddingVertical: Spacing.three,
-  },
-  secondaryButtonPressed: {
-    opacity: 0.85,
-  },
-  secondaryButtonText: {
-    color: OrganizerAccent,
-    fontSize: 16,
-    fontWeight: '600',
   },
 });
