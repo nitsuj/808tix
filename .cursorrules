@@ -1,0 +1,182 @@
+# 808Tix Cursor Rules
+
+## Project Overview
+
+808Tix is a mobile-first ticketing platform for independent events.
+
+Positioning:
+
+"Shopify for independent ticketed experiences."
+
+Primary launch market:
+
+* Independent music
+* Breweries
+* Nightlife
+* Festivals
+* Community events
+* Popups
+
+---
+
+## June 10 MVP Goal
+
+The immediate goal is NOT a complete ticketing platform.
+
+The immediate goal is:
+
+"Replace guest lists, clipboards, and Eventbrite check-in lists with mobile passes and QR validation."
+
+Success Criteria:
+
+* Organizer creates an event
+* Organizer issues passes
+* Fans receive passes via text or email
+* Fans open passes on mobile
+* Door staff scans passes
+* System prevents duplicate entry
+* Check-ins are recorded
+
+Do not build beyond this scope unless explicitly requested.
+
+---
+
+## Technical Stack
+
+Frontend:
+
+* Expo
+* React Native
+* TypeScript
+* NativeWind
+
+Backend:
+
+* Supabase
+* Postgres
+* Auth
+* Edge Functions
+
+Future:
+
+* Stripe
+* Solana
+
+Blockchain is NOT required for MVP functionality.
+
+---
+
+## Product Principles
+
+### Mobile First
+
+Every screen should be designed for phones first.
+
+### Operational Simplicity
+
+Promoters should be able to create and run an event with minimal training.
+
+### One App
+
+Use role-based UI.
+
+Do not create separate organizer, scanner, or attendee applications.
+
+### Database First
+
+Supabase is the source of truth.
+
+Blockchain may be added later.
+
+---
+
+## UI Rules
+
+Fan-facing screens:
+
+* Dark mode
+* Purple/pink accents
+
+Organizer-facing screens:
+
+* Dark mode
+* Neon green accents
+
+Scanner:
+
+* Extremely minimal
+* High contrast
+* Large validation states
+
+---
+
+## User Language Rules
+
+Never use:
+
+* NFT
+* Mint
+* Wallet
+* Gas
+* Token
+* Blockchain
+
+User-facing terminology:
+
+* Ticket
+* Pass
+* Verified
+* Transfer
+* Resale
+* Check-In
+
+---
+
+## Development Rules
+
+Before making changes:
+
+* Review existing code
+* Preserve working functionality
+* Avoid broad rewrites
+* Prefer small focused changes
+
+When uncertain:
+
+* Choose the simplest solution
+
+Do not prematurely optimize.
+
+Do not introduce complexity that does not directly support the June 10 MVP.
+
+Workspace Isolation
+
+Assume this repository is self-contained.
+
+Do not reference:
+- other local repositories
+- sibling directories
+- previous projects
+- previous codebases
+
+If a required file does not exist in this repository, ask before proceeding.
+
+---
+
+## Features Deferred Until After MVP
+
+Do not build unless specifically requested:
+
+* Payments
+* Stripe
+* Resale marketplace
+* Ticket transfers
+* Loyalty systems
+* Blockchain ownership
+* Fan profiles
+* Social features
+* Push notifications
+* Apple Wallet integration
+* Multi-organization support
+
+Focus only on event creation, pass issuance, ticket display, QR validation, and check-in tracking.
