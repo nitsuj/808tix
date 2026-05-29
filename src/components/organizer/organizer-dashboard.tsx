@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,9 +28,16 @@ export function OrganizerDashboard({
   displayEmail,
   onSignOut,
 }: OrganizerDashboardProps) {
+  const router = useRouter();
   const { upcomingEvents, isLoading, error, refetch } = useOrganizerEvents(organizerId);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refetch();
+    }, [refetch]),
+  );
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -47,7 +54,7 @@ export function OrganizerDashboard({
   }
 
   function handleCreateEventPress() {
-    Alert.alert('Coming soon', 'Event creation is the next step.');
+    router.push('/events/create' as Href);
   }
 
   return (

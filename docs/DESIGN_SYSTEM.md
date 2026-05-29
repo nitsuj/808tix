@@ -280,3 +280,137 @@ Scanner is **not** a normal screen — it is a **status instrument**.
 - `docs/808Tix_MVP_Build_Spec.md` — product scope
 - `.cursorrules` — engineering and UI summary
 - `src/constants/theme.ts` — code tokens today
+
+
+# Screen Hierarchy & Navigation
+
+## Navigation Philosophy
+
+Users should always know:
+
+1. Where they are
+2. What they can do next
+3. How to get back
+
+Navigation should feel obvious without training.
+
+## Fan Navigation (Future)
+
+Primary Tabs:
+
+* Discover
+* Wallet
+* Profile
+
+Rules:
+
+* Maximum 4 primary tabs
+* Wallet is the default destination after ticket purchase
+* Fan flows should prioritize speed and simplicity
+* Avoid deep menu structures
+
+## Organizer Navigation
+
+Primary Tabs:
+
+* Dashboard
+* Events
+* Scanner
+
+Rules:
+
+* Maximum 4 primary tabs
+* Dashboard is home
+* Scanner should always be accessible within one tap
+* Critical event operations should be reachable within three taps
+
+## Navigation Rules
+
+* Mobile-first only
+* Prefer shallow navigation
+* Avoid nested stacks deeper than 2 levels when possible
+* Every screen must have a clear primary action
+* Avoid modal-heavy workflows
+* Prefer dedicated screens over stacked modal flows
+
+---
+
+# Design Principles
+
+## Principle 1: Fast Beats Clever
+
+Users are trying to run events.
+
+Never sacrifice speed for novelty.
+
+---
+
+## Principle 2: Operational Clarity Beats Visual Flair
+
+The UI should help users complete tasks.
+
+Decoration is secondary.
+
+---
+
+## Principle 3: Every Screen Answers One Question
+
+Users should immediately understand:
+
+"What do I do next?"
+
+If that answer is unclear, simplify the screen.
+
+---
+
+## Principle 4: Minimize Typing
+
+Prefer:
+
+* Scanning
+* Tapping
+* Selecting
+* Sharing
+
+Over manual data entry whenever possible.
+
+---
+
+## Principle 5: Thumb-First Design
+
+Assume one-handed phone usage.
+
+Primary actions should be easily reachable.
+
+---
+
+## Principle 6: Show Only What Matters
+
+Do not overwhelm users with options.
+
+Progressive disclosure is preferred.
+
+---
+
+## Principle 7: Trust Through Simplicity
+
+Ticket buyers should never need to understand:
+
+* Blockchain
+* Wallets
+* Crypto
+* Smart contracts
+
+The technology should be invisible.
+
+---
+
+## Principle 8: Build for the Door
+
+Every feature should support one of three outcomes:
+
+* Sell a ticket
+* Deliver a ticket
+* Validate a ticket
+
+Everything else is secondary.
