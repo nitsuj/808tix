@@ -56,17 +56,17 @@ export function validateCreateEventForm(values: CreateEventFormValues): CreateEv
   return errors;
 }
 
+export type EditEventFormValues = CreateEventFormValues;
+
+export type EditEventFieldErrors = CreateEventFieldErrors;
+
 export function validateEditEventForm(
-  values: EventFormValues,
+  values: EditEventFormValues,
   issuedCount: number,
-): EventFormFieldErrors {
-  const errors: EventFormFieldErrors = {
+): EditEventFieldErrors {
+  const errors: EditEventFieldErrors = {
     ...validateCreateEventForm(values),
   };
-
-  if (!EVENT_STATUS_OPTIONS.includes(values.status)) {
-    errors.status = 'Select a valid status.';
-  }
 
   const capacity = parseMaxPassesInput(values.maxPasses);
 

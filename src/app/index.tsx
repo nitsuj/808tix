@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -16,9 +17,18 @@ import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 
 export default function IndexScreen() {
-  const { isLoading, isAuthenticated, profile, session, signInWithEmail, signOut } = useAuth();
+  const {
+    isLoading,
+    isProfileLoading,
+    isAuthenticated,
+    profile,
+    profileMissing,
+    session,
+    signInWithEmail,
+    signOut,
+  } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || (isAuthenticated && isProfileLoading)) {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
@@ -29,15 +39,19 @@ export default function IndexScreen() {
     );
   }
 
-  if (isAuthenticated && session?.user.id) {
-    const displayEmail = profile?.email ?? session.user.email ?? 'Unknown';
-    const displayName = profile?.full_name?.trim() || displayEmail;
+  if (isAuthenticated && profileMissing) {
+    return <MissingProfileScreen email={session?.user.email} onSignOut={signOut} />;
+  }
+
+  if (isAuthenticated && profile && session?.user.id) {
+    const displayEmail = profile.email ?? session.user.email ?? 'Unknown';
+    const displayName = profile.full_name?.trim() || displayEmail;
 
     return (
       <OrganizerDashboard
         displayEmail={displayEmail}
         displayName={displayName}
-        organizerId={session.user.id}
+        organizerId={profile.id}
         onSignOut={signOut}
       />
     );

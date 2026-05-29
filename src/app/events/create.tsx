@@ -12,9 +12,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
+import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { useAuth } from '@/contexts/auth-context';
+import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
 import {
   normalizeTimeInput,
@@ -27,7 +28,7 @@ import { supabase } from '@/lib/supabase';
 
 export default function CreateEventScreen() {
   const router = useRouter();
-  const { isLoading, isAuthenticated, session } = useAuth();
+  const authGate = useOrganizerAuthGate();
 
   const [eventName, setEventName] = useState('');
   const [venueName, setVenueName] = useState('');
@@ -38,7 +39,7 @@ export default function CreateEventScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  if (isLoading) {
+  if (authGate.state === 'loading') {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
@@ -46,12 +47,16 @@ export default function CreateEventScreen() {
     );
   }
 
-  if (!isAuthenticated || !session?.user.id) {
+  if (authGate.state === 'unauthenticated') {
     router.replace('/');
     return null;
   }
 
-  const organizerId = session.user.id;
+  if (authGate.state === 'profile_missing') {
+    return <MissingProfileScreen email={authGate.email} onSignOut={authGate.signOut} />;
+  }
+
+  const organizerId = authGate.organizerId;
 
   async function handleCreateEvent() {
     const values = { eventName, venueName, eventDate, startTime, maxPasses };

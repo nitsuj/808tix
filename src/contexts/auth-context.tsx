@@ -20,7 +20,9 @@ type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
+  isProfileLoading: boolean;
   isAuthenticated: boolean;
+  profileMissing: boolean;
   signInWithEmail: (email: string, password: string) => Promise<SignInResult>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
@@ -29,7 +31,11 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function fetchProfile(userId: string): Promise<Profile | null> {
-  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .maybeSingle();
 
   if (error) {
     console.warn('[auth] Failed to load profile:', error.message);
@@ -43,6 +49,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
+
+  const loadProfileForSession = useCallback(async (nextSession: Session | null) => {
+    const userId = nextSession?.user.id;
+
+    if (!userId) {
+      setProfile(null);
+      setIsProfileLoading(false);
+      return;
+    }
+
+    setIsProfileLoading(true);
+    const nextProfile = await fetchProfile(userId);
+    setProfile(nextProfile);
+    setIsProfileLoading(false);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setSession(initialSession);
       setIsLoading(false);
+      void loadProfileForSession(initialSession);
     });
 
     const {
@@ -64,39 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setSession(nextSession);
-
-      if (!nextSession) {
-        setProfile(null);
-      }
-
       setIsLoading(false);
+      void loadProfileForSession(nextSession);
     });
 
     return () => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, []);
-
-  useEffect(() => {
-    const userId = session?.user.id;
-
-    if (!userId) {
-      return;
-    }
-
-    let isMounted = true;
-
-    fetchProfile(userId).then((nextProfile) => {
-      if (isMounted) {
-        setProfile(nextProfile);
-      }
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [session?.user.id]);
+  }, [loadProfileForSession]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
@@ -123,17 +122,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const profileMissing = session !== null && !isProfileLoading && profile === null;
+
   const value = useMemo<AuthContextValue>(
     () => ({
       session,
       profile,
       isLoading,
+      isProfileLoading,
       isAuthenticated: session !== null,
+      profileMissing,
       signInWithEmail,
       signOut,
       refreshSession,
     }),
-    [session, profile, isLoading, signInWithEmail, signOut, refreshSession],
+    [
+      session,
+      profile,
+      isLoading,
+      isProfileLoading,
+      profileMissing,
+      signInWithEmail,
+      signOut,
+      refreshSession,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -7,24 +7,22 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth-context';
+import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatTimeForInput } from '@/lib/event-display';
 import {
-  EVENT_STATUS_OPTIONS,
   normalizeTimeInput,
   parseMaxPassesInput,
   validateEditEventForm,
-  type EventFormFieldErrors,
-  type EventStatus,
+  type EditEventFieldErrors,
 } from '@/lib/event-form';
 import type { Event } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
@@ -32,10 +30,10 @@ import { supabase } from '@/lib/supabase';
 export default function EditEventScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
 
-  if (authLoading || isLoading) {
+  if (authGate.state === 'loading' || isLoading) {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
@@ -43,9 +41,13 @@ export default function EditEventScreen() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (authGate.state === 'unauthenticated') {
     router.replace('/');
     return null;
+  }
+
+  if (authGate.state === 'profile_missing') {
+    return <MissingProfileScreen email={authGate.email} onSignOut={authGate.signOut} />;
   }
 
   if (error || !event || !eventId) {
@@ -82,13 +84,12 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   const [eventDate, setEventDate] = useState(event.event_date ?? '');
   const [startTime, setStartTime] = useState(() => formatTimeForInput(event.start_time));
   const [maxPasses, setMaxPasses] = useState(String(event.capacity));
-  const [status, setStatus] = useState<EventStatus>(event.status);
-  const [fieldErrors, setFieldErrors] = useState<EventFormFieldErrors>({});
+  const [fieldErrors, setFieldErrors] = useState<EditEventFieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSave() {
-    const values = { eventName, venueName, eventDate, startTime, maxPasses, status };
+    const values = { eventName, venueName, eventDate, startTime, maxPasses };
     const errors = validateEditEventForm(values, issuedCount);
 
     if (Object.keys(errors).length > 0) {
@@ -122,7 +123,6 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
         event_date: eventDate.trim(),
         start_time: normalizedStart,
         capacity,
-        status,
       })
       .eq('id', eventId);
 
@@ -207,36 +207,6 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                 value={maxPasses}
                 onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
               />
-
-              <View style={styles.field}>
-                <ThemedText type="smallBold" style={eventFormStyles.label}>
-                  Status
-                </ThemedText>
-                <View style={styles.statusRow}>
-                  {EVENT_STATUS_OPTIONS.map((option) => {
-                    const selected = status === option;
-
-                    return (
-                      <Pressable
-                        key={option}
-                        onPress={() => setStatus(option)}
-                        style={({ pressed }) => [
-                          styles.statusChip,
-                          selected && styles.statusChipSelected,
-                          pressed && styles.pressed,
-                        ]}>
-                        <ThemedText
-                          style={[styles.statusChipText, selected && styles.statusChipTextSelected]}>
-                          {option}
-                        </ThemedText>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                {fieldErrors.status ? (
-                  <ThemedText style={eventFormStyles.errorText}>{fieldErrors.status}</ThemedText>
-                ) : null}
-              </View>
             </ThemedView>
 
             {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
@@ -301,34 +271,6 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: Spacing.one,
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  statusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
-  },
-  statusChip: {
-    borderColor: '#333',
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-  },
-  statusChipSelected: {
-    backgroundColor: OrganizerAccent,
-    borderColor: OrganizerAccent,
-  },
-  statusChipText: {
-    color: OrganizerAccent,
-    fontSize: 13,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  statusChipTextSelected: {
-    color: '#000',
   },
   primaryButton: {
     alignItems: 'center',

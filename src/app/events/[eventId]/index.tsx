@@ -3,10 +3,11 @@ import { useCallback } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
-import { useAuth } from '@/contexts/auth-context';
+import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import {
   formatEventDateLabel,
   formatEventStatus,
@@ -18,16 +19,18 @@ import { useEventDetail } from '@/hooks/use-event-detail';
 export default function EventDetailScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
-  const { isLoading: authLoading, isAuthenticated } = useAuth();
+  const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
 
   useFocusEffect(
     useCallback(() => {
-      void refetch();
-    }, [refetch]),
+      if (authGate.state === 'ready') {
+        void refetch();
+      }
+    }, [authGate.state, refetch]),
   );
 
-  if (authLoading || isLoading) {
+  if (authGate.state === 'loading' || isLoading) {
     return (
       <ThemedView style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
@@ -35,9 +38,13 @@ export default function EventDetailScreen() {
     );
   }
 
-  if (!isAuthenticated) {
+  if (authGate.state === 'unauthenticated') {
     router.replace('/');
     return null;
+  }
+
+  if (authGate.state === 'profile_missing') {
+    return <MissingProfileScreen email={authGate.email} onSignOut={authGate.signOut} />;
   }
 
   if (error || !event) {
@@ -85,6 +92,13 @@ export default function EventDetailScreen() {
             onPress={() => router.push(`/events/${event.id}/edit` as Href)}
             style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <ThemedText style={styles.primaryButtonText}>Edit Event</ThemedText>
+          </Pressable>
+
+          <Pressable
+            disabled
+            onPress={() => Alert.alert('Coming soon', 'Publishing events is the next step.')}
+            style={styles.comingSoonButton}>
+            <ThemedText style={styles.comingSoonButtonText}>Publish Event Coming Soon</ThemedText>
           </Pressable>
 
           <Pressable
@@ -205,6 +219,19 @@ const styles = StyleSheet.create({
   },
   secondaryButtonText: {
     color: OrganizerAccent,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  comingSoonButton: {
+    alignItems: 'center',
+    borderColor: '#444',
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    opacity: 0.55,
+    paddingVertical: Spacing.three,
+  },
+  comingSoonButtonText: {
+    color: '#888',
     fontSize: 16,
     fontWeight: '600',
   },
