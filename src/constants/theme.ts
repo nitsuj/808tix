@@ -11,6 +11,8 @@ export const OrganizerAccent = '#39FF14';
 
 /** Guest / pass screens (fan-facing). */
 export const FanAccent = '#C77DFF';
+export const FanAccentBright = '#FF6AD5';
+export const FanAccentMuted = '#9B5DE5';
 
 export const Colors = {
   light: {
