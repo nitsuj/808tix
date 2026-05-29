@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
 import {
   normalizeTimeInput,
+  parseMaxPassesInput,
   validateCreateEventForm,
   type CreateEventFieldErrors,
 } from '@/lib/event-form';
@@ -32,6 +33,7 @@ export default function CreateEventScreen() {
   const [venueName, setVenueName] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [maxPasses, setMaxPasses] = useState('');
   const [fieldErrors, setFieldErrors] = useState<CreateEventFieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -52,11 +54,18 @@ export default function CreateEventScreen() {
   const organizerId = session.user.id;
 
   async function handleCreateEvent() {
-    const values = { eventName, venueName, eventDate, startTime };
+    const values = { eventName, venueName, eventDate, startTime, maxPasses };
     const errors = validateCreateEventForm(values);
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
+      return;
+    }
+
+    const capacity = parseMaxPassesInput(maxPasses);
+
+    if (capacity === null) {
+      setFieldErrors({ maxPasses: 'Enter a whole number of at least 1.' });
       return;
     }
 
@@ -81,6 +90,7 @@ export default function CreateEventScreen() {
         venue_name: venueName.trim(),
         event_date: eventDate.trim(),
         start_time: normalizedStart,
+        capacity,
         status: 'draft',
       });
 
@@ -155,6 +165,15 @@ export default function CreateEventScreen() {
                 value={startTime}
                 onChangeText={setStartTime}
               />
+              <FormField
+                error={fieldErrors.maxPasses}
+                hint="Whole number, minimum 1"
+                keyboardType="number-pad"
+                label="Max Passes"
+                placeholder="100"
+                value={maxPasses}
+                onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
+              />
             </ThemedView>
 
             {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
@@ -186,10 +205,19 @@ type FormFieldProps = {
   placeholder: string;
   hint?: string;
   error?: string;
+  keyboardType?: 'default' | 'number-pad';
   onChangeText: (value: string) => void;
 };
 
-function FormField({ label, value, placeholder, hint, error, onChangeText }: FormFieldProps) {
+function FormField({
+  label,
+  value,
+  placeholder,
+  hint,
+  error,
+  keyboardType = 'default',
+  onChangeText,
+}: FormFieldProps) {
   return (
     <View style={styles.field}>
       <ThemedText type="smallBold" style={styles.label}>
@@ -202,6 +230,7 @@ function FormField({ label, value, placeholder, hint, error, onChangeText }: For
       ) : null}
       <TextInput
         editable
+        keyboardType={keyboardType}
         placeholder={placeholder}
         placeholderTextColor="#666"
         style={[styles.input, error ? styles.inputError : null]}

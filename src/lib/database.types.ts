@@ -47,6 +47,7 @@ export type Event = {
   start_time: string | null;
   description: string | null;
   image_url: string | null;
+  capacity: number;
   status: EventStatus;
   created_at: string;
   updated_at: string;
@@ -87,7 +88,7 @@ export type Database = {
       };
       events: {
         Row: Event;
-        Insert: Partial<Event> & Pick<Event, 'organizer_id' | 'slug' | 'name'>;
+        Insert: Partial<Event> & Pick<Event, 'organizer_id' | 'slug' | 'name' | 'capacity'>;
         Update: Partial<Event>;
         Relationships: [];
       };

@@ -3,6 +3,7 @@ export type CreateEventFormValues = {
   venueName: string;
   eventDate: string;
   startTime: string;
+  maxPasses: string;
 };
 
 export type CreateEventFieldErrors = Partial<Record<keyof CreateEventFormValues, string>>;
@@ -30,7 +31,30 @@ export function validateCreateEventForm(values: CreateEventFormValues): CreateEv
     errors.startTime = 'Use 24-hour format HH:MM (e.g. 21:00).';
   }
 
+  if (!values.maxPasses.trim()) {
+    errors.maxPasses = 'Max passes is required.';
+  } else if (parseMaxPassesInput(values.maxPasses) === null) {
+    errors.maxPasses = 'Enter a whole number of at least 1.';
+  }
+
   return errors;
+}
+
+/** Integer >= 1 or null if invalid. */
+export function parseMaxPassesInput(input: string): number | null {
+  const trimmed = input.trim();
+
+  if (!/^\d+$/.test(trimmed)) {
+    return null;
+  }
+
+  const value = Number(trimmed);
+
+  if (!Number.isSafeInteger(value) || value < 1) {
+    return null;
+  }
+
+  return value;
 }
 
 export function isValidDateInput(input: string): boolean {
