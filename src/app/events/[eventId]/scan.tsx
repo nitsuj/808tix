@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
@@ -90,20 +89,6 @@ export default function EventScannerScreen() {
     );
   }
 
-  if (Platform.OS === 'web') {
-    return (
-      <View style={styles.centered}>
-        <SafeAreaView style={styles.webFallback}>
-          <Text style={styles.webTitle}>Scanner requires a device</Text>
-          <Text style={styles.webBody}>
-            Open this screen on iOS or Android with Expo Go to scan pass QR codes. Web camera
-            scanning is not enabled for v0.
-          </Text>
-        </SafeAreaView>
-      </View>
-    );
-  }
-
   if (phase === 'result' && scanResult) {
     return <ScanResultView result={scanResult} onScanAnother={handleScanAnother} />;
   }
@@ -129,23 +114,6 @@ const styles = StyleSheet.create({
   errorText: {
     color: '#ff6b6b',
     fontSize: 16,
-    textAlign: 'center',
-  },
-  webFallback: {
-    gap: 16,
-    maxWidth: 400,
-    padding: 24,
-  },
-  webTitle: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  webBody: {
-    color: '#B0B4BA',
-    fontSize: 16,
-    lineHeight: 22,
     textAlign: 'center',
   },
 });
