@@ -69,7 +69,6 @@ function mountScannerOverlay(options: {
   hint: string;
   isLoading: boolean;
   onCancel: () => void;
-  showVideoActive: boolean;
 }) {
   const overlay = document.createElement('div');
 
@@ -120,17 +119,7 @@ function mountScannerOverlay(options: {
   eventHeader.style.display = 'flex';
   eventHeader.style.flexDirection = 'column';
   eventHeader.style.alignItems = 'center';
-  eventHeader.style.gap = `${Spacing.one}px`;
   eventHeader.style.padding = `0 ${Spacing.two}px`;
-
-  const scanningLabel = document.createElement('div');
-  scanningLabel.textContent = 'Scanning';
-  scanningLabel.style.color = OrganizerAccent;
-  scanningLabel.style.fontSize = '12px';
-  scanningLabel.style.fontWeight = '700';
-  scanningLabel.style.letterSpacing = '1px';
-  scanningLabel.style.textTransform = 'uppercase';
-  scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
 
   const eventName = document.createElement('div');
   eventName.textContent = options.eventName;
@@ -141,7 +130,6 @@ function mountScannerOverlay(options: {
   eventName.style.textAlign = 'center';
   eventName.style.textShadow = OVERLAY_TEXT_SHADOW;
 
-  eventHeader.appendChild(scanningLabel);
   eventHeader.appendChild(eventName);
 
   const topSpacer = document.createElement('div');
@@ -154,8 +142,10 @@ function mountScannerOverlay(options: {
   const frameWrap = document.createElement('div');
   frameWrap.style.flex = '1';
   frameWrap.style.display = 'flex';
+  frameWrap.style.flexDirection = 'column';
   frameWrap.style.alignItems = 'center';
   frameWrap.style.justifyContent = 'center';
+  frameWrap.style.gap = `${Spacing.three}px`;
   frameWrap.style.pointerEvents = 'none';
 
   const scanFrame = document.createElement('div');
@@ -166,51 +156,25 @@ function mountScannerOverlay(options: {
   scanFrame.style.boxSizing = 'border-box';
   scanFrame.style.backgroundColor = 'transparent';
 
-  frameWrap.appendChild(scanFrame);
-
-  const bottomBar = document.createElement('div');
-  bottomBar.style.display = 'flex';
-  bottomBar.style.flexDirection = 'column';
-  bottomBar.style.alignItems = 'center';
-  bottomBar.style.padding = `0 ${Spacing.four}px ${Spacing.six}px`;
-  bottomBar.style.pointerEvents = 'none';
-
   const hint = document.createElement('div');
   hint.textContent = options.hint;
   hint.style.color = TEXT_SECONDARY;
   hint.style.fontSize = '12px';
   hint.style.fontWeight = '600';
-  hint.style.letterSpacing = '0.2px';
+  hint.style.letterSpacing = '0.4px';
+  hint.style.maxWidth = '280px';
   hint.style.textAlign = 'center';
   hint.style.textTransform = 'uppercase';
   hint.style.textShadow = OVERLAY_TEXT_SHADOW;
 
-  bottomBar.appendChild(hint);
+  frameWrap.appendChild(scanFrame);
+  frameWrap.appendChild(hint);
 
   overlay.appendChild(topBar);
   overlay.appendChild(frameWrap);
-  overlay.appendChild(bottomBar);
-
-  let videoActiveBadge: HTMLDivElement | null = null;
-
-  if (options.showVideoActive) {
-    videoActiveBadge = document.createElement('div');
-    videoActiveBadge.textContent = 'VIDEO ACTIVE';
-    videoActiveBadge.style.position = 'absolute';
-    videoActiveBadge.style.left = `${Spacing.four}px`;
-    videoActiveBadge.style.top = `${Spacing.five + 72}px`;
-    videoActiveBadge.style.color = OrganizerAccent;
-    videoActiveBadge.style.fontSize = '12px';
-    videoActiveBadge.style.fontWeight = '800';
-    videoActiveBadge.style.letterSpacing = '1px';
-    videoActiveBadge.style.textShadow = OVERLAY_TEXT_SHADOW;
-    overlay.appendChild(videoActiveBadge);
-  }
-
-  let loadingIndicator: HTMLDivElement | null = null;
 
   if (options.isLoading) {
-    loadingIndicator = document.createElement('div');
+    const loadingIndicator = document.createElement('div');
     loadingIndicator.textContent = 'Starting camera…';
     loadingIndicator.style.position = 'absolute';
     loadingIndicator.style.top = '50%';
@@ -251,7 +215,6 @@ export function EventScannerCamera({
   const [status, setStatus] = useState<ScannerStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startAttempt, setStartAttempt] = useState(0);
-  const [videoActive, setVideoActive] = useState(false);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -279,9 +242,8 @@ export function EventScannerCamera({
       onCancel: () => {
         onCancelRef.current();
       },
-      showVideoActive: videoActive,
     });
-  }, [eventName, isProcessing, status, videoActive]);
+  }, [eventName, isProcessing, status]);
 
   const assignCameraHostRef = useCallback((node: unknown) => {
     const host = (node as HTMLDivElement | null) ?? null;
@@ -321,23 +283,6 @@ export function EventScannerCamera({
     removeVideoElement(videoRef.current);
     videoRef.current = null;
   }, [stopStream]);
-
-  useEffect(() => {
-    const refreshVideoActive = () => {
-      const video = videoRef.current;
-      const isActive =
-        streamRef.current !== null && Boolean(video && video.videoWidth > 0 && video.videoHeight > 0);
-
-      setVideoActive((previous) => (previous === isActive ? previous : isActive));
-    };
-
-    refreshVideoActive();
-    const intervalId = window.setInterval(refreshVideoActive, 250);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [status, startAttempt]);
 
   const startDecodeLoop = useCallback(() => {
     if (!canvasRef.current) {
