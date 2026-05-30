@@ -8,6 +8,8 @@ import {
   ScrollView,
   Share,
   StyleSheet,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,12 +17,14 @@ import { EventFormField, eventFormStyles } from '@/components/organizer/event-fo
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
-import { organizer, semantic } from '@/theme';
+import { organizer, organizerScreen, semantic, shadows } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { formatIssuedCapacity } from '@/lib/event-display';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import type { Pass } from '@/lib/database.types';
 import { issuePass } from '@/lib/issue-pass';
 import {
@@ -184,181 +188,42 @@ export default function IssuePassScreen() {
 
   if (createdPass && passUrl) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <Pressable onPress={goToEventDetail} style={styles.backButton}>
-              <ThemedText style={styles.backText}>Back to Event</ThemedText>
-            </Pressable>
-
-            <EventArtwork height={160} imageUrl={activeEvent.image_url} name={activeEvent.name} />
-
-            <ThemedText style={styles.title}>Pass issued</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-              {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
-            </ThemedText>
-
-            <ThemedView style={styles.summaryCard}>
-              <SummaryRow label="Guest" value={createdPass.guest_name} />
-              <SummaryRow label="Pass type" value={createdPass.pass_type} />
-              {createdPass.guest_email ? (
-                <SummaryRow label="Email" value={createdPass.guest_email} />
-              ) : null}
-              {createdPass.guest_phone ? (
-                <SummaryRow label="Phone" value={createdPass.guest_phone} />
-              ) : null}
-              <SummaryRow label="Status" value={createdPass.status} />
-            </ThemedView>
-
-            <ThemedText selectable themeColor="textSecondary" style={styles.passLinkText} numberOfLines={2}>
-              {passUrl}
-            </ThemedText>
-
-            {smsMessage ? (
-              <ThemedText themeColor="textSecondary" style={styles.statusHint}>
-                {smsMessage}
-              </ThemedText>
-            ) : null}
-            {smsError ? <ThemedText style={styles.errorText}>{smsError}</ThemedText> : null}
-
-            {canSendSms ? (
-              <Pressable
-                disabled={isSendingSms}
-                onPress={handleSendSms}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && !isSendingSms && styles.pressed,
-                  isSendingSms && styles.disabled,
-                ]}>
-                {isSendingSms ? (
-                  <ActivityIndicator color={OrganizerAccentTextOn} />
-                ) : (
-                  <ThemedText style={styles.primaryButtonText}>Send SMS</ThemedText>
-                )}
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={handleSharePass}
-                style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-                <ThemedText style={styles.primaryButtonText}>Share Pass</ThemedText>
-              </Pressable>
-            )}
-
-            {canSendSms ? (
-              <Pressable
-                onPress={handleSharePass}
-                style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-                <ThemedText style={styles.secondaryButtonText}>Share Pass</ThemedText>
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              disabled={atCapacity}
-              onPress={resetForAnother}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                pressed && styles.pressed,
-                atCapacity && styles.disabled,
-              ]}>
-              <ThemedText style={styles.secondaryButtonText}>Issue Another Pass</ThemedText>
-            </Pressable>
-
-            {atCapacity ? (
-              <ThemedText themeColor="textSecondary" type="small">
-                Event is now at capacity.
-              </ThemedText>
-            ) : null}
-          </ScrollView>
-        </SafeAreaView>
-      </ThemedView>
+      <IssuePassSuccessView
+        activeEvent={activeEvent}
+        atCapacity={atCapacity}
+        canSendSms={canSendSms}
+        createdPass={createdPass}
+        isSendingSms={isSendingSms}
+        onGoToEventDetail={goToEventDetail}
+        onIssueAnother={resetForAnother}
+        onSendSms={handleSendSms}
+        onSharePass={handleSharePass}
+        passUrl={passUrl}
+        smsError={smsError}
+        smsMessage={smsMessage}
+      />
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <Pressable onPress={goToEventDetail} style={styles.backButton}>
-              <ThemedText style={styles.backText}>Cancel</ThemedText>
-            </Pressable>
-
-            <EventArtwork height={160} imageUrl={activeEvent.image_url} name={activeEvent.name} />
-
-            <ThemedText style={styles.title}>Issue Pass</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-              {activeEvent.name}
-            </ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.capacityLine}>
-              {formatIssuedCapacity(issuedCount, activeEvent.capacity)} issued
-            </ThemedText>
-
-            {atCapacity ? (
-              <ThemedText style={styles.errorText}>
-                This event is at capacity. Edit the event to raise max passes before issuing more.
-              </ThemedText>
-            ) : null}
-
-            <ThemedView style={eventFormStyles.form}>
-              <EventFormField
-                error={fieldErrors.guestName}
-                label="Guest Name"
-                placeholder="Alex Rivera"
-                value={guestName}
-                onChangeText={setGuestName}
-              />
-              <EventFormField
-                error={fieldErrors.passType}
-                label="Pass Type"
-                placeholder={DEFAULT_PASS_TYPE}
-                value={passType}
-                onChangeText={setPassType}
-              />
-              <EventFormField
-                error={fieldErrors.guestEmail}
-                hint="Optional"
-                keyboardType="default"
-                label="Guest Email"
-                placeholder="alex@example.com"
-                value={guestEmail}
-                onChangeText={setGuestEmail}
-              />
-              <EventFormField
-                error={fieldErrors.guestPhone}
-                hint="Optional — enables Send SMS after issue"
-                keyboardType="phone-pad"
-                label="Guest Phone"
-                placeholder="808-555-0100"
-                value={guestPhone}
-                onChangeText={setGuestPhone}
-              />
-            </ThemedView>
-
-            {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
-
-            <Pressable
-              disabled={isSubmitting || atCapacity}
-              onPress={handleIssuePass}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.pressed,
-                (isSubmitting || atCapacity) && styles.disabled,
-              ]}>
-              {isSubmitting ? (
-                <ActivityIndicator color={organizer.textOn} />
-              ) : (
-                <ThemedText style={styles.primaryButtonText}>Issue Pass</ThemedText>
-              )}
-            </Pressable>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+    <IssuePassFormView
+      activeEvent={activeEvent}
+      atCapacity={atCapacity}
+      fieldErrors={fieldErrors}
+      guestEmail={guestEmail}
+      guestName={guestName}
+      guestPhone={guestPhone}
+      isSubmitting={isSubmitting}
+      issuedCount={issuedCount}
+      passType={passType}
+      submitError={submitError}
+      onGoToEventDetail={goToEventDetail}
+      onGuestEmailChange={setGuestEmail}
+      onGuestNameChange={setGuestName}
+      onGuestPhoneChange={setGuestPhone}
+      onPassTypeChange={setPassType}
+      onSubmit={handleIssuePass}
+    />
   );
 }
 
@@ -373,6 +238,305 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+type IssuePassFormViewProps = {
+  activeEvent: { name: string; image_url: string | null; capacity: number };
+  atCapacity: boolean;
+  issuedCount: number;
+  guestName: string;
+  passType: string;
+  guestEmail: string;
+  guestPhone: string;
+  fieldErrors: IssuePassFieldErrors;
+  submitError: string | null;
+  isSubmitting: boolean;
+  onGoToEventDetail: () => void;
+  onGuestNameChange: (value: string) => void;
+  onPassTypeChange: (value: string) => void;
+  onGuestEmailChange: (value: string) => void;
+  onGuestPhoneChange: (value: string) => void;
+  onSubmit: () => void;
+};
+
+function IssuePassFormView({
+  activeEvent,
+  atCapacity,
+  issuedCount,
+  guestName,
+  passType,
+  guestEmail,
+  guestPhone,
+  fieldErrors,
+  submitError,
+  isSubmitting,
+  onGoToEventDetail,
+  onGuestNameChange,
+  onPassTypeChange,
+  onGuestEmailChange,
+  onGuestPhoneChange,
+  onSubmit,
+}: IssuePassFormViewProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  const artworkUri = resolveOrganizerArtworkUrl(activeEvent.image_url);
+  const hasUploadedArtwork = Boolean(artworkUri);
+  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.12));
+
+  return (
+    <View style={styles.artworkScreen}>
+      {hasUploadedArtwork ? (
+        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
+      ) : (
+        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
+          <EventArtwork
+            height={windowHeight}
+            imageUrl={null}
+            name={activeEvent.name}
+            rounded={false}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
+
+      <SafeAreaView edges={['top', 'bottom']} style={styles.artworkContentLayer}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardView}>
+          <ScrollView
+            contentContainerStyle={[styles.artworkScrollContent, { paddingTop: cardTopInset }]}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Pressable onPress={onGoToEventDetail} style={styles.artworkBackButton}>
+              <ThemedText style={styles.backText}>Cancel</ThemedText>
+            </Pressable>
+
+            <ThemedView style={styles.floatingCard}>
+              <ThemedText style={styles.cardTitle}>Issue Pass</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.cardSubtitle}>
+                {activeEvent.name}
+              </ThemedText>
+
+              <View style={styles.capacityBadge}>
+                <ThemedText style={styles.capacityBadgeText}>
+                  {formatIssuedCapacity(issuedCount, activeEvent.capacity)}
+                </ThemedText>
+              </View>
+
+              {atCapacity ? (
+                <ThemedText style={styles.errorText}>
+                  At capacity — raise max passes on the event to issue more.
+                </ThemedText>
+              ) : null}
+
+              <ThemedView style={eventFormStyles.form}>
+                <EventFormField
+                  error={fieldErrors.guestName}
+                  label="Guest Name"
+                  placeholder="Alex Rivera"
+                  value={guestName}
+                  onChangeText={onGuestNameChange}
+                />
+                <EventFormField
+                  error={fieldErrors.passType}
+                  label="Pass Type"
+                  placeholder={DEFAULT_PASS_TYPE}
+                  value={passType}
+                  onChangeText={onPassTypeChange}
+                />
+                <EventFormField
+                  error={fieldErrors.guestEmail}
+                  hint="Optional"
+                  keyboardType="default"
+                  label="Guest Email"
+                  placeholder="alex@example.com"
+                  value={guestEmail}
+                  onChangeText={onGuestEmailChange}
+                />
+                <EventFormField
+                  error={fieldErrors.guestPhone}
+                  hint="Optional — enables Send SMS after issue"
+                  keyboardType="phone-pad"
+                  label="Guest Phone"
+                  placeholder="808-555-0100"
+                  value={guestPhone}
+                  onChangeText={onGuestPhoneChange}
+                />
+              </ThemedView>
+
+              {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
+
+              <Pressable
+                disabled={isSubmitting || atCapacity}
+                onPress={onSubmit}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.cardPrimaryButton,
+                  pressed && styles.pressed,
+                  (isSubmitting || atCapacity) && styles.disabled,
+                ]}>
+                {isSubmitting ? (
+                  <ActivityIndicator color={OrganizerAccentTextOn} />
+                ) : (
+                  <ThemedText style={styles.primaryButtonText}>Issue Pass</ThemedText>
+                )}
+              </Pressable>
+            </ThemedView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+type IssuePassSuccessViewProps = {
+  activeEvent: { name: string; image_url: string | null };
+  createdPass: Pass;
+  passUrl: string;
+  canSendSms: boolean;
+  atCapacity: boolean;
+  isSendingSms: boolean;
+  smsMessage: string | null;
+  smsError: string | null;
+  onGoToEventDetail: () => void;
+  onSendSms: () => void;
+  onSharePass: () => void;
+  onIssueAnother: () => void;
+};
+
+function IssuePassSuccessView({
+  activeEvent,
+  createdPass,
+  passUrl,
+  canSendSms,
+  atCapacity,
+  isSendingSms,
+  smsMessage,
+  smsError,
+  onGoToEventDetail,
+  onSendSms,
+  onSharePass,
+  onIssueAnother,
+}: IssuePassSuccessViewProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  const artworkUri = resolveOrganizerArtworkUrl(activeEvent.image_url);
+  const hasUploadedArtwork = Boolean(artworkUri);
+  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.14));
+
+  return (
+    <View style={styles.artworkScreen}>
+      {hasUploadedArtwork ? (
+        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
+      ) : (
+        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
+          <EventArtwork
+            height={windowHeight}
+            imageUrl={null}
+            name={activeEvent.name}
+            rounded={false}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
+
+      <SafeAreaView edges={['top', 'bottom']} style={styles.artworkContentLayer}>
+        <ScrollView
+          contentContainerStyle={[styles.artworkScrollContent, { paddingTop: cardTopInset }]}
+          showsVerticalScrollIndicator={false}>
+          <Pressable onPress={onGoToEventDetail} style={styles.artworkBackButton}>
+            <ThemedText style={styles.backText}>Back to Event</ThemedText>
+          </Pressable>
+
+          <ThemedView style={styles.floatingCard}>
+            <ThemedText style={styles.cardTitle}>Pass issued</ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.cardSubtitle}>
+              {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
+            </ThemedText>
+
+            <ThemedView style={styles.summaryBlock}>
+              <SummaryRow label="Guest" value={createdPass.guest_name} />
+              <SummaryRow label="Pass type" value={createdPass.pass_type} />
+              {createdPass.guest_email ? (
+                <SummaryRow label="Email" value={createdPass.guest_email} />
+              ) : null}
+              {createdPass.guest_phone ? (
+                <SummaryRow label="Phone" value={createdPass.guest_phone} />
+              ) : null}
+              <SummaryRow label="Status" value={createdPass.status} />
+            </ThemedView>
+
+            <ThemedText selectable themeColor="textSecondary" numberOfLines={2} style={styles.passLinkText}>
+              {passUrl}
+            </ThemedText>
+
+            {smsMessage ? (
+              <ThemedText themeColor="textSecondary" style={styles.statusHint}>
+                {smsMessage}
+              </ThemedText>
+            ) : null}
+            {smsError ? <ThemedText style={styles.errorText}>{smsError}</ThemedText> : null}
+
+            {canSendSms ? (
+              <Pressable
+                disabled={isSendingSms}
+                onPress={onSendSms}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.cardPrimaryButton,
+                  pressed && !isSendingSms && styles.pressed,
+                  isSendingSms && styles.disabled,
+                ]}>
+                {isSendingSms ? (
+                  <ActivityIndicator color={OrganizerAccentTextOn} />
+                ) : (
+                  <ThemedText style={styles.primaryButtonText}>Send SMS</ThemedText>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={onSharePass}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  styles.cardPrimaryButton,
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText style={styles.primaryButtonText}>Share Pass</ThemedText>
+              </Pressable>
+            )}
+
+            {canSendSms ? (
+              <Pressable
+                onPress={onSharePass}
+                style={({ pressed }) => [
+                  styles.secondaryButton,
+                  styles.cardSecondaryButton,
+                  pressed && styles.pressed,
+                ]}>
+                <ThemedText style={styles.secondaryButtonText}>Share Pass</ThemedText>
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              disabled={atCapacity}
+              onPress={onIssueAnother}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                styles.cardSecondaryButton,
+                pressed && styles.pressed,
+                atCapacity && styles.disabled,
+              ]}>
+              <ThemedText style={styles.secondaryButtonText}>Issue Another Pass</ThemedText>
+            </Pressable>
+
+            {atCapacity ? (
+              <ThemedText themeColor="textSecondary" type="small">
+                Event is now at capacity.
+              </ThemedText>
+            ) : null}
+          </ThemedView>
+        </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     backgroundColor: Surface.background,
@@ -384,52 +548,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
   },
-  scrollContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
-  },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backButton: {
-    paddingVertical: Spacing.one,
-  },
   backText: {
     color: OrganizerAccent,
     fontSize: 16,
     fontWeight: '600',
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    lineHeight: 40,
-    paddingHorizontal: Spacing.four,
-  },
-  subtitle: {
-    fontSize: 15,
-    marginBottom: Spacing.half,
-    paddingHorizontal: Spacing.four,
-  },
-  capacityLine: {
-    fontSize: 14,
-    marginBottom: Spacing.one,
-    paddingHorizontal: Spacing.four,
-  },
-  summaryCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    gap: Spacing.three,
-    marginHorizontal: Spacing.four,
-    padding: Spacing.four,
   },
   summaryRow: {
     gap: Spacing.half,
@@ -442,17 +569,14 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 12,
     lineHeight: 18,
-    marginHorizontal: Spacing.four,
   },
   statusHint: {
     fontSize: 13,
-    marginHorizontal: Spacing.four,
   },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: OrganizerAccent,
     borderRadius: Radii.button,
-    marginHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
   primaryButtonText: {
@@ -465,7 +589,6 @@ const styles = StyleSheet.create({
     borderColor: Surface.divider,
     borderRadius: Radii.button,
     borderWidth: 1,
-    marginHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
   secondaryButtonText: {
@@ -481,5 +604,78 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: semantic.errorSoft,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  artworkScreen: {
+    backgroundColor: Surface.background,
+    flex: 1,
+    position: 'relative',
+  },
+  fallbackArtLayer: {
+    ...StyleSheet.absoluteFill,
+    overflow: 'hidden',
+  },
+  artworkContentLayer: {
+    flex: 1,
+    zIndex: 1,
+  },
+  artworkScrollContent: {
+    alignSelf: 'center',
+    flexGrow: 1,
+    maxWidth: MaxContentWidth,
+    paddingBottom: Spacing.six,
+    paddingHorizontal: Spacing.three,
+    width: '100%',
+  },
+  artworkBackButton: {
+    marginBottom: Spacing.two,
+    paddingHorizontal: Spacing.one,
+    paddingVertical: Spacing.one,
+  },
+  floatingCard: {
+    backgroundColor: Surface.card,
+    borderColor: Surface.divider,
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    gap: Spacing.three,
+    padding: Spacing.four,
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
+  },
+  cardTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    lineHeight: 34,
+  },
+  cardSubtitle: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  capacityBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: organizerScreen.liveBadge.backgroundColor,
+    borderColor: OrganizerAccent,
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  capacityBadgeText: {
+    color: OrganizerAccent,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  summaryBlock: {
+    gap: Spacing.two,
+  },
+  cardPrimaryButton: {
+    marginHorizontal: 0,
+  },
+  cardSecondaryButton: {
+    marginHorizontal: 0,
   },
 });
