@@ -122,6 +122,7 @@ export default function EventScannerScreen() {
 
 const styles = StyleSheet.create({
   scannerScreen: {
+    backgroundColor: 'transparent',
     flex: 1,
     height: '100%',
     minHeight: '100%',

@@ -1,6 +1,6 @@
 import jsQR from 'jsqr';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { OrganizerAccent, Spacing } from '@/constants/theme';
 
@@ -13,27 +13,8 @@ type EventScannerCameraProps = {
 
 type ScannerStatus = 'loading' | 'permission' | 'scanning' | 'error';
 
-type DebugSnapshot = {
-  mounted: boolean;
-  hostReady: boolean;
-  stream: boolean;
-  videoWidth: number;
-  videoHeight: number;
-  playing: boolean;
-  scanLoop: boolean;
-};
-
 const SCAN_DEBOUNCE_MS = 1500;
-
-const INITIAL_DEBUG_SNAPSHOT: DebugSnapshot = {
-  mounted: true,
-  hostReady: false,
-  stream: false,
-  videoWidth: 0,
-  videoHeight: 0,
-  playing: false,
-  scanLoop: false,
-};
+const TEXT_SECONDARY = '#B0B4BA';
 
 function applyCameraHostStyles(host: HTMLDivElement) {
   host.style.position = 'absolute';
@@ -45,29 +26,6 @@ function applyCameraHostStyles(host: HTMLDivElement) {
   host.style.height = '100%';
   host.style.overflow = 'hidden';
   host.style.zIndex = '0';
-  // TEMP: visible host bounds while debugging preview layout
-  host.style.backgroundColor = '#220033';
-  host.style.border = '3px solid #ff00ff';
-}
-
-function yesNo(value: boolean) {
-  return value ? 'yes' : 'no';
-}
-
-function ScannerDebugPanel({ snapshot }: { snapshot: DebugSnapshot }) {
-  return (
-    <View pointerEvents="none" style={styles.debugPanel}>
-      <Text style={styles.debugTitle}>WEB SCANNER DEBUG v3</Text>
-      <Text style={styles.debugLine}>mounted: {yesNo(snapshot.mounted)}</Text>
-      <Text style={styles.debugLine}>hostReady: {yesNo(snapshot.hostReady)}</Text>
-      <Text style={styles.debugLine}>stream: {yesNo(snapshot.stream)}</Text>
-      <Text style={styles.debugLine}>
-        videoWidth/videoHeight: {snapshot.videoWidth}x{snapshot.videoHeight}
-      </Text>
-      <Text style={styles.debugLine}>playing: {yesNo(snapshot.playing)}</Text>
-      <Text style={styles.debugLine}>scanLoop: {yesNo(snapshot.scanLoop)}</Text>
-    </View>
-  );
 }
 
 function applyVideoElementStyles(video: HTMLVideoElement) {
@@ -86,11 +44,191 @@ function applyVideoElementStyles(video: HTMLVideoElement) {
   video.style.height = '100vh';
   video.style.objectFit = 'cover';
   video.style.opacity = '1';
+  video.style.backgroundColor = '#000000';
   video.style.zIndex = '999';
-  video.style.border = '10px solid lime';
-  video.style.backgroundColor = 'red';
-  video.style.boxSizing = 'border-box';
   video.style.pointerEvents = 'none';
+}
+
+function removeVideoElement(video: HTMLVideoElement | null) {
+  if (!video) {
+    return;
+  }
+
+  video.srcObject = null;
+
+  if (document.body.contains(video)) {
+    document.body.removeChild(video);
+  }
+}
+
+const SCANNER_OVERLAY_Z_INDEX = '1000';
+const OVERLAY_TEXT_SHADOW = '0 1px 6px rgba(0, 0, 0, 0.95)';
+
+function mountScannerOverlay(options: {
+  eventName: string;
+  hint: string;
+  isLoading: boolean;
+  onCancel: () => void;
+  showVideoActive: boolean;
+}) {
+  const overlay = document.createElement('div');
+
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.right = '0';
+  overlay.style.bottom = '0';
+  overlay.style.width = '100vw';
+  overlay.style.height = '100vh';
+  overlay.style.zIndex = SCANNER_OVERLAY_Z_INDEX;
+  overlay.style.pointerEvents = 'none';
+  overlay.style.display = 'flex';
+  overlay.style.flexDirection = 'column';
+  overlay.style.justifyContent = 'space-between';
+  overlay.style.boxSizing = 'border-box';
+  overlay.style.backgroundColor = 'transparent';
+
+  const topBar = document.createElement('div');
+  topBar.style.display = 'flex';
+  topBar.style.alignItems = 'flex-start';
+  topBar.style.justifyContent = 'space-between';
+  topBar.style.padding = `${Spacing.five}px ${Spacing.four}px 0`;
+  topBar.style.pointerEvents = 'none';
+
+  const cancelButton = document.createElement('button');
+  cancelButton.type = 'button';
+  cancelButton.textContent = 'Cancel';
+  cancelButton.style.pointerEvents = 'auto';
+  cancelButton.style.background = 'transparent';
+  cancelButton.style.border = 'none';
+  cancelButton.style.color = OrganizerAccent;
+  cancelButton.style.cursor = 'pointer';
+  cancelButton.style.fontSize = '16px';
+  cancelButton.style.fontWeight = '600';
+  cancelButton.style.padding = `${Spacing.one}px 0`;
+  cancelButton.style.minWidth = '56px';
+  cancelButton.style.textShadow = OVERLAY_TEXT_SHADOW;
+
+  const onCancelClick = () => {
+    options.onCancel();
+  };
+
+  cancelButton.addEventListener('click', onCancelClick);
+
+  const eventHeader = document.createElement('div');
+  eventHeader.style.flex = '1';
+  eventHeader.style.display = 'flex';
+  eventHeader.style.flexDirection = 'column';
+  eventHeader.style.alignItems = 'center';
+  eventHeader.style.gap = `${Spacing.one}px`;
+  eventHeader.style.padding = `0 ${Spacing.two}px`;
+
+  const scanningLabel = document.createElement('div');
+  scanningLabel.textContent = 'Scanning';
+  scanningLabel.style.color = OrganizerAccent;
+  scanningLabel.style.fontSize = '12px';
+  scanningLabel.style.fontWeight = '700';
+  scanningLabel.style.letterSpacing = '1px';
+  scanningLabel.style.textTransform = 'uppercase';
+  scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
+
+  const eventName = document.createElement('div');
+  eventName.textContent = options.eventName;
+  eventName.style.color = '#FFFFFF';
+  eventName.style.fontSize = '20px';
+  eventName.style.fontWeight = '700';
+  eventName.style.lineHeight = '26px';
+  eventName.style.textAlign = 'center';
+  eventName.style.textShadow = OVERLAY_TEXT_SHADOW;
+
+  eventHeader.appendChild(scanningLabel);
+  eventHeader.appendChild(eventName);
+
+  const topSpacer = document.createElement('div');
+  topSpacer.style.minWidth = '56px';
+
+  topBar.appendChild(cancelButton);
+  topBar.appendChild(eventHeader);
+  topBar.appendChild(topSpacer);
+
+  const frameWrap = document.createElement('div');
+  frameWrap.style.flex = '1';
+  frameWrap.style.display = 'flex';
+  frameWrap.style.alignItems = 'center';
+  frameWrap.style.justifyContent = 'center';
+  frameWrap.style.pointerEvents = 'none';
+
+  const scanFrame = document.createElement('div');
+  scanFrame.style.width = '260px';
+  scanFrame.style.height = '260px';
+  scanFrame.style.border = `3px solid ${OrganizerAccent}`;
+  scanFrame.style.borderRadius = `${Spacing.two}px`;
+  scanFrame.style.boxSizing = 'border-box';
+  scanFrame.style.backgroundColor = 'transparent';
+
+  frameWrap.appendChild(scanFrame);
+
+  const bottomBar = document.createElement('div');
+  bottomBar.style.display = 'flex';
+  bottomBar.style.flexDirection = 'column';
+  bottomBar.style.alignItems = 'center';
+  bottomBar.style.padding = `0 ${Spacing.four}px ${Spacing.six}px`;
+  bottomBar.style.pointerEvents = 'none';
+
+  const hint = document.createElement('div');
+  hint.textContent = options.hint;
+  hint.style.color = TEXT_SECONDARY;
+  hint.style.fontSize = '12px';
+  hint.style.fontWeight = '600';
+  hint.style.letterSpacing = '0.2px';
+  hint.style.textAlign = 'center';
+  hint.style.textTransform = 'uppercase';
+  hint.style.textShadow = OVERLAY_TEXT_SHADOW;
+
+  bottomBar.appendChild(hint);
+
+  overlay.appendChild(topBar);
+  overlay.appendChild(frameWrap);
+  overlay.appendChild(bottomBar);
+
+  let videoActiveBadge: HTMLDivElement | null = null;
+
+  if (options.showVideoActive) {
+    videoActiveBadge = document.createElement('div');
+    videoActiveBadge.textContent = 'VIDEO ACTIVE';
+    videoActiveBadge.style.position = 'absolute';
+    videoActiveBadge.style.left = `${Spacing.four}px`;
+    videoActiveBadge.style.top = `${Spacing.five + 72}px`;
+    videoActiveBadge.style.color = OrganizerAccent;
+    videoActiveBadge.style.fontSize = '12px';
+    videoActiveBadge.style.fontWeight = '800';
+    videoActiveBadge.style.letterSpacing = '1px';
+    videoActiveBadge.style.textShadow = OVERLAY_TEXT_SHADOW;
+    overlay.appendChild(videoActiveBadge);
+  }
+
+  let loadingIndicator: HTMLDivElement | null = null;
+
+  if (options.isLoading) {
+    loadingIndicator = document.createElement('div');
+    loadingIndicator.textContent = 'Starting camera…';
+    loadingIndicator.style.position = 'absolute';
+    loadingIndicator.style.top = '50%';
+    loadingIndicator.style.left = '50%';
+    loadingIndicator.style.transform = 'translate(-50%, -50%)';
+    loadingIndicator.style.color = OrganizerAccent;
+    loadingIndicator.style.fontSize = '14px';
+    loadingIndicator.style.fontWeight = '700';
+    loadingIndicator.style.textShadow = OVERLAY_TEXT_SHADOW;
+    overlay.appendChild(loadingIndicator);
+  }
+
+  document.body.appendChild(overlay);
+
+  return () => {
+    cancelButton.removeEventListener('click', onCancelClick);
+    overlay.remove();
+  };
 }
 
 export function EventScannerCamera({
@@ -108,46 +246,12 @@ export function EventScannerCamera({
   const lastScanAtRef = useRef(0);
   const isProcessingRef = useRef(isProcessing);
   const onBarcodeScannedRef = useRef(onBarcodeScanned);
+  const onCancelRef = useRef(onCancel);
 
   const [status, setStatus] = useState<ScannerStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [startAttempt, setStartAttempt] = useState(0);
-  const [debugSnapshot, setDebugSnapshot] = useState<DebugSnapshot>(INITIAL_DEBUG_SNAPSHOT);
-
-  useEffect(() => {
-    console.log('[808Tix scanner] component mounted');
-
-    return () => {
-      console.log('[808Tix scanner] component unmounted');
-    };
-  }, []);
-
-  useEffect(() => {
-    const refreshDebugSnapshot = () => {
-      const video = videoRef.current;
-
-      setDebugSnapshot({
-        mounted: true,
-        hostReady: cameraHostRef.current !== null,
-        stream: streamRef.current !== null,
-        videoWidth: video?.videoWidth ?? 0,
-        videoHeight: video?.videoHeight ?? 0,
-        playing: Boolean(
-          video &&
-            !video.paused &&
-            video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA,
-        ),
-        scanLoop: scanLoopStartedRef.current,
-      });
-    };
-
-    refreshDebugSnapshot();
-    const intervalId = window.setInterval(refreshDebugSnapshot, 250);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [status, startAttempt]);
+  const [videoActive, setVideoActive] = useState(false);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -157,19 +261,38 @@ export function EventScannerCamera({
     onBarcodeScannedRef.current = onBarcodeScanned;
   }, [onBarcodeScanned]);
 
+  useEffect(() => {
+    onCancelRef.current = onCancel;
+  }, [onCancel]);
+
+  useEffect(() => {
+    if (status === 'permission' || status === 'error') {
+      return;
+    }
+
+    const hint = isProcessing ? 'Validating…' : 'Point at the guest pass QR code';
+
+    return mountScannerOverlay({
+      eventName,
+      hint,
+      isLoading: status === 'loading',
+      onCancel: () => {
+        onCancelRef.current();
+      },
+      showVideoActive: videoActive,
+    });
+  }, [eventName, isProcessing, status, videoActive]);
+
   const assignCameraHostRef = useCallback((node: unknown) => {
     const host = (node as HTMLDivElement | null) ?? null;
     cameraHostRef.current = host;
 
     if (host) {
       applyCameraHostStyles(host);
-      console.log('[808Tix scanner] host ref exists');
-    } else {
-      console.log('[808Tix scanner] host ref cleared');
     }
   }, []);
 
-  const stopCamera = useCallback(() => {
+  const stopStream = useCallback(() => {
     if (animationFrameRef.current !== null) {
       cancelAnimationFrame(animationFrameRef.current);
       animationFrameRef.current = null;
@@ -193,6 +316,29 @@ export function EventScannerCamera({
     }
   }, []);
 
+  const teardownCamera = useCallback(() => {
+    stopStream();
+    removeVideoElement(videoRef.current);
+    videoRef.current = null;
+  }, [stopStream]);
+
+  useEffect(() => {
+    const refreshVideoActive = () => {
+      const video = videoRef.current;
+      const isActive =
+        streamRef.current !== null && Boolean(video && video.videoWidth > 0 && video.videoHeight > 0);
+
+      setVideoActive((previous) => (previous === isActive ? previous : isActive));
+    };
+
+    refreshVideoActive();
+    const intervalId = window.setInterval(refreshVideoActive, 250);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [status, startAttempt]);
+
   const startDecodeLoop = useCallback(() => {
     if (!canvasRef.current) {
       canvasRef.current = document.createElement('canvas');
@@ -205,10 +351,7 @@ export function EventScannerCamera({
       return;
     }
 
-    if (!scanLoopStartedRef.current) {
-      scanLoopStartedRef.current = true;
-      console.log('[808Tix scanner] scan loop running');
-    }
+    scanLoopStartedRef.current = true;
 
     const tick = () => {
       const video = videoRef.current;
@@ -247,25 +390,11 @@ export function EventScannerCamera({
   }, []);
 
   useEffect(() => {
-    console.log('[808Tix scanner] camera startup effect running', { startAttempt });
-
     let cancelled = false;
     let rafId: number | null = null;
     let video: HTMLVideoElement | null = null;
 
-    const handleLoadedMetadata = () => {
-      if (!video) {
-        return;
-      }
-
-      console.log('[808Tix scanner] video metadata loaded', {
-        width: video.videoWidth,
-        height: video.videoHeight,
-      });
-    };
-
-    const cleanup = (reason: string) => {
-      console.log('[808Tix scanner] cleanup', { reason, cancelled: true, startAttempt });
+    const cleanup = () => {
       cancelled = true;
 
       if (rafId !== null) {
@@ -273,37 +402,17 @@ export function EventScannerCamera({
         rafId = null;
       }
 
-      if (video) {
-        video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-      }
-
-      stopCamera();
-
-      const host = cameraHostRef.current;
-
-      if (host && video && host.contains(video)) {
-        host.removeChild(video);
-      }
-
-      if (video && document.body.contains(video)) {
-        document.body.removeChild(video);
-      }
-
-      videoRef.current = null;
+      teardownCamera();
     };
 
-    const run = async (host: HTMLDivElement) => {
-      stopCamera();
-
+    const run = async () => {
       if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-        console.log('[808Tix scanner] getUserMedia unavailable');
         setErrorMessage('Camera access is not supported in this browser.');
         setStatus('error');
         return;
       }
 
       if (!window.isSecureContext) {
-        console.log('[808Tix scanner] insecure context — getUserMedia blocked');
         setErrorMessage('Camera requires HTTPS or localhost.');
         setStatus('error');
         return;
@@ -311,8 +420,6 @@ export function EventScannerCamera({
 
       setErrorMessage(null);
       setStatus('loading');
-
-      console.log('[808Tix scanner] before getUserMedia', { startAttempt });
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -324,29 +431,16 @@ export function EventScannerCamera({
         });
 
         if (cancelled) {
-          console.log('[808Tix scanner] getUserMedia success but effect cancelled — stopping tracks');
           stream.getTracks().forEach((track) => track.stop());
           return;
         }
 
-        console.log('[808Tix scanner] getUserMedia success', {
-          videoTracks: stream.getVideoTracks().length,
-        });
-
         streamRef.current = stream;
         video.srcObject = stream;
-
-        try {
-          await video.play();
-          console.log('[808Tix scanner] video.play() success');
-        } catch (playError) {
-          console.log('[808Tix scanner] video.play() error', playError);
-          throw playError;
-        }
+        await video.play();
 
         if (cancelled) {
-          console.log('[808Tix scanner] video.play() success but effect cancelled — stopping camera');
-          stopCamera();
+          stopStream();
           return;
         }
 
@@ -354,16 +448,15 @@ export function EventScannerCamera({
         startDecodeLoop();
       } catch (error) {
         if (cancelled) {
-          console.log('[808Tix scanner] getUserMedia error after cancellation', error);
           return;
         }
 
         const message = error instanceof Error ? error.message : 'Unable to start the camera.';
         const name = error instanceof DOMException ? error.name : '';
 
-        console.log('[808Tix scanner] getUserMedia catch/error', { name, message, error });
-
-        stopCamera();
+        stopStream();
+        removeVideoElement(video);
+        videoRef.current = null;
 
         if (
           name === 'NotAllowedError' ||
@@ -386,16 +479,12 @@ export function EventScannerCamera({
         rafId = null;
 
         if (cancelled) {
-          console.log('[808Tix scanner] startup aborted — cancelled before host rAF');
           return;
         }
 
         const host = cameraHostRef.current;
 
-        console.log('[808Tix scanner] host ref check after rAF', { hostExists: Boolean(host) });
-
         if (!host) {
-          console.log('[808Tix scanner] host ref missing after rAF — startup stopped');
           return;
         }
 
@@ -405,18 +494,13 @@ export function EventScannerCamera({
         applyVideoElementStyles(video);
         document.body.appendChild(video);
         videoRef.current = video;
-        video.addEventListener('loadedmetadata', handleLoadedMetadata);
 
-        console.log('[808Tix scanner] video appended to document.body');
-
-        void run(host);
+        void run();
       });
     });
 
-    return () => {
-      cleanup('effect unmount or deps changed');
-    };
-  }, [startAttempt, startDecodeLoop, stopCamera]);
+    return cleanup;
+  }, [startAttempt, startDecodeLoop, stopStream, teardownCamera]);
 
   const handleRequestPermission = useCallback(() => {
     setStatus('loading');
@@ -426,7 +510,6 @@ export function EventScannerCamera({
   if (status === 'permission') {
     return (
       <View style={styles.permissionContainer}>
-        <ScannerDebugPanel snapshot={debugSnapshot} />
         <Text style={styles.permissionTitle}>Camera access needed</Text>
         <Text style={styles.permissionBody}>
           Allow camera access to scan pass QR codes for {eventName}. HTTPS is required on mobile
@@ -447,7 +530,6 @@ export function EventScannerCamera({
   if (status === 'error') {
     return (
       <View style={styles.permissionContainer}>
-        <ScannerDebugPanel snapshot={debugSnapshot} />
         <Text style={styles.permissionTitle}>Camera unavailable</Text>
         <Text style={styles.permissionBody}>{errorMessage ?? 'Unable to access the camera.'}</Text>
         <Pressable
@@ -463,161 +545,27 @@ export function EventScannerCamera({
   }
 
   return (
-    <View style={styles.container}>
-      <ScannerDebugPanel snapshot={debugSnapshot} />
-      <View ref={assignCameraHostRef} style={styles.camera} />
-
-      {status === 'loading' ? (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={OrganizerAccent} />
-        </View>
-      ) : null}
-
-      <View pointerEvents="box-none" style={styles.overlay}>
-        <View style={styles.topBar}>
-          <Pressable onPress={onCancel} hitSlop={12}>
-            <Text style={styles.cancelText}>Cancel</Text>
-          </Pressable>
-          <Text style={styles.eventName} numberOfLines={2}>
-            {eventName}
-          </Text>
-          <View style={styles.topSpacer} />
-        </View>
-
-        <View pointerEvents="none" style={styles.frameWrap}>
-          <View style={styles.scanFrame} />
-        </View>
-
-        <View style={styles.bottomBar}>
-          {isProcessing ? (
-            <View style={styles.processingRow}>
-              <ActivityIndicator color={OrganizerAccent} />
-              <Text style={styles.hint}>Validating…</Text>
-            </View>
-          ) : (
-            <Text style={styles.hint}>Point at the guest pass QR code</Text>
-          )}
-        </View>
-      </View>
+    <View pointerEvents="none" style={styles.container}>
+      <View ref={assignCameraHostRef} pointerEvents="none" style={styles.cameraHost} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#000000',
-    bottom: 0,
-    flex: 1,
-    height: '100%',
+    backgroundColor: 'transparent',
+    height: 1,
     left: 0,
-    minHeight: '100dvh',
-    position: 'fixed',
-    right: 0,
-    top: 0,
-    width: '100%',
-  },
-  camera: {
-    backgroundColor: '#220033',
-    borderColor: '#ff00ff',
-    borderWidth: 3,
-    bottom: 0,
-    height: '100%',
-    left: 0,
+    opacity: 0,
     overflow: 'hidden',
     position: 'absolute',
-    right: 0,
     top: 0,
-    width: '100%',
-    zIndex: 0,
+    width: 1,
   },
-  loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    zIndex: 1000,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
-    justifyContent: 'space-between',
-    zIndex: 1000,
-  },
-  debugPanel: {
-    backgroundColor: 'rgba(0, 0, 0, 0.88)',
-    borderColor: '#ffff00',
-    borderWidth: 3,
-    gap: 4,
-    left: 0,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    zIndex: 10001,
-  },
-  debugTitle: {
-    color: '#ffff00',
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  debugLine: {
-    color: '#ffffff',
-    fontFamily: 'monospace',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
-  },
-  topSpacer: {
-    width: 56,
-  },
-  cancelText: {
-    color: OrganizerAccent,
-    fontSize: 16,
-    fontWeight: '600',
-    width: 56,
-  },
-  eventName: {
-    color: '#FFFFFF',
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  frameWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scanFrame: {
-    borderColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    borderWidth: 3,
-    height: 260,
-    width: 260,
-  },
-  bottomBar: {
-    alignItems: 'center',
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-  },
-  hint: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  processingRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: Spacing.two,
+  cameraHost: {
+    height: 1,
+    overflow: 'hidden',
+    width: 1,
   },
   permissionContainer: {
     backgroundColor: '#000000',
@@ -633,6 +581,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     width: '100%',
+    zIndex: 1001,
   },
   permissionTitle: {
     color: '#FFFFFF',
@@ -640,7 +589,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   permissionBody: {
-    color: '#B0B4BA',
+    color: TEXT_SECONDARY,
     fontSize: 16,
     lineHeight: 22,
   },
