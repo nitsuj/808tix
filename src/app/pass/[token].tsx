@@ -1,23 +1,115 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ThemedText } from '@/components/themed-text';
-import { EventArtwork } from '@/components/ui/event-artwork';
 import {
   FanAccent,
   FanAccentBright,
+  Fonts,
   MaxContentWidth,
-  Radii,
   Spacing,
   Surface,
 } from '@/constants/theme';
-import { formatEventDateLabel } from '@/lib/event-display';
-import { formatPassStatusLabel, getPassStatusBanner } from '@/lib/pass-display';
-import type { PassStatus, PublicPassView } from '@/lib/database.types';
+import { getPassStatusBanner } from '@/lib/pass-display';
+import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
+
+/** Temporary design fallbacks when event.image_url is missing — poster-style concert/nightlife art. */
+const PASS_FALLBACK_ARTWORK = [
+  'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1470229722913-7c0e2dbbafd3?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1459749434690-5ed0fbc73629?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?auto=format&fit=crop&w=1400&q=80',
+  'https://images.unsplash.com/photo-1429962710451-bb934ee8452c?auto=format&fit=crop&w=1400&q=80',
+] as const;
+
+const WALLET_CARD_RADIUS = 24;
+const ART_BLUR = 28;
+const FAN_SANS = Platform.select({
+  ios: Fonts?.sans ?? 'System',
+  android: 'sans-serif',
+  default: Fonts?.sans ?? 'System',
+});
+
+function hashName(name: string): number {
+  let hash = 0;
+
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash << 5) - hash + name.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return Math.abs(hash);
+}
+
+function fallbackArtworkForName(name: string): string {
+  return PASS_FALLBACK_ARTWORK[hashName(name) % PASS_FALLBACK_ARTWORK.length];
+}
+
+function titleCaseLabel(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return 'General Admission';
+  }
+
+  return trimmed
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function formatPassDateLine(eventDate: string | null): string | null {
+  if (!eventDate) {
+    return null;
+  }
+
+  const parsed = new Date(`${eventDate}T12:00:00`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return eventDate;
+  }
+
+  return parsed.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
+function formatPassTimeLine(startTime: string | null): string | null {
+  if (!startTime) {
+    return null;
+  }
+
+  const parsed = new Date(`1970-01-01T${startTime}`);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+const webBlurStyle = Platform.OS === 'web' ? ({ filter: `blur(${ART_BLUR}px)` } as ViewStyle) : null;
 
 export default function GuestPassScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -26,8 +118,11 @@ export default function GuestPassScreen() {
   if (!secureToken) {
     return (
       <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ThemedText style={styles.errorText}>Pass link is invalid.</ThemedText>
+        <SafeAreaView style={styles.errorSafeArea}>
+          <Text style={styles.errorTitle}>Pass unavailable</Text>
+          <ThemedText themeColor="textSecondary" style={styles.errorBody}>
+            Pass link is invalid.
+          </ThemedText>
         </SafeAreaView>
       </View>
     );
@@ -81,7 +176,6 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.ambientGlowLarge} />
         <SafeAreaView style={styles.centeredSafeArea}>
           <ActivityIndicator size="large" color={FanAccent} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
@@ -95,11 +189,8 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
   if (error || !pass) {
     return (
       <View style={styles.container}>
-        <View style={styles.ambientGlowLarge} />
-        <View style={styles.ambientGlowSmall} />
         <SafeAreaView style={styles.errorSafeArea}>
-          <ThemedText style={styles.inviteEyebrow}>808Tix Pass</ThemedText>
-          <ThemedText style={styles.errorTitle}>Pass unavailable</ThemedText>
+          <Text style={styles.errorTitle}>Pass unavailable</Text>
           <ThemedText themeColor="textSecondary" style={styles.errorBody}>
             {error ?? 'Pass not found.'}
           </ThemedText>
@@ -111,39 +202,77 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
   return <GuestPassView pass={pass} />;
 }
 
+function PassArtEnvironment({ artworkUri }: { artworkUri: string }) {
+  return (
+    <View pointerEvents="none" style={styles.environment}>
+      <View style={styles.artLayer}>
+        <Image
+          blurRadius={Platform.OS === 'web' ? 0 : ART_BLUR}
+          contentFit="cover"
+          source={{ uri: artworkUri }}
+          style={[styles.artImage, webBlurStyle]}
+        />
+      </View>
+
+      <View style={styles.envDarkOverlay} />
+      <View style={styles.envPurpleWash} />
+      <View style={styles.envVignetteTop} />
+      <View style={styles.envVignetteBottom} />
+      <View style={styles.envVignetteLeft} />
+      <View style={styles.envVignetteRight} />
+      <View style={styles.envGradientFadeLow} />
+      <View style={styles.envGradientFadeMid} />
+      <View style={styles.envGradientFadeHigh} />
+    </View>
+  );
+}
+
 function GuestPassView({ pass }: { pass: PublicPassView }) {
-  const dateLabel = formatEventDateLabel(pass.event_date, pass.start_time);
+  const { height: windowHeight } = useWindowDimensions();
   const statusBanner = getPassStatusBanner(pass.status);
   const isEntryValid = pass.status === 'active';
+  const passTypeLabel = titleCaseLabel(pass.pass_type);
+  const artworkUri = pass.image_url?.trim() || fallbackArtworkForName(pass.event_name);
+  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.1));
+
+  const { dateLine, timeLine } = useMemo(() => {
+    return {
+      dateLine: formatPassDateLine(pass.event_date),
+      timeLine: formatPassTimeLine(pass.start_time),
+    };
+  }, [pass.event_date, pass.start_time]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.ambientGlowLarge} />
-      <View style={styles.ambientGlowSmall} />
+      <PassArtEnvironment artworkUri={artworkUri} />
 
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <EventArtwork height={280} imageUrl={pass.image_url} name={pass.event_name} />
+      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, { paddingTop: cardTopInset }]}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.walletCard}>
+            <Text style={styles.eventTitle}>{pass.event_name}</Text>
 
-          <View style={styles.inviteBlock}>
-            <ThemedText style={styles.inviteEyebrow}>Your pass</ThemedText>
-            <ThemedText style={styles.eventTitle}>{pass.event_name}</ThemedText>
+            <View style={styles.metaStack}>
+              {pass.venue_name ? <Text style={styles.metaVenue}>{pass.venue_name}</Text> : null}
+              {dateLine ? <Text style={styles.metaDate}>{dateLine}</Text> : null}
+              {timeLine ? <Text style={styles.metaTime}>{timeLine}</Text> : null}
+            </View>
 
-            {pass.venue_name ? (
-              <ThemedText themeColor="textSecondary" style={styles.metaLine}>
-                {pass.venue_name}
-              </ThemedText>
-            ) : null}
+            <View style={styles.walletDivider} />
 
-            {dateLabel ? (
-              <ThemedText themeColor="textSecondary" style={styles.metaLine}>
-                {dateLabel}
-              </ThemedText>
-            ) : null}
+            <View style={styles.holderBlock}>
+              <Text style={styles.holderLabel}>Admitted to</Text>
+              <Text style={styles.holderName}>{pass.guest_name}</Text>
+            </View>
 
-            <ThemedText style={styles.passType}>{pass.pass_type}</ThemedText>
-            <ThemedText style={styles.guestName}>{pass.guest_name}</ThemedText>
-            <PassStatusPill status={pass.status} />
+            <View style={styles.qrSlot}>
+              <PassQrCode dimmed={!isEntryValid} secureToken={pass.secure_token} />
+            </View>
+
+            <View style={styles.passTypeBadge}>
+              <Text style={styles.passTypeBadgeText}>{passTypeLabel}</Text>
+            </View>
           </View>
 
           {statusBanner ? (
@@ -152,14 +281,10 @@ function GuestPassView({ pass }: { pass: PublicPassView }) {
             </View>
           ) : null}
 
-          <View style={styles.qrCard}>
-            <ThemedText style={styles.qrHeading}>Show at the door</ThemedText>
-            <PassQrCode dimmed={!isEntryValid} secureToken={pass.secure_token} />
-            <ThemedText themeColor="textSecondary" style={styles.qrHint}>
-              {isEntryValid
-                ? 'Brighten your screen and hold steady for staff to scan.'
-                : 'This code is shown for reference only.'}
-            </ThemedText>
+          <View style={styles.footerActions}>
+            <ComingSoonAction label="Transfer pass" />
+            <Text style={styles.footerDot}>·</Text>
+            <ComingSoonAction label="Add to Wallet" />
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -167,16 +292,11 @@ function GuestPassView({ pass }: { pass: PublicPassView }) {
   );
 }
 
-function PassStatusPill({ status }: { status: PassStatus }) {
-  const label = formatPassStatusLabel(status);
-  const isActive = status === 'active';
-
+function ComingSoonAction({ label }: { label: string }) {
   return (
-    <View style={[styles.statusPill, isActive ? styles.statusPillActive : styles.statusPillInactive]}>
-      <ThemedText style={[styles.statusPillText, isActive ? styles.statusPillTextActive : null]}>
-        {label}
-      </ThemedText>
-    </View>
+    <Pressable disabled style={styles.footerAction}>
+      <Text style={styles.footerActionLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -185,25 +305,60 @@ const styles = StyleSheet.create({
     backgroundColor: Surface.background,
     flex: 1,
   },
-  ambientGlowLarge: {
-    backgroundColor: FanAccent,
-    borderRadius: 999,
-    height: 220,
-    left: -40,
-    opacity: 0.12,
-    position: 'absolute',
-    top: 80,
-    width: 220,
+  environment: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
-  ambientGlowSmall: {
-    backgroundColor: FanAccentBright,
-    borderRadius: 999,
-    height: 140,
-    opacity: 0.1,
-    position: 'absolute',
-    right: -20,
-    top: 260,
-    width: 140,
+  artLayer: {
+    ...StyleSheet.absoluteFillObject,
+    transform: [{ scale: 1.12 }],
+  },
+  artImage: {
+    height: '100%',
+    width: '100%',
+  },
+  envDarkOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.52)',
+  },
+  envPurpleWash: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(42, 16, 64, 0.18)',
+  },
+  envVignetteTop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.38)',
+    bottom: '55%',
+  },
+  envVignetteBottom: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.45)',
+    top: '55%',
+  },
+  envVignetteLeft: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.32)',
+    right: '72%',
+  },
+  envVignetteRight: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.32)',
+    left: '72%',
+  },
+  envGradientFadeHigh: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.28)',
+    top: '68%',
+  },
+  envGradientFadeMid: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.22)',
+    top: '78%',
+  },
+  envGradientFadeLow: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(8, 8, 8, 0.18)',
+    top: '88%',
   },
   safeArea: {
     flex: 1,
@@ -216,108 +371,138 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     alignSelf: 'center',
-    gap: Spacing.four,
+    flexGrow: 1,
     maxWidth: MaxContentWidth,
     paddingBottom: Spacing.six,
     width: '100%',
   },
-  inviteBlock: {
-    gap: Spacing.two,
+  walletCard: {
+    backgroundColor: 'rgba(14, 14, 14, 0.88)',
+    borderColor: 'rgba(255, 255, 255, 0.09)',
+    borderRadius: WALLET_CARD_RADIUS,
+    borderWidth: 1,
+    gap: Spacing.three,
+    marginHorizontal: Spacing.three,
+    paddingBottom: Spacing.four,
     paddingHorizontal: Spacing.four,
-  },
-  inviteEyebrow: {
-    color: FanAccentBright,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
+    paddingTop: Spacing.four + 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: Platform.select({ web: 0.55, default: 0.45 }) ?? 0.45,
+    shadowRadius: 40,
   },
   eventTitle: {
     color: '#FFFFFF',
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: -0.4,
-    lineHeight: 40,
+    fontFamily: FAN_SANS,
+    fontSize: 38,
+    fontWeight: '700',
+    letterSpacing: -0.8,
+    lineHeight: 44,
   },
-  metaLine: {
-    fontSize: 17,
-    lineHeight: 24,
+  metaStack: {
+    gap: 5,
   },
-  passType: {
+  metaVenue: {
+    color: '#EDEDED',
+    fontFamily: FAN_SANS,
+    fontSize: 19,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+    lineHeight: 26,
+  },
+  metaDate: {
+    color: '#A8ADB5',
+    fontFamily: FAN_SANS,
+    fontSize: 16,
+    fontWeight: '400',
+    lineHeight: 22,
+  },
+  metaTime: {
     color: FanAccent,
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    marginTop: Spacing.one,
-    textTransform: 'uppercase',
+    fontFamily: FAN_SANS,
+    fontSize: 16,
+    fontWeight: '500',
+    lineHeight: 22,
   },
-  guestName: {
-    fontSize: 22,
-    fontWeight: '700',
-    lineHeight: 28,
+  walletDivider: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    height: 1,
+    marginVertical: Spacing.one,
+    width: '100%',
+  },
+  holderBlock: {
+    gap: 4,
+  },
+  holderLabel: {
+    color: '#7E848C',
+    fontFamily: FAN_SANS,
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  holderName: {
+    color: '#FFFFFF',
+    fontFamily: FAN_SANS,
+    fontSize: 26,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    lineHeight: 32,
+  },
+  qrSlot: {
+    alignItems: 'center',
+    marginTop: Spacing.one,
+    width: '100%',
+  },
+  passTypeBadge: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(162, 91, 255, 0.14)',
+    borderRadius: 999,
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.one + 2,
+  },
+  passTypeBadgeText: {
+    color: '#E2CCFF',
+    fontFamily: FAN_SANS,
+    fontSize: 13,
+    fontWeight: '600',
   },
   statusBanner: {
-    backgroundColor: Surface.card,
+    backgroundColor: 'rgba(20, 20, 20, 0.82)',
     borderColor: FanAccentBright,
-    borderLeftWidth: 4,
-    borderRadius: Radii.card,
-    marginHorizontal: Spacing.four,
+    borderLeftWidth: 3,
+    borderRadius: 12,
+    marginHorizontal: Spacing.three,
+    marginTop: Spacing.three,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two + 2,
   },
   statusBannerText: {
     color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-    lineHeight: 22,
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
   },
-  statusPill: {
-    alignSelf: 'flex-start',
-    borderRadius: Radii.input,
-    paddingHorizontal: Spacing.two,
+  footerActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'center',
+    marginTop: Spacing.four,
+    paddingHorizontal: Spacing.four,
+  },
+  footerAction: {
+    opacity: 0.55,
     paddingVertical: Spacing.one,
   },
-  statusPillActive: {
-    backgroundColor: 'rgba(162, 91, 255, 0.25)',
-    borderColor: FanAccent,
-    borderWidth: 1,
-  },
-  statusPillInactive: {
-    backgroundColor: Surface.secondary,
-    borderColor: Surface.divider,
-    borderWidth: 1,
-  },
-  statusPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  statusPillTextActive: {
-    color: '#FFFFFF',
-  },
-  qrCard: {
-    alignItems: 'center',
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    gap: Spacing.three,
-    marginHorizontal: Spacing.four,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
-  },
-  qrHeading: {
-    color: FanAccentBright,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  qrHint: {
+  footerActionLabel: {
+    color: '#E2E4E8',
+    fontFamily: FAN_SANS,
     fontSize: 14,
-    lineHeight: 20,
-    textAlign: 'center',
+    fontWeight: '500',
+  },
+  footerDot: {
+    color: 'rgba(255, 255, 255, 0.25)',
+    fontSize: 14,
   },
   loadingText: {
     marginTop: Spacing.two,
@@ -330,16 +515,14 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     color: '#FFFFFF',
+    fontFamily: FAN_SANS,
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '700',
+    letterSpacing: -0.4,
     lineHeight: 38,
   },
   errorBody: {
     fontSize: 16,
     lineHeight: 24,
-  },
-  errorText: {
-    color: '#FF6B6B',
-    padding: Spacing.four,
   },
 });
