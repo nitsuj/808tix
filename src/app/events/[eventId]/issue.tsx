@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,7 +15,8 @@ import { EventFormField, eventFormStyles } from '@/components/organizer/event-fo
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
+import { EventArtwork } from '@/components/ui/event-artwork';
+import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
@@ -162,14 +162,14 @@ export default function IssuePassScreen() {
               <ThemedText style={styles.backText}>Back to Event</ThemedText>
             </Pressable>
 
-            <ThemedText type="subtitle" style={styles.title}>
-              Pass issued
-            </ThemedText>
+            <EventArtwork height={160} imageUrl={activeEvent.image_url} name={activeEvent.name} />
+
+            <ThemedText style={styles.title}>Pass issued</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               Share this link with your guest.
             </ThemedText>
 
-            <ThemedView type="backgroundElement" style={styles.summaryCard}>
+            <ThemedView style={styles.summaryCard}>
               <SummaryRow label="Guest" value={createdPass.guest_name} />
               <SummaryRow label="Pass type" value={createdPass.pass_type} />
               {createdPass.guest_email ? (
@@ -184,7 +184,7 @@ export default function IssuePassScreen() {
             <ThemedText type="smallBold" style={styles.linkLabel}>
               Pass link
             </ThemedText>
-            <ThemedView type="backgroundElement" style={styles.linkBox}>
+            <ThemedView style={styles.linkBox}>
               <ThemedText selectable style={styles.linkText}>
                 {passUrl}
               </ThemedText>
@@ -240,9 +240,9 @@ export default function IssuePassScreen() {
               <ThemedText style={styles.backText}>Cancel</ThemedText>
             </Pressable>
 
-            <ThemedText type="subtitle" style={styles.title}>
-              Issue Pass
-            </ThemedText>
+            <EventArtwork height={160} imageUrl={activeEvent.image_url} name={activeEvent.name} />
+
+            <ThemedText style={styles.title}>Issue Pass</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               {activeEvent.name}
             </ThemedText>
@@ -256,7 +256,7 @@ export default function IssuePassScreen() {
               </ThemedText>
             ) : null}
 
-            <ThemedView type="backgroundElement" style={eventFormStyles.form}>
+            <ThemedView style={eventFormStyles.form}>
               <EventFormField
                 error={fieldErrors.guestName}
                 label="Guest Name"
@@ -325,6 +325,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Surface.background,
     flex: 1,
   },
   keyboardView: {
@@ -356,19 +357,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    color: OrganizerAccent,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
+    paddingHorizontal: Spacing.four,
   },
   subtitle: {
+    fontSize: 15,
     marginBottom: Spacing.half,
+    paddingHorizontal: Spacing.four,
   },
   capacityLine: {
+    fontSize: 14,
     marginBottom: Spacing.one,
+    paddingHorizontal: Spacing.four,
   },
   summaryCard: {
-    borderRadius: Spacing.three,
+    backgroundColor: Surface.card,
+    borderColor: Surface.divider,
+    borderRadius: Radii.card,
+    borderWidth: 1,
     gap: Spacing.three,
+    marginHorizontal: Spacing.four,
     padding: Spacing.four,
   },
   summaryRow: {
@@ -382,7 +392,11 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   linkBox: {
-    borderRadius: Spacing.two,
+    backgroundColor: Surface.secondary,
+    borderColor: Surface.divider,
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    marginHorizontal: Spacing.four,
     padding: Spacing.three,
   },
   linkText: {
@@ -397,19 +411,21 @@ const styles = StyleSheet.create({
   primaryButton: {
     alignItems: 'center',
     backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.button,
+    marginHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
   primaryButtonText: {
-    color: '#000',
+    color: OrganizerAccentTextOn,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   secondaryButton: {
     alignItems: 'center',
-    borderColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderColor: Surface.divider,
+    borderRadius: Radii.button,
     borderWidth: 1,
+    marginHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
   secondaryButtonText: {

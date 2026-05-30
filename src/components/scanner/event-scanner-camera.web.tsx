@@ -9,6 +9,7 @@ type EventScannerCameraProps = {
   isProcessing: boolean;
   onBarcodeScanned: (rawData: string) => void;
   onCancel: () => void;
+  overlayFooterLabel?: string;
 };
 
 type ScannerStatus = 'loading' | 'permission' | 'scanning' | 'error';
@@ -66,6 +67,7 @@ const OVERLAY_TEXT_SHADOW = '0 1px 6px rgba(0, 0, 0, 0.95)';
 
 function mountScannerOverlay(options: {
   eventName: string;
+  footerLabel?: string;
   hint: string;
   isLoading: boolean;
   onCancel: () => void;
@@ -119,17 +121,28 @@ function mountScannerOverlay(options: {
   eventHeader.style.display = 'flex';
   eventHeader.style.flexDirection = 'column';
   eventHeader.style.alignItems = 'center';
+  eventHeader.style.gap = `${Spacing.one}px`;
   eventHeader.style.padding = `0 ${Spacing.two}px`;
+
+  const scanningLabel = document.createElement('div');
+  scanningLabel.textContent = 'Scanning';
+  scanningLabel.style.color = OrganizerAccent;
+  scanningLabel.style.fontSize = '11px';
+  scanningLabel.style.fontWeight = '800';
+  scanningLabel.style.letterSpacing = '1.2px';
+  scanningLabel.style.textTransform = 'uppercase';
+  scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
 
   const eventName = document.createElement('div');
   eventName.textContent = options.eventName;
   eventName.style.color = '#FFFFFF';
-  eventName.style.fontSize = '20px';
-  eventName.style.fontWeight = '700';
-  eventName.style.lineHeight = '26px';
+  eventName.style.fontSize = '22px';
+  eventName.style.fontWeight = '800';
+  eventName.style.lineHeight = '28px';
   eventName.style.textAlign = 'center';
   eventName.style.textShadow = OVERLAY_TEXT_SHADOW;
 
+  eventHeader.appendChild(scanningLabel);
   eventHeader.appendChild(eventName);
 
   const topSpacer = document.createElement('div');
@@ -152,9 +165,10 @@ function mountScannerOverlay(options: {
   scanFrame.style.width = '260px';
   scanFrame.style.height = '260px';
   scanFrame.style.border = `3px solid ${OrganizerAccent}`;
-  scanFrame.style.borderRadius = `${Spacing.two}px`;
+  scanFrame.style.borderRadius = '16px';
   scanFrame.style.boxSizing = 'border-box';
   scanFrame.style.backgroundColor = 'transparent';
+  scanFrame.style.boxShadow = `0 0 0 1px rgba(57, 255, 20, 0.25), inset 0 0 24px rgba(57, 255, 20, 0.08)`;
 
   const hint = document.createElement('div');
   hint.textContent = options.hint;
@@ -172,6 +186,26 @@ function mountScannerOverlay(options: {
 
   overlay.appendChild(topBar);
   overlay.appendChild(frameWrap);
+
+  if (options.footerLabel) {
+    const footer = document.createElement('div');
+    footer.style.display = 'flex';
+    footer.style.justifyContent = 'center';
+    footer.style.padding = `0 ${Spacing.four}px ${Spacing.five}px`;
+    footer.style.pointerEvents = 'none';
+
+    const footerText = document.createElement('div');
+    footerText.textContent = options.footerLabel;
+    footerText.style.color = OrganizerAccent;
+    footerText.style.fontSize = '14px';
+    footerText.style.fontWeight = '800';
+    footerText.style.letterSpacing = '0.6px';
+    footerText.style.textShadow = OVERLAY_TEXT_SHADOW;
+    footerText.style.textTransform = 'uppercase';
+
+    footer.appendChild(footerText);
+    overlay.appendChild(footer);
+  }
 
   if (options.isLoading) {
     const loadingIndicator = document.createElement('div');
@@ -200,6 +234,7 @@ export function EventScannerCamera({
   isProcessing,
   onBarcodeScanned,
   onCancel,
+  overlayFooterLabel,
 }: EventScannerCameraProps) {
   const cameraHostRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -237,13 +272,14 @@ export function EventScannerCamera({
 
     return mountScannerOverlay({
       eventName,
+      footerLabel: overlayFooterLabel,
       hint,
       isLoading: status === 'loading',
       onCancel: () => {
         onCancelRef.current();
       },
     });
-  }, [eventName, isProcessing, status]);
+  }, [eventName, isProcessing, overlayFooterLabel, status]);
 
   const assignCameraHostRef = useCallback((node: unknown) => {
     const host = (node as HTMLDivElement | null) ?? null;

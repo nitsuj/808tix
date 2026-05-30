@@ -18,7 +18,7 @@ export default function EventScannerScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const authGate = useOrganizerAuthGate();
-  const { event, isLoading, error } = useEventDetail(eventId);
+  const { event, issuedCount, isLoading, error } = useEventDetail(eventId);
 
   const [phase, setPhase] = useState<ScannerPhase>('camera');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -113,6 +113,7 @@ export default function EventScannerScreen() {
       <EventScannerCamera
         eventName={event.name}
         isProcessing={isProcessing}
+        overlayFooterLabel={`${issuedCount} passes issued`}
         onBarcodeScanned={handleBarcodeScanned}
         onCancel={handleCancel}
       />

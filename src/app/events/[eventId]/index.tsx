@@ -1,26 +1,31 @@
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
-import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { EventArtwork } from '@/components/ui/event-artwork';
+import { StatBlock, StatRow } from '@/components/ui/stat-block';
 import {
-  formatEventDateLabel,
-  formatEventStatus,
-  formatIssuedCapacity,
-  formatTimeForInput,
-} from '@/lib/event-display';
+  MaxContentWidth,
+  OrganizerAccent,
+  OrganizerAccentTextOn,
+  Radii,
+  Spacing,
+  Surface,
+} from '@/constants/theme';
+import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
+import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import { supabase } from '@/lib/supabase';
 
 export default function EventDetailScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
+  const [checkedInCount, setCheckedInCount] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
@@ -30,11 +35,38 @@ export default function EventDetailScreen() {
     }, [authGate.state, refetch]),
   );
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadCheckedInCount() {
+      if (!eventId) {
+        setCheckedInCount(0);
+        return;
+      }
+
+      const { count } = await supabase
+        .from('passes')
+        .select('*', { count: 'exact', head: true })
+        .eq('event_id', eventId)
+        .eq('status', 'checked_in');
+
+      if (!cancelled) {
+        setCheckedInCount(count ?? 0);
+      }
+    }
+
+    void loadCheckedInCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [eventId, issuedCount]);
+
   if (authGate.state === 'loading' || isLoading) {
     return (
-      <ThemedView style={styles.centered}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
-      </ThemedView>
+      </View>
     );
   }
 
@@ -49,197 +81,261 @@ export default function EventDetailScreen() {
 
   if (error || !event) {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
             <ThemedText style={styles.backText}>Back</ThemedText>
           </Pressable>
           <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   const dateLabel = formatEventDateLabel(event.event_date, event.start_time);
   const startTimeLabel = formatTimeForInput(event.start_time) || '—';
+  const checkInRate = issuedCount > 0 ? Math.round((checkedInCount / issuedCount) * 100) : 0;
+  const isLive = event.status === 'published';
 
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
+    <View style={styles.container}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <ThemedText style={styles.backText}>Back to Dashboard</ThemedText>
+            <ThemedText style={styles.backText}>← Dashboard</ThemedText>
           </Pressable>
 
-          <ThemedText type="subtitle" style={styles.title}>
-            {event.name}
-          </ThemedText>
+          <View style={styles.heroWrap}>
+            <EventArtwork height={240} imageUrl={event.image_url} name={event.name} rounded={false} />
+            {isLive ? (
+              <View style={styles.liveBadge}>
+                <ThemedText style={styles.liveBadgeText}>● Live</ThemedText>
+              </View>
+            ) : null}
+          </View>
 
-          <ThemedView style={styles.card}>
-            <DetailRow label="Venue" value={event.venue_name ?? '—'} />
-            <DetailRow label="Date" value={dateLabel ?? event.event_date ?? '—'} />
-            <DetailRow label="Start Time" value={startTimeLabel} />
-            <DetailRow label="Status" value={formatEventStatus(event.status)} accent />
-            <DetailRow label="Slug" value={event.slug} mono />
-            <DetailRow
-              accent
-              label="Passes"
-              value={formatIssuedCapacity(issuedCount, event.capacity)}
+          <View style={styles.heroText}>
+            <ThemedText style={styles.title}>{event.name}</ThemedText>
+            {event.venue_name ? (
+              <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+                {event.venue_name}
+              </ThemedText>
+            ) : null}
+            {dateLabel ? (
+              <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+                {dateLabel} · {startTimeLabel}
+              </ThemedText>
+            ) : null}
+            <ThemedText style={styles.statusPill}>{formatEventStatus(event.status)}</ThemedText>
+          </View>
+
+          <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
+          <StatRow>
+            <StatBlock label="Passes Issued" value={String(issuedCount)} />
+            <StatBlock label="Checked In" value={String(checkedInCount)} />
+            <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
+          </StatRow>
+
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
+          </View>
+
+          <View style={styles.actionsCard}>
+            <ActionRow
+              label="Issue Pass"
+              onPress={() => router.push(`/events/${event.id}/issue` as Href)}
+              primary
             />
-          </ThemedView>
-
-          <Pressable
-            onPress={() => router.push(`/events/${event.id}/edit` as Href)}
-            style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.primaryButtonText}>Edit Event</ThemedText>
-          </Pressable>
-
-          <Pressable
-            disabled
-            onPress={() => Alert.alert('Coming soon', 'Publishing events is the next step.')}
-            style={styles.comingSoonButton}>
-            <ThemedText style={styles.comingSoonButtonText}>Publish Event Coming Soon</ThemedText>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push(`/events/${event.id}/issue` as Href)}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.secondaryButtonText}>Issue Pass</ThemedText>
-          </Pressable>
-
-          <Pressable
-            onPress={() => router.push(`/events/${event.id}/scan` as Href)}
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.secondaryButtonText}>Scanner</ThemedText>
-          </Pressable>
+            <ActionRow
+              label="Scanner"
+              onPress={() => router.push(`/events/${event.id}/scan` as Href)}
+            />
+            <ActionRow
+              label="Edit Event"
+              onPress={() => router.push(`/events/${event.id}/edit` as Href)}
+            />
+          </View>
         </ScrollView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
-function DetailRow({
+function ActionRow({
   label,
-  value,
-  accent,
-  mono,
+  onPress,
+  primary = false,
+  disabled = false,
 }: {
   label: string;
-  value: string;
-  accent?: boolean;
-  mono?: boolean;
+  onPress?: () => void;
+  primary?: boolean;
+  disabled?: boolean;
 }) {
   return (
-    <View style={styles.detailRow}>
-      <ThemedText themeColor="textSecondary" type="small">
+    <Pressable
+      disabled={disabled || !onPress}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.actionRow,
+        primary && styles.actionRowPrimary,
+        disabled && styles.actionRowDisabled,
+        pressed && styles.pressed,
+      ]}>
+      <ThemedText
+        style={[
+          styles.actionRowText,
+          primary && styles.actionRowTextPrimary,
+          disabled && styles.actionRowTextDisabled,
+        ]}>
         {label}
       </ThemedText>
-      <ThemedText
-        style={[styles.detailValue, accent && styles.accentValue, mono && styles.monoValue]}>
-        {value}
-      </ThemedText>
-    </View>
+      {!disabled ? <ThemedText style={styles.actionChevron}>›</ThemedText> : null}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Surface.background,
     flex: 1,
   },
   safeArea: {
     flex: 1,
   },
   scrollContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
+    gap: Spacing.three,
+    maxWidth: MaxContentWidth,
+    paddingBottom: Spacing.six,
+    width: '100%',
   },
   centered: {
-    flex: 1,
     alignItems: 'center',
+    backgroundColor: Surface.background,
+    flex: 1,
     justifyContent: 'center',
   },
   backButton: {
-    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two,
   },
   backText: {
     color: OrganizerAccent,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  heroWrap: {
+    position: 'relative',
+  },
+  liveBadge: {
+    backgroundColor: 'rgba(57, 255, 20, 0.15)',
+    borderColor: OrganizerAccent,
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    left: Spacing.four,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    position: 'absolute',
+    top: Spacing.three,
+  },
+  liveBadgeText: {
+    color: OrganizerAccent,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  heroText: {
+    gap: Spacing.one,
+    paddingHorizontal: Spacing.four,
   },
   title: {
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 32,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    lineHeight: 38,
   },
-  card: {
-    borderColor: '#2a2a2a',
-    borderLeftColor: OrganizerAccent,
-    borderLeftWidth: 3,
-    borderRadius: Spacing.three,
-    borderWidth: 1,
-    gap: Spacing.three,
-    padding: Spacing.four,
-  },
-  detailRow: {
-    gap: Spacing.half,
-  },
-  detailValue: {
+  subtitle: {
     fontSize: 16,
-    fontWeight: '600',
+    lineHeight: 22,
   },
-  accentValue: {
+  statusPill: {
+    alignSelf: 'flex-start',
+    backgroundColor: Surface.secondary,
+    borderRadius: Radii.input,
     color: OrganizerAccent,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginTop: Spacing.one,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+    textTransform: 'uppercase',
   },
-  monoValue: {
-    fontFamily: 'monospace',
-    fontSize: 14,
-    fontWeight: '500',
+  sectionLabel: {
+    color: OrganizerAccent,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1,
+    paddingHorizontal: Spacing.four,
+    textTransform: 'uppercase',
   },
-  primaryButton: {
-    alignItems: 'center',
+  progressTrack: {
+    backgroundColor: Surface.secondary,
+    borderRadius: 999,
+    height: 8,
+    marginHorizontal: Spacing.four,
+    overflow: 'hidden',
+  },
+  progressFill: {
     backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderRadius: 999,
+    height: '100%',
+  },
+  actionsCard: {
+    backgroundColor: Surface.card,
+    borderColor: Surface.divider,
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    marginHorizontal: Spacing.four,
+    overflow: 'hidden',
+  },
+  actionRow: {
+    alignItems: 'center',
+    borderBottomColor: Surface.divider,
+    borderBottomWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
   },
-  primaryButtonText: {
-    color: '#000',
+  actionRowPrimary: {
+    backgroundColor: OrganizerAccent,
+  },
+  actionRowDisabled: {
+    opacity: 0.45,
+  },
+  actionRowText: {
     fontSize: 16,
     fontWeight: '700',
   },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    paddingVertical: Spacing.three,
+  actionRowTextPrimary: {
+    color: OrganizerAccentTextOn,
   },
-  secondaryButtonText: {
+  actionRowTextDisabled: {
+    color: '#888888',
+  },
+  actionChevron: {
     color: OrganizerAccent,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  comingSoonButton: {
-    alignItems: 'center',
-    borderColor: '#444',
-    borderRadius: Spacing.two,
-    borderWidth: 1,
-    opacity: 0.55,
-    paddingVertical: Spacing.three,
-  },
-  comingSoonButtonText: {
-    color: '#888',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '300',
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
   errorText: {
-    color: '#ff6b6b',
-    marginTop: Spacing.three,
+    color: '#FF6B6B',
+    padding: Spacing.four,
   },
 });

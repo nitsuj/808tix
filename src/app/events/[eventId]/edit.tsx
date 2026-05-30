@@ -14,7 +14,7 @@ import { MissingProfileScreen } from '@/components/organizer/missing-profile-scr
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
+import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatTimeForInput } from '@/lib/event-display';
@@ -160,14 +160,12 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
               <ThemedText style={styles.backText}>Cancel</ThemedText>
             </Pressable>
 
-            <ThemedText type="subtitle" style={styles.title}>
-              Edit Event
-            </ThemedText>
+            <ThemedText style={styles.title}>Edit Event</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               {issuedCount} pass{issuedCount === 1 ? '' : 'es'} issued · max cannot go below that
             </ThemedText>
 
-            <ThemedView type="backgroundElement" style={eventFormStyles.form}>
+            <ThemedView style={eventFormStyles.form}>
               <EventFormField
                 error={fieldErrors.eventName}
                 label="Event Name"
@@ -234,6 +232,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Surface.background,
     flex: 1,
   },
   keyboardView: {
@@ -265,23 +264,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   title: {
-    color: OrganizerAccent,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
   },
   subtitle: {
+    fontSize: 15,
     marginBottom: Spacing.one,
   },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.button,
     paddingVertical: Spacing.three,
   },
   primaryButtonText: {
-    color: '#000',
+    color: OrganizerAccentTextOn,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   pressed: {
     opacity: 0.85,

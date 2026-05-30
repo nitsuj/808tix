@@ -9,6 +9,7 @@ type EventScannerCameraProps = {
   isProcessing: boolean;
   onBarcodeScanned: (rawData: string) => void;
   onCancel: () => void;
+  overlayFooterLabel?: string;
 };
 
 export function EventScannerCamera({

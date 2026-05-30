@@ -5,13 +5,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { EventArtwork } from '@/components/ui/event-artwork';
 import {
   FanAccent,
   FanAccentBright,
-  FanAccentMuted,
   MaxContentWidth,
+  Radii,
   Spacing,
+  Surface,
 } from '@/constants/theme';
 import { formatEventDateLabel } from '@/lib/event-display';
 import { formatPassStatusLabel, getPassStatusBanner } from '@/lib/pass-display';
@@ -24,11 +25,11 @@ export default function GuestPassScreen() {
 
   if (!secureToken) {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ThemedText style={styles.errorText}>Pass link is invalid.</ThemedText>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -79,24 +80,31 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
 
   if (isLoading) {
     return (
-      <ThemedView style={styles.container}>
+      <View style={styles.container}>
+        <View style={styles.ambientGlowLarge} />
         <SafeAreaView style={styles.centeredSafeArea}>
           <ActivityIndicator size="large" color={FanAccent} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
             Loading your pass…
           </ThemedText>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
   if (error || !pass) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ThemedText style={styles.errorText}>{error ?? 'Pass not found.'}</ThemedText>
+      <View style={styles.container}>
+        <View style={styles.ambientGlowLarge} />
+        <View style={styles.ambientGlowSmall} />
+        <SafeAreaView style={styles.errorSafeArea}>
+          <ThemedText style={styles.inviteEyebrow}>808Tix Pass</ThemedText>
+          <ThemedText style={styles.errorTitle}>Pass unavailable</ThemedText>
+          <ThemedText themeColor="textSecondary" style={styles.errorBody}>
+            {error ?? 'Pass not found.'}
+          </ThemedText>
         </SafeAreaView>
-      </ThemedView>
+      </View>
     );
   }
 
@@ -109,28 +117,34 @@ function GuestPassView({ pass }: { pass: PublicPassView }) {
   const isEntryValid = pass.status === 'active';
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
+      <View style={styles.ambientGlowLarge} />
+      <View style={styles.ambientGlowSmall} />
+
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <ThemedText themeColor="textSecondary" type="small" style={styles.eyebrow}>
-            Your pass
-          </ThemedText>
+          <EventArtwork height={280} imageUrl={pass.image_url} name={pass.event_name} />
 
-          <ThemedText type="subtitle" style={styles.eventTitle}>
-            {pass.event_name}
-          </ThemedText>
+          <View style={styles.inviteBlock}>
+            <ThemedText style={styles.inviteEyebrow}>Your pass</ThemedText>
+            <ThemedText style={styles.eventTitle}>{pass.event_name}</ThemedText>
 
-          {pass.venue_name ? (
-            <ThemedText themeColor="textSecondary" style={styles.venue}>
-              {pass.venue_name}
-            </ThemedText>
-          ) : null}
+            {pass.venue_name ? (
+              <ThemedText themeColor="textSecondary" style={styles.metaLine}>
+                {pass.venue_name}
+              </ThemedText>
+            ) : null}
 
-          {dateLabel ? (
-            <ThemedText themeColor="textSecondary" style={styles.dateTime}>
-              {dateLabel}
-            </ThemedText>
-          ) : null}
+            {dateLabel ? (
+              <ThemedText themeColor="textSecondary" style={styles.metaLine}>
+                {dateLabel}
+              </ThemedText>
+            ) : null}
+
+            <ThemedText style={styles.passType}>{pass.pass_type}</ThemedText>
+            <ThemedText style={styles.guestName}>{pass.guest_name}</ThemedText>
+            <PassStatusPill status={pass.status} />
+          </View>
 
           {statusBanner ? (
             <View style={styles.statusBanner}>
@@ -138,28 +152,18 @@ function GuestPassView({ pass }: { pass: PublicPassView }) {
             </View>
           ) : null}
 
-          <ThemedView type="backgroundElement" style={styles.guestCard}>
-            <ThemedText style={styles.guestName}>{pass.guest_name}</ThemedText>
-            <ThemedText style={styles.passType}>{pass.pass_type}</ThemedText>
-            <PassStatusPill status={pass.status} />
-          </ThemedView>
-
-          <View style={styles.qrSection}>
-            <ThemedText style={styles.qrHeading}>Scan at the door</ThemedText>
+          <View style={styles.qrCard}>
+            <ThemedText style={styles.qrHeading}>Show at the door</ThemedText>
             <PassQrCode dimmed={!isEntryValid} secureToken={pass.secure_token} />
-            {isEntryValid ? (
-              <ThemedText themeColor="textSecondary" style={styles.qrHint}>
-                Brighten your screen and hold steady for staff to scan.
-              </ThemedText>
-            ) : (
-              <ThemedText themeColor="textSecondary" style={styles.qrHint}>
-                This code is shown for reference only.
-              </ThemedText>
-            )}
+            <ThemedText themeColor="textSecondary" style={styles.qrHint}>
+              {isEntryValid
+                ? 'Brighten your screen and hold steady for staff to scan.'
+                : 'This code is shown for reference only.'}
+            </ThemedText>
           </View>
         </ScrollView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
@@ -168,13 +172,8 @@ function PassStatusPill({ status }: { status: PassStatus }) {
   const isActive = status === 'active';
 
   return (
-    <View
-      style={[
-        styles.statusPill,
-        isActive ? styles.statusPillActive : styles.statusPillInactive,
-      ]}>
-      <ThemedText
-        style={[styles.statusPillText, isActive ? styles.statusPillTextActive : null]}>
+    <View style={[styles.statusPill, isActive ? styles.statusPillActive : styles.statusPillInactive]}>
+      <ThemedText style={[styles.statusPillText, isActive ? styles.statusPillTextActive : null]}>
         {label}
       </ThemedText>
     </View>
@@ -183,108 +182,137 @@ function PassStatusPill({ status }: { status: PassStatus }) {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Surface.background,
     flex: 1,
-    backgroundColor: '#000000',
+  },
+  ambientGlowLarge: {
+    backgroundColor: FanAccent,
+    borderRadius: 999,
+    height: 220,
+    left: -40,
+    opacity: 0.12,
+    position: 'absolute',
+    top: 80,
+    width: 220,
+  },
+  ambientGlowSmall: {
+    backgroundColor: FanAccentBright,
+    borderRadius: 999,
+    height: 140,
+    opacity: 0.1,
+    position: 'absolute',
+    right: -20,
+    top: 260,
+    width: 140,
   },
   safeArea: {
     flex: 1,
   },
   centeredSafeArea: {
-    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    flex: 1,
     gap: Spacing.two,
+    justifyContent: 'center',
   },
   scrollContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    width: '100%',
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
+    gap: Spacing.four,
+    maxWidth: MaxContentWidth,
+    paddingBottom: Spacing.six,
+    width: '100%',
   },
-  eyebrow: {
-    letterSpacing: 0.5,
+  inviteBlock: {
+    gap: Spacing.two,
+    paddingHorizontal: Spacing.four,
+  },
+  inviteEyebrow: {
+    color: FanAccentBright,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
   eventTitle: {
-    color: FanAccent,
-    fontSize: 30,
-    fontWeight: '700',
-    lineHeight: 36,
+    color: '#FFFFFF',
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    lineHeight: 40,
   },
-  venue: {
+  metaLine: {
     fontSize: 17,
-    fontWeight: '500',
-    marginTop: -Spacing.one,
+    lineHeight: 24,
   },
-  dateTime: {
-    fontSize: 16,
-    marginTop: -Spacing.one,
+  passType: {
+    color: FanAccent,
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    marginTop: Spacing.one,
+    textTransform: 'uppercase',
+  },
+  guestName: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 28,
   },
   statusBanner: {
-    backgroundColor: '#2E3135',
+    backgroundColor: Surface.card,
     borderColor: FanAccentBright,
     borderLeftWidth: 4,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.card,
+    marginHorizontal: Spacing.four,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
   },
   statusBannerText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
   },
-  guestCard: {
-    borderColor: FanAccentMuted,
-    borderRadius: Spacing.three,
-    borderWidth: 1,
-    gap: Spacing.two,
-    padding: Spacing.four,
-  },
-  guestName: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  passType: {
-    color: FanAccentBright,
-    fontSize: 16,
-    fontWeight: '600',
-  },
   statusPill: {
     alignSelf: 'flex-start',
-    borderRadius: Spacing.two,
+    borderRadius: Radii.input,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
   statusPillActive: {
-    backgroundColor: FanAccentMuted,
+    backgroundColor: 'rgba(162, 91, 255, 0.25)',
+    borderColor: FanAccent,
+    borderWidth: 1,
   },
   statusPillInactive: {
-    backgroundColor: '#2E3135',
-    borderColor: '#444',
+    backgroundColor: Surface.secondary,
+    borderColor: Surface.divider,
     borderWidth: 1,
   },
   statusPillText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
   statusPillTextActive: {
     color: '#FFFFFF',
   },
-  qrSection: {
+  qrCard: {
     alignItems: 'center',
+    backgroundColor: Surface.card,
+    borderColor: Surface.divider,
+    borderRadius: Radii.card,
+    borderWidth: 1,
     gap: Spacing.three,
-    marginTop: Spacing.one,
+    marginHorizontal: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.four,
   },
   qrHeading: {
-    color: FanAccent,
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
+    color: FanAccentBright,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   qrHint: {
     fontSize: 14,
@@ -294,8 +322,24 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Spacing.two,
   },
+  errorSafeArea: {
+    flex: 1,
+    gap: Spacing.two,
+    justifyContent: 'center',
+    paddingHorizontal: Spacing.four,
+  },
+  errorTitle: {
+    color: '#FFFFFF',
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 38,
+  },
+  errorBody: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
   errorText: {
-    color: '#ff6b6b',
+    color: '#FF6B6B',
     padding: Spacing.four,
   },
 });

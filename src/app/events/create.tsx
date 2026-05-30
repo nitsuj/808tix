@@ -16,7 +16,7 @@ import { MissingProfileScreen } from '@/components/organizer/missing-profile-scr
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
-import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
+import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
 import {
   normalizeTimeInput,
   parseMaxPassesInput,
@@ -132,14 +132,12 @@ export default function CreateEventScreen() {
               </Pressable>
             </View>
 
-            <ThemedText type="subtitle" style={styles.title}>
-              Create Event
-            </ThemedText>
+            <ThemedText style={styles.title}>Create Event</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               Saved as draft until you publish.
             </ThemedText>
 
-            <ThemedView type="backgroundElement" style={eventFormStyles.form}>
+            <ThemedView style={eventFormStyles.form}>
               <EventFormField
                 error={fieldErrors.eventName}
                 label="Event Name"
@@ -206,6 +204,7 @@ export default function CreateEventScreen() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: Surface.background,
     flex: 1,
   },
   keyboardView: {
@@ -246,26 +245,27 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   title: {
-    color: OrganizerAccent,
-    fontSize: 28,
-    lineHeight: 34,
+    fontSize: 34,
+    fontWeight: '800',
+    lineHeight: 40,
   },
   subtitle: {
+    fontSize: 15,
     marginBottom: Spacing.one,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: '#FF3B3B',
   },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderRadius: Radii.button,
     marginTop: Spacing.two,
     paddingVertical: Spacing.three,
   },
   primaryButtonText: {
-    color: '#000',
+    color: OrganizerAccentTextOn,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

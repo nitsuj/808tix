@@ -1,6 +1,5 @@
 /**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
+ * 808Tix design tokens — see docs/DESIGN_SYSTEM_V2.md
  */
 
 import '@/global.css';
@@ -8,25 +7,39 @@ import '@/global.css';
 import { Platform } from 'react-native';
 
 export const OrganizerAccent = '#39FF14';
+export const OrganizerAccentTextOn = '#000000';
 
-/** Guest / pass screens (fan-facing). */
-export const FanAccent = '#C77DFF';
-export const FanAccentBright = '#FF6AD5';
-export const FanAccentMuted = '#9B5DE5';
+/** Fan / pass screens (v2). */
+export const FanAccent = '#A25BFF';
+export const FanAccentBright = '#FF2D78';
+export const FanAccentMuted = '#7B3DB8';
+
+export const Surface = {
+  background: '#080808',
+  secondary: '#141414',
+  card: '#1A1A1A',
+  divider: '#222222',
+  input: '#111111',
+} as const;
+
+export const Semantic = {
+  error: '#FF3B3B',
+  warning: '#FFB020',
+} as const;
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#FFFFFF',
+    background: Surface.background,
+    backgroundElement: Surface.card,
+    backgroundSelected: Surface.secondary,
+    textSecondary: '#B0B4BA',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
+    text: '#FFFFFF',
+    background: Surface.background,
+    backgroundElement: Surface.card,
+    backgroundSelected: Surface.secondary,
     textSecondary: '#B0B4BA',
   },
 } as const;
@@ -35,13 +48,9 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
     sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
     rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
     mono: 'ui-monospace',
   },
   default: {
@@ -66,6 +75,12 @@ export const Spacing = {
   four: 24,
   five: 32,
   six: 64,
+} as const;
+
+export const Radii = {
+  input: 12,
+  button: 14,
+  card: 16,
 } as const;
 
 export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;

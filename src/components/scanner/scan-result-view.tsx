@@ -6,7 +6,7 @@ import {
   getScannerResultTitle,
   ScannerResultColors,
 } from '@/constants/scanner-results';
-import { Spacing } from '@/constants/theme';
+import { OrganizerAccent, Radii, Spacing } from '@/constants/theme';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 
 type ScanResultViewProps = {
@@ -19,11 +19,18 @@ export function ScanResultView({ result, onScanAnother }: ScanResultViewProps) {
   const title = getScannerResultTitle(result.result);
   const subtitle = getScannerResultSubtitle(result.result);
   const showGuest = Boolean(result.guest_name);
+  const isValid = result.result === 'valid';
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
+          <View style={[styles.iconCircle, isValid ? styles.iconCircleValid : styles.iconCircleInvalid]}>
+            <Text style={[styles.iconGlyph, isValid ? styles.iconGlyphOnValid : styles.iconGlyphOnDark]}>
+              {isValid ? '✓' : '✕'}
+            </Text>
+          </View>
+
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
 
           {subtitle ? (
@@ -76,10 +83,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: Spacing.two,
   },
-  title: {
-    fontSize: 52,
+  iconCircle: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 120,
+    justifyContent: 'center',
+    marginBottom: Spacing.two,
+    width: 120,
+  },
+  iconCircleValid: {
+    backgroundColor: '#000000',
+    borderColor: OrganizerAccent,
+    borderWidth: 4,
+  },
+  iconCircleInvalid: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderColor: '#FFFFFF',
+    borderWidth: 3,
+  },
+  iconGlyph: {
+    fontSize: 56,
     fontWeight: '800',
-    letterSpacing: 1,
+    lineHeight: 60,
+  },
+  iconGlyphOnValid: {
+    color: OrganizerAccent,
+  },
+  iconGlyphOnDark: {
+    color: '#FFFFFF',
+  },
+  title: {
+    fontSize: 40,
+    fontWeight: '800',
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
   subtitle: {
@@ -102,7 +138,7 @@ const styles = StyleSheet.create({
   },
   scanAnotherButton: {
     alignItems: 'center',
-    borderRadius: Spacing.two,
+    borderRadius: Radii.button,
     borderWidth: 2,
     marginBottom: Spacing.two,
     paddingVertical: Spacing.three,

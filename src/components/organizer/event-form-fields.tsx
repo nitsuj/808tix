@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Spacing } from '@/constants/theme';
+import { Radii, Spacing, Surface } from '@/constants/theme';
 
 export type EventFormFieldProps = {
   label: string;
@@ -24,11 +24,9 @@ export function EventFormField({
 }: EventFormFieldProps) {
   return (
     <View style={eventFormStyles.field}>
-      <ThemedText type="smallBold" style={eventFormStyles.label}>
-        {label}
-      </ThemedText>
+      <ThemedText style={eventFormStyles.label}>{label}</ThemedText>
       {hint ? (
-        <ThemedText themeColor="textSecondary" type="small">
+        <ThemedText themeColor="textSecondary" style={eventFormStyles.hint}>
           {hint}
         </ThemedText>
       ) : null}
@@ -36,7 +34,7 @@ export function EventFormField({
         editable
         keyboardType={keyboardType}
         placeholder={placeholder}
-        placeholderTextColor="#666"
+        placeholderTextColor="#666666"
         style={[eventFormStyles.input, error ? eventFormStyles.inputError : null]}
         value={value}
         onChangeText={onChangeText}
@@ -48,30 +46,42 @@ export function EventFormField({
 
 export const eventFormStyles = StyleSheet.create({
   form: {
+    backgroundColor: Surface.card,
+    borderColor: Surface.divider,
+    borderRadius: Radii.card,
+    borderWidth: 1,
     gap: Spacing.three,
     padding: Spacing.four,
-    borderRadius: Spacing.three,
   },
   input: {
-    backgroundColor: '#111',
-    borderColor: '#333',
-    borderRadius: Spacing.two,
+    backgroundColor: Surface.input,
+    borderColor: Surface.divider,
+    borderRadius: Radii.input,
     borderWidth: 1,
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '500',
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingVertical: Spacing.three,
   },
   inputError: {
-    borderColor: '#ff6b6b',
+    borderColor: '#FF3B3B',
   },
   errorText: {
-    color: '#ff6b6b',
+    color: '#FF3B3B',
+    fontSize: 13,
   },
   field: {
     gap: Spacing.one,
   },
   label: {
-    marginTop: Spacing.half,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  hint: {
+    fontSize: 12,
+    marginTop: -2,
   },
 });
