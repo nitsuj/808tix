@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
@@ -23,6 +23,11 @@ export default function EventScannerScreen() {
   const [phase, setPhase] = useState<ScannerPhase>('camera');
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanValidationDisplay | null>(null);
+  const isProcessingRef = useRef(isProcessing);
+
+  useEffect(() => {
+    isProcessingRef.current = isProcessing;
+  }, [isProcessing]);
 
   const handleScanAnother = useCallback(() => {
     setPhase('camera');
@@ -30,9 +35,17 @@ export default function EventScannerScreen() {
     setIsProcessing(false);
   }, []);
 
+  const handleCancel = useCallback(() => {
+    if (!eventId) {
+      return;
+    }
+
+    router.replace(`/events/${eventId}` as Href);
+  }, [eventId, router]);
+
   const handleBarcodeScanned = useCallback(
     async (rawData: string) => {
-      if (!eventId || isProcessing) {
+      if (!eventId || isProcessingRef.current) {
         return;
       }
 
@@ -61,10 +74,12 @@ export default function EventScannerScreen() {
       setScanResult(outcome.data);
       setPhase('result');
     },
-    [eventId, isProcessing],
+    [eventId],
   );
 
-  if (authGate.state === 'loading' || isLoading) {
+  const showInitialGate = (authGate.state === 'loading' || isLoading) && !event;
+
+  if (showInitialGate) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={OrganizerAccent} />
@@ -94,16 +109,24 @@ export default function EventScannerScreen() {
   }
 
   return (
-    <EventScannerCamera
-      eventName={event.name}
-      isProcessing={isProcessing}
-      onBarcodeScanned={handleBarcodeScanned}
-      onCancel={() => router.back()}
-    />
+    <View style={styles.scannerScreen}>
+      <EventScannerCamera
+        eventName={event.name}
+        isProcessing={isProcessing}
+        onBarcodeScanned={handleBarcodeScanned}
+        onCancel={handleCancel}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  scannerScreen: {
+    flex: 1,
+    height: '100%',
+    minHeight: '100%',
+    width: '100%',
+  },
   centered: {
     alignItems: 'center',
     backgroundColor: '#000000',
