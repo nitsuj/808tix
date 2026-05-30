@@ -92,6 +92,16 @@ export const qrCode = {
   ...shadows.qrFrame,
 } as const;
 
+/** Event artwork upload on edit event — preview + picker affordance. */
+export const artworkUpload = {
+  previewHeight: 200,
+  borderColor: surface.divider,
+  hintColor: text.secondary,
+  actionBackground: surface.card,
+  actionBorder: organizer.accent,
+  actionText: organizer.accent,
+} as const;
+
 /** Shared chrome. */
 export const chrome = {
   pureBlack: palette.pureBlack,

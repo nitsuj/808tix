@@ -11,6 +11,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
+import {
+  EventArtworkUploadField,
+  type PendingArtworkSelection,
+} from '@/components/organizer/event-artwork-upload-field';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -26,6 +30,8 @@ import {
   type EditEventFieldErrors,
 } from '@/lib/event-form';
 import type { Event } from '@/lib/database.types';
+import { uploadEventArtwork } from '@/lib/event-artwork-storage';
+import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
 import { supabase } from '@/lib/supabase';
 
 export default function EditEventScreen() {
@@ -88,6 +94,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   const [fieldErrors, setFieldErrors] = useState<EditEventFieldErrors>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pendingArtwork, setPendingArtwork] = useState<PendingArtworkSelection | null>(null);
 
   async function handleSave() {
     const values = { eventName, venueName, eventDate, startTime, maxPasses };
@@ -116,6 +123,36 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
     setSubmitError(null);
     setIsSubmitting(true);
 
+    let imageUrl = event.image_url;
+
+    if (pendingArtwork) {
+      const artworkValidationError = validateEventArtworkFile(
+        pendingArtwork.mimeType,
+        pendingArtwork.fileSize,
+      );
+
+      if (artworkValidationError) {
+        setIsSubmitting(false);
+        setSubmitError(artworkValidationError);
+        return;
+      }
+
+      try {
+        imageUrl = await uploadEventArtwork(
+          eventId,
+          pendingArtwork.localUri,
+          pendingArtwork.mimeType,
+          pendingArtwork.fileSize,
+        );
+      } catch (uploadError) {
+        setIsSubmitting(false);
+        setSubmitError(
+          uploadError instanceof Error ? uploadError.message : 'Could not upload artwork.',
+        );
+        return;
+      }
+    }
+
     const { error: updateError } = await supabase
       .from('events')
       .update({
@@ -124,6 +161,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
         event_date: eventDate.trim(),
         start_time: normalizedStart,
         capacity,
+        ...(pendingArtwork ? { image_url: imageUrl } : {}),
       })
       .eq('id', eventId);
 
@@ -165,6 +203,14 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               {issuedCount} pass{issuedCount === 1 ? '' : 'es'} issued · max cannot go below that
             </ThemedText>
+
+            <EventArtworkUploadField
+              disabled={isSubmitting}
+              eventName={eventName}
+              existingImageUrl={event.image_url}
+              pendingSelection={pendingArtwork}
+              onSelectionChange={setPendingArtwork}
+            />
 
             <ThemedView style={eventFormStyles.form}>
               <EventFormField

@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { FanAccent, FanAccentBright, Radii, Surface } from '@/constants/theme';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 
 type EventArtworkProps = {
   imageUrl?: string | null;
@@ -42,14 +43,17 @@ export function EventArtwork({
 }: EventArtworkProps) {
   const palette = paletteForName(name);
   const borderRadius = rounded ? Radii.card : 0;
+  const resolvedImageUrl = resolveOrganizerArtworkUrl(imageUrl);
 
-  if (imageUrl) {
+  if (resolvedImageUrl) {
     return (
       <View style={[styles.container, { height, borderRadius }, style]}>
         <Image
+          cachePolicy="none"
           contentFit="cover"
-          source={{ uri: imageUrl }}
-          style={[StyleSheet.absoluteFillObject, { borderRadius }]}
+          recyclingKey={resolvedImageUrl}
+          source={{ uri: resolvedImageUrl }}
+          style={[StyleSheet.absoluteFill, { borderRadius }]}
         />
         <View style={[styles.bottomFade, { borderRadius }]} />
       </View>

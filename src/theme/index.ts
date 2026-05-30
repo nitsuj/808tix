@@ -26,6 +26,7 @@ import {
   type ThemeColor,
 } from './colors';
 import {
+  artworkUpload,
   chrome,
   formField,
   organizerScreen,
@@ -51,6 +52,7 @@ export {
   text,
   themeColors,
   type ThemeColor,
+  artworkUpload,
   chrome,
   formField,
   organizerScreen,
@@ -114,6 +116,7 @@ export const theme = {
     scannerScreen,
     formField,
     qrCode,
+    artworkUpload,
     chrome,
   },
 } as const;

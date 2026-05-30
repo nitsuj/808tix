@@ -1,10 +1,18 @@
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
+import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
 import { organizerScreen, semantic, text } from '@/theme';
@@ -19,7 +27,11 @@ import {
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
+import type { Event } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
+
+const DASHBOARD_ROUTE = '/' as Href;
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -27,6 +39,10 @@ export default function EventDetailScreen() {
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
   const [checkedInCount, setCheckedInCount] = useState(0);
+
+  const goToDashboard = useCallback(() => {
+    router.replace(DASHBOARD_ROUTE);
+  }, [router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -84,14 +100,44 @@ export default function EventDetailScreen() {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <ThemedText style={styles.backText}>Back</ThemedText>
+          <Pressable onPress={goToDashboard} style={styles.backButtonOverlay}>
+            <ThemedText style={styles.backText}>← Dashboard</ThemedText>
           </Pressable>
           <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
         </SafeAreaView>
       </View>
     );
   }
+
+  return (
+    <EventDetailContent
+      checkedInCount={checkedInCount}
+      event={event}
+      issuedCount={issuedCount}
+      onGoToDashboard={goToDashboard}
+      router={router}
+    />
+  );
+}
+
+type EventDetailContentProps = {
+  event: Event;
+  issuedCount: number;
+  checkedInCount: number;
+  onGoToDashboard: () => void;
+  router: ReturnType<typeof useRouter>;
+};
+
+function EventDetailContent({
+  event,
+  issuedCount,
+  checkedInCount,
+  onGoToDashboard,
+  router,
+}: EventDetailContentProps) {
+  const { height: windowHeight } = useWindowDimensions();
+  const artworkUri = resolveOrganizerArtworkUrl(event.image_url);
+  const hasUploadedArtwork = Boolean(artworkUri);
 
   const dateLabel = formatEventDateLabel(event.event_date, event.start_time);
   const startTimeLabel = formatTimeForInput(event.start_time) || '—';
@@ -100,14 +146,27 @@ export default function EventDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Pressable onPress={() => router.back()} style={styles.backButton}>
-            <ThemedText style={styles.backText}>← Dashboard</ThemedText>
-          </Pressable>
+      {hasUploadedArtwork ? (
+        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
+      ) : (
+        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
+          <EventArtwork
+            height={windowHeight}
+            imageUrl={null}
+            name={event.name}
+            rounded={false}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
 
-          <View style={styles.heroWrap}>
-            <EventArtwork height={240} imageUrl={event.image_url} name={event.name} rounded={false} />
+      <SafeAreaView edges={['top']} style={styles.contentLayer}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <View style={styles.heroTopRow}>
+            <Pressable onPress={onGoToDashboard} style={styles.backButtonOverlay}>
+              <ThemedText style={styles.backText}>← Dashboard</ThemedText>
+            </Pressable>
+
             {isLive ? (
               <View style={styles.liveBadge}>
                 <ThemedText style={styles.liveBadgeText}>● Live</ThemedText>
@@ -115,7 +174,7 @@ export default function EventDetailScreen() {
             ) : null}
           </View>
 
-          <View style={styles.heroText}>
+          <View style={styles.heroTextBlock}>
             <ThemedText style={styles.title}>{event.name}</ThemedText>
             {event.venue_name ? (
               <ThemedText themeColor="textSecondary" style={styles.subtitle}>
@@ -130,31 +189,33 @@ export default function EventDetailScreen() {
             <ThemedText style={styles.statusPill}>{formatEventStatus(event.status)}</ThemedText>
           </View>
 
-          <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
-          <StatRow>
-            <StatBlock label="Passes Issued" value={String(issuedCount)} />
-            <StatBlock label="Checked In" value={String(checkedInCount)} />
-            <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
-          </StatRow>
+          <View style={styles.body}>
+            <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
+            <StatRow>
+              <StatBlock label="Passes Issued" value={String(issuedCount)} />
+              <StatBlock label="Checked In" value={String(checkedInCount)} />
+              <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
+            </StatRow>
 
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
-          </View>
+            <View style={styles.progressTrack}>
+              <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
+            </View>
 
-          <View style={styles.actionsCard}>
-            <ActionRow
-              label="Issue Pass"
-              onPress={() => router.push(`/events/${event.id}/issue` as Href)}
-              primary
-            />
-            <ActionRow
-              label="Scanner"
-              onPress={() => router.push(`/events/${event.id}/scan` as Href)}
-            />
-            <ActionRow
-              label="Edit Event"
-              onPress={() => router.push(`/events/${event.id}/edit` as Href)}
-            />
+            <View style={styles.actionsCard}>
+              <ActionRow
+                label="Issue Pass"
+                onPress={() => router.push(`/events/${event.id}/issue` as Href)}
+                primary
+              />
+              <ActionRow
+                label="Scanner"
+                onPress={() => router.push(`/events/${event.id}/scan` as Href)}
+              />
+              <ActionRow
+                label="Edit Event"
+                onPress={() => router.push(`/events/${event.id}/edit` as Href)}
+              />
+            </View>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -200,16 +261,23 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: Surface.background,
     flex: 1,
+    position: 'relative',
+  },
+  fallbackArtLayer: {
+    ...StyleSheet.absoluteFill,
+    overflow: 'hidden',
+  },
+  contentLayer: {
+    flex: 1,
+    zIndex: 1,
   },
   safeArea: {
     flex: 1,
   },
   scrollContent: {
-    alignSelf: 'center',
+    flexGrow: 1,
     gap: Spacing.three,
-    maxWidth: MaxContentWidth,
     paddingBottom: Spacing.six,
-    width: '100%',
   },
   centered: {
     alignItems: 'center',
@@ -217,8 +285,14 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  backButton: {
+  heroTopRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.two,
+  },
+  backButtonOverlay: {
     paddingVertical: Spacing.two,
   },
   backText: {
@@ -226,19 +300,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  heroWrap: {
-    position: 'relative',
-  },
   liveBadge: {
     backgroundColor: organizerScreen.liveBadge.backgroundColor,
     borderColor: OrganizerAccent,
     borderRadius: Radii.input,
     borderWidth: 1,
-    left: Spacing.four,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
-    position: 'absolute',
-    top: Spacing.three,
   },
   liveBadgeText: {
     color: OrganizerAccent,
@@ -246,9 +314,18 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  heroText: {
+  heroTextBlock: {
     gap: Spacing.one,
+    marginTop: Spacing.two,
     paddingHorizontal: Spacing.four,
+  },
+  body: {
+    alignSelf: 'center',
+    gap: Spacing.three,
+    marginTop: Spacing.four,
+    maxWidth: MaxContentWidth,
+    paddingTop: Spacing.two,
+    width: '100%',
   },
   title: {
     fontSize: 32,

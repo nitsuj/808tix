@@ -102,6 +102,12 @@ export const artwork = {
   gradientHigh: 'rgba(8, 8, 8, 0.28)',
   gradientMid: 'rgba(8, 8, 8, 0.22)',
   gradientLow: 'rgba(8, 8, 8, 0.18)',
+  /** Uploaded event art — keep vibrant; minimal tint only. */
+  uploadedTint: 'rgba(8, 8, 8, 0.12)',
+  uploadedBottomScrim: 'rgba(8, 8, 8, 0.38)',
+  /** Temporary fallback posters — lighter than credential overlays. */
+  fallbackTint: 'rgba(8, 8, 8, 0.32)',
+  fallbackBottomScrim: 'rgba(8, 8, 8, 0.48)',
 } as const;
 
 /**
