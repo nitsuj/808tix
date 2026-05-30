@@ -27,5 +27,5 @@ export const shadows = {
 export const webShadows = {
   scannerOverlayText: '0 1px 6px rgba(0, 0, 0, 0.95)',
   scannerFrameGlow:
-    '0 0 0 1px rgba(57, 255, 20, 0.25), inset 0 0 24px rgba(57, 255, 20, 0.08)',
+    '0 0 0 2px rgba(57, 255, 20, 0.55), 0 0 28px rgba(57, 255, 20, 0.35), inset 0 0 32px rgba(57, 255, 20, 0.08)',
 } as const;

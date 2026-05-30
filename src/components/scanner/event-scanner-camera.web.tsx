@@ -2,10 +2,12 @@ import jsQR from 'jsqr';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { organizer, scannerScreen, spacing } from '@/theme';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
+import { artwork, organizer, radius, scannerScreen, spacing } from '@/theme';
 
 type EventScannerCameraProps = {
   eventName: string;
+  imageUrl?: string | null;
   isProcessing: boolean;
   onBarcodeScanned: (rawData: string) => void;
   onCancel: () => void;
@@ -14,20 +16,288 @@ type EventScannerCameraProps = {
 
 type ScannerStatus = 'loading' | 'permission' | 'scanning' | 'error';
 
+type ScannerStack = {
+  root: HTMLDivElement;
+  artworkSlot: HTMLDivElement;
+  scrimSlot: HTMLDivElement;
+  uiSlot: HTMLDivElement;
+  scanSquareSlot: HTMLDivElement;
+  hintSlot: HTMLDivElement;
+  topBarSlot: HTMLDivElement;
+  footerSlot: HTMLDivElement;
+};
+
 const SCAN_DEBOUNCE_MS = 1500;
+const STACK_ID = '808tix-scanner-stack';
+const STACK_Z_INDEX = '10000';
 const TEXT_SECONDARY = scannerScreen.overlay.textSecondary;
 const OVERLAY_TEXT_SHADOW = scannerScreen.frame.webTextShadow;
 
-function applyCameraHostStyles(host: HTMLDivElement) {
-  host.style.position = 'absolute';
-  host.style.top = '0';
-  host.style.left = '0';
-  host.style.right = '0';
-  host.style.bottom = '0';
-  host.style.width = '100%';
-  host.style.height = '100%';
-  host.style.overflow = 'hidden';
-  host.style.zIndex = '0';
+function hashName(name: string): number {
+  let hash = 0;
+
+  for (let index = 0; index < name.length; index += 1) {
+    hash = (hash << 5) - hash + name.charCodeAt(index);
+    hash |= 0;
+  }
+
+  return Math.abs(hash);
+}
+
+function paletteForName(name: string) {
+  const palettes = [
+    { base: '#2A1040', accent: '#A25BFF', glow: '#C084FC' },
+    { base: '#101828', accent: '#39FF14', glow: '#A25BFF' },
+    { base: '#1A0A28', accent: '#C084FC', glow: '#7B3DB8' },
+    { base: '#0A1628', accent: '#39FF14', glow: '#A25BFF' },
+  ];
+
+  return palettes[hashName(name) % palettes.length];
+}
+
+function getScannerFrameSize(): number {
+  return Math.min(Math.round(window.innerWidth * 0.72), 320);
+}
+
+function applyFixedLayerStyles(element: HTMLElement) {
+  element.style.position = 'absolute';
+  element.style.top = '0';
+  element.style.left = '0';
+  element.style.right = '0';
+  element.style.bottom = '0';
+}
+
+function syncScanSquareSize(scanSquare: HTMLDivElement) {
+  const frameSize = getScannerFrameSize();
+  scanSquare.style.width = `${frameSize}px`;
+  scanSquare.style.height = `${frameSize}px`;
+}
+
+function mountFrameOverlay(scanSquare: HTMLDivElement) {
+  const frameBorder = document.createElement('div');
+  frameBorder.dataset.scannerFrame = 'border';
+  frameBorder.style.position = 'absolute';
+  frameBorder.style.inset = '0';
+  frameBorder.style.border = `2px solid ${organizer.accent}`;
+  frameBorder.style.borderRadius = `${radius.card}px`;
+  frameBorder.style.boxSizing = 'border-box';
+  frameBorder.style.backgroundColor = scannerScreen.frame.inset;
+  frameBorder.style.pointerEvents = 'none';
+  frameBorder.style.zIndex = '2';
+  frameBorder.style.boxShadow = scannerScreen.frame.webBoxShadow;
+
+  const cornerStyle = {
+    position: 'absolute',
+    width: '22px',
+    height: '22px',
+    borderColor: organizer.accent,
+    pointerEvents: 'none',
+    zIndex: '3',
+  } as const;
+
+  const cornerTL = document.createElement('div');
+  Object.assign(cornerTL.style, cornerStyle, {
+    top: '-1px',
+    left: '-1px',
+    borderTopWidth: '3px',
+    borderLeftWidth: '3px',
+    borderTopLeftRadius: `${radius.card}px`,
+  });
+
+  const cornerTR = document.createElement('div');
+  Object.assign(cornerTR.style, cornerStyle, {
+    top: '-1px',
+    right: '-1px',
+    borderTopWidth: '3px',
+    borderRightWidth: '3px',
+    borderTopRightRadius: `${radius.card}px`,
+  });
+
+  const cornerBL = document.createElement('div');
+  Object.assign(cornerBL.style, cornerStyle, {
+    bottom: '-1px',
+    left: '-1px',
+    borderBottomWidth: '3px',
+    borderLeftWidth: '3px',
+    borderBottomLeftRadius: `${radius.card}px`,
+  });
+
+  const cornerBR = document.createElement('div');
+  Object.assign(cornerBR.style, cornerStyle, {
+    bottom: '-1px',
+    right: '-1px',
+    borderBottomWidth: '3px',
+    borderRightWidth: '3px',
+    borderBottomRightRadius: `${radius.card}px`,
+  });
+
+  scanSquare.appendChild(frameBorder);
+  scanSquare.appendChild(cornerTL);
+  scanSquare.appendChild(cornerTR);
+  scanSquare.appendChild(cornerBL);
+  scanSquare.appendChild(cornerBR);
+}
+
+function createScannerStack(): ScannerStack {
+  const existing = document.getElementById(STACK_ID) as HTMLDivElement | null;
+
+  if (existing) {
+    existing.remove();
+  }
+
+  const root = document.createElement('div');
+  root.id = STACK_ID;
+  root.style.position = 'fixed';
+  root.style.top = '0';
+  root.style.left = '0';
+  root.style.right = '0';
+  root.style.bottom = '0';
+  root.style.width = '100vw';
+  root.style.height = '100vh';
+  root.style.zIndex = STACK_Z_INDEX;
+  root.style.pointerEvents = 'none';
+  root.style.overflow = 'hidden';
+
+  const artworkSlot = document.createElement('div');
+  applyFixedLayerStyles(artworkSlot);
+  artworkSlot.style.zIndex = '1';
+
+  const scrimSlot = document.createElement('div');
+  applyFixedLayerStyles(scrimSlot);
+  scrimSlot.style.zIndex = '2';
+
+  const uiSlot = document.createElement('div');
+  applyFixedLayerStyles(uiSlot);
+  uiSlot.style.zIndex = '4';
+  uiSlot.style.display = 'flex';
+  uiSlot.style.flexDirection = 'column';
+  uiSlot.style.pointerEvents = 'none';
+
+  const topBarSlot = document.createElement('div');
+  topBarSlot.style.flexShrink = '0';
+
+  const centerBlock = document.createElement('div');
+  centerBlock.style.flex = '1';
+  centerBlock.style.display = 'flex';
+  centerBlock.style.flexDirection = 'column';
+  centerBlock.style.alignItems = 'center';
+  centerBlock.style.justifyContent = 'center';
+  centerBlock.style.gap = `${spacing.three}px`;
+  centerBlock.style.pointerEvents = 'none';
+
+  const scanSquareSlot = document.createElement('div');
+  scanSquareSlot.style.position = 'relative';
+  scanSquareSlot.style.overflow = 'hidden';
+  scanSquareSlot.style.borderRadius = `${radius.card}px`;
+  scanSquareSlot.style.flexShrink = '0';
+  syncScanSquareSize(scanSquareSlot);
+  mountFrameOverlay(scanSquareSlot);
+
+  const hintSlot = document.createElement('div');
+  hintSlot.style.pointerEvents = 'none';
+
+  centerBlock.appendChild(scanSquareSlot);
+  centerBlock.appendChild(hintSlot);
+
+  const footerSlot = document.createElement('div');
+  footerSlot.style.flexShrink = '0';
+
+  uiSlot.appendChild(topBarSlot);
+  uiSlot.appendChild(centerBlock);
+  uiSlot.appendChild(footerSlot);
+
+  root.appendChild(artworkSlot);
+  root.appendChild(scrimSlot);
+  root.appendChild(uiSlot);
+  document.body.appendChild(root);
+
+  return {
+    root,
+    artworkSlot,
+    scrimSlot,
+    uiSlot,
+    scanSquareSlot,
+    hintSlot,
+    topBarSlot,
+    footerSlot,
+  };
+}
+
+function destroyScannerStack() {
+  document.getElementById(STACK_ID)?.remove();
+}
+
+function mountArtworkLayer(
+  slot: HTMLDivElement,
+  imageUrl: string | null | undefined,
+  eventName: string,
+) {
+  slot.replaceChildren();
+
+  const artworkUri = resolveOrganizerArtworkUrl(imageUrl);
+
+  if (artworkUri) {
+    const image = document.createElement('img');
+    image.src = artworkUri;
+    image.alt = '';
+    image.style.width = '100%';
+    image.style.height = '100%';
+    image.style.objectFit = 'cover';
+
+    const tint = document.createElement('div');
+    applyFixedLayerStyles(tint);
+    tint.style.backgroundColor = artwork.uploadedTint;
+
+    const bottomScrim = document.createElement('div');
+    applyFixedLayerStyles(bottomScrim);
+    bottomScrim.style.top = '58%';
+    bottomScrim.style.backgroundColor = artwork.uploadedBottomScrim;
+
+    slot.appendChild(image);
+    slot.appendChild(tint);
+    slot.appendChild(bottomScrim);
+    return;
+  }
+
+  const palette = paletteForName(eventName);
+  const gradient = document.createElement('div');
+  applyFixedLayerStyles(gradient);
+  gradient.style.backgroundColor = palette.base;
+
+  const glowOrb = document.createElement('div');
+  glowOrb.style.position = 'absolute';
+  glowOrb.style.top = '-20%';
+  glowOrb.style.right = '-10%';
+  glowOrb.style.width = '70%';
+  glowOrb.style.height = '70%';
+  glowOrb.style.borderRadius = '999px';
+  glowOrb.style.backgroundColor = palette.accent;
+  glowOrb.style.opacity = '0.35';
+  glowOrb.style.filter = 'blur(48px)';
+
+  const glowOrbSmall = document.createElement('div');
+  glowOrbSmall.style.position = 'absolute';
+  glowOrbSmall.style.bottom = '-10%';
+  glowOrbSmall.style.left = '-5%';
+  glowOrbSmall.style.width = '50%';
+  glowOrbSmall.style.height = '50%';
+  glowOrbSmall.style.borderRadius = '999px';
+  glowOrbSmall.style.backgroundColor = palette.glow;
+  glowOrbSmall.style.opacity = '0.28';
+  glowOrbSmall.style.filter = 'blur(40px)';
+
+  gradient.appendChild(glowOrb);
+  gradient.appendChild(glowOrbSmall);
+  slot.appendChild(gradient);
+}
+
+function mountScrimLayer(slot: HTMLDivElement) {
+  slot.replaceChildren();
+
+  const scrim = document.createElement('div');
+  applyFixedLayerStyles(scrim);
+  scrim.style.backgroundColor = scannerScreen.cameraScrim;
+  slot.appendChild(scrim);
 }
 
 function applyVideoElementStyles(video: HTMLVideoElement) {
@@ -37,18 +307,16 @@ function applyVideoElementStyles(video: HTMLVideoElement) {
   video.setAttribute('autoplay', '');
   video.setAttribute('playsinline', '');
   video.setAttribute('muted', '');
-  video.style.position = 'fixed';
+  video.style.position = 'absolute';
   video.style.top = '0';
   video.style.left = '0';
-  video.style.right = '0';
-  video.style.bottom = '0';
-  video.style.width = '100vw';
-  video.style.height = '100vh';
+  video.style.width = '100%';
+  video.style.height = '100%';
   video.style.objectFit = 'cover';
   video.style.opacity = '1';
   video.style.backgroundColor = scannerScreen.overlay.background;
-  video.style.zIndex = '999';
   video.style.pointerEvents = 'none';
+  video.style.zIndex = '1';
 }
 
 function removeVideoElement(video: HTMLVideoElement | null) {
@@ -58,36 +326,27 @@ function removeVideoElement(video: HTMLVideoElement | null) {
 
   video.srcObject = null;
 
-  if (document.body.contains(video)) {
-    document.body.removeChild(video);
+  if (video.parentElement) {
+    video.parentElement.removeChild(video);
   }
 }
 
-const SCANNER_OVERLAY_Z_INDEX = '1000';
-
-function mountScannerOverlay(options: {
-  eventName: string;
-  footerLabel?: string;
-  hint: string;
-  isLoading: boolean;
-  onCancel: () => void;
-}) {
-  const overlay = document.createElement('div');
-
-  overlay.style.position = 'fixed';
-  overlay.style.top = '0';
-  overlay.style.left = '0';
-  overlay.style.right = '0';
-  overlay.style.bottom = '0';
-  overlay.style.width = '100vw';
-  overlay.style.height = '100vh';
-  overlay.style.zIndex = SCANNER_OVERLAY_Z_INDEX;
-  overlay.style.pointerEvents = 'none';
-  overlay.style.display = 'flex';
-  overlay.style.flexDirection = 'column';
-  overlay.style.justifyContent = 'space-between';
-  overlay.style.boxSizing = 'border-box';
-  overlay.style.backgroundColor = 'transparent';
+function mountScannerUiLayer(
+  stack: ScannerStack,
+  options: {
+    eventName: string;
+    footerLabel?: string;
+    hint: string;
+    isLoading: boolean;
+    onCancel: () => void;
+  },
+) {
+  stack.topBarSlot.replaceChildren();
+  stack.hintSlot.replaceChildren();
+  stack.footerSlot.replaceChildren();
+  stack.scanSquareSlot.querySelectorAll('[data-scanner-loading]').forEach((node) => {
+    node.remove();
+  });
 
   const topBar = document.createElement('div');
   topBar.style.display = 'flex';
@@ -121,24 +380,23 @@ function mountScannerOverlay(options: {
   eventHeader.style.display = 'flex';
   eventHeader.style.flexDirection = 'column';
   eventHeader.style.alignItems = 'center';
-  eventHeader.style.gap = `${spacing.one}px`;
+  eventHeader.style.gap = `${spacing.half}px`;
   eventHeader.style.padding = `0 ${spacing.two}px`;
 
   const scanningLabel = document.createElement('div');
-  scanningLabel.textContent = 'Scanning';
+  scanningLabel.textContent = 'SCANNING';
   scanningLabel.style.color = organizer.accent;
   scanningLabel.style.fontSize = '11px';
   scanningLabel.style.fontWeight = '800';
-  scanningLabel.style.letterSpacing = '1.2px';
-  scanningLabel.style.textTransform = 'uppercase';
+  scanningLabel.style.letterSpacing = '2.4px';
   scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
 
   const eventName = document.createElement('div');
   eventName.textContent = options.eventName;
   eventName.style.color = scannerScreen.overlay.text;
-  eventName.style.fontSize = '22px';
-  eventName.style.fontWeight = '800';
-  eventName.style.lineHeight = '28px';
+  eventName.style.fontSize = '17px';
+  eventName.style.fontWeight = '700';
+  eventName.style.lineHeight = '22px';
   eventName.style.textAlign = 'center';
   eventName.style.textShadow = OVERLAY_TEXT_SHADOW;
 
@@ -151,41 +409,17 @@ function mountScannerOverlay(options: {
   topBar.appendChild(cancelButton);
   topBar.appendChild(eventHeader);
   topBar.appendChild(topSpacer);
-
-  const frameWrap = document.createElement('div');
-  frameWrap.style.flex = '1';
-  frameWrap.style.display = 'flex';
-  frameWrap.style.flexDirection = 'column';
-  frameWrap.style.alignItems = 'center';
-  frameWrap.style.justifyContent = 'center';
-  frameWrap.style.gap = `${spacing.three}px`;
-  frameWrap.style.pointerEvents = 'none';
-
-  const scanFrame = document.createElement('div');
-  scanFrame.style.width = '260px';
-  scanFrame.style.height = '260px';
-  scanFrame.style.border = `3px solid ${organizer.accent}`;
-  scanFrame.style.borderRadius = '16px';
-  scanFrame.style.boxSizing = 'border-box';
-  scanFrame.style.backgroundColor = 'transparent';
-  scanFrame.style.boxShadow = scannerScreen.frame.webBoxShadow;
+  stack.topBarSlot.appendChild(topBar);
 
   const hint = document.createElement('div');
   hint.textContent = options.hint;
-  hint.style.color = TEXT_SECONDARY;
-  hint.style.fontSize = '12px';
+  hint.style.color = scannerScreen.overlay.text;
+  hint.style.fontSize = '15px';
   hint.style.fontWeight = '600';
-  hint.style.letterSpacing = '0.4px';
-  hint.style.maxWidth = '280px';
+  hint.style.maxWidth = '320px';
   hint.style.textAlign = 'center';
-  hint.style.textTransform = 'uppercase';
   hint.style.textShadow = OVERLAY_TEXT_SHADOW;
-
-  frameWrap.appendChild(scanFrame);
-  frameWrap.appendChild(hint);
-
-  overlay.appendChild(topBar);
-  overlay.appendChild(frameWrap);
+  stack.hintSlot.appendChild(hint);
 
   if (options.footerLabel) {
     const footer = document.createElement('div');
@@ -194,21 +428,28 @@ function mountScannerOverlay(options: {
     footer.style.padding = `0 ${spacing.four}px ${spacing.five}px`;
     footer.style.pointerEvents = 'none';
 
+    const footerPill = document.createElement('div');
+    footerPill.style.backgroundColor = scannerScreen.footer.pillBackground;
+    footerPill.style.border = `1px solid ${organizer.accent}`;
+    footerPill.style.borderRadius = `${radius.input}px`;
+    footerPill.style.padding = `${spacing.two}px ${spacing.four}px`;
+
     const footerText = document.createElement('div');
     footerText.textContent = options.footerLabel;
-    footerText.style.color = organizer.accent;
+    footerText.style.color = scannerScreen.overlay.text;
     footerText.style.fontSize = '14px';
-    footerText.style.fontWeight = '800';
-    footerText.style.letterSpacing = '0.6px';
+    footerText.style.fontWeight = '700';
+    footerText.style.letterSpacing = '0.3px';
     footerText.style.textShadow = OVERLAY_TEXT_SHADOW;
-    footerText.style.textTransform = 'uppercase';
 
-    footer.appendChild(footerText);
-    overlay.appendChild(footer);
+    footerPill.appendChild(footerText);
+    footer.appendChild(footerPill);
+    stack.footerSlot.appendChild(footer);
   }
 
   if (options.isLoading) {
     const loadingIndicator = document.createElement('div');
+    loadingIndicator.dataset.scannerLoading = 'true';
     loadingIndicator.textContent = 'Starting camera…';
     loadingIndicator.style.position = 'absolute';
     loadingIndicator.style.top = '50%';
@@ -218,25 +459,31 @@ function mountScannerOverlay(options: {
     loadingIndicator.style.fontSize = '14px';
     loadingIndicator.style.fontWeight = '700';
     loadingIndicator.style.textShadow = OVERLAY_TEXT_SHADOW;
-    overlay.appendChild(loadingIndicator);
+    loadingIndicator.style.zIndex = '5';
+    loadingIndicator.style.pointerEvents = 'none';
+    stack.scanSquareSlot.appendChild(loadingIndicator);
   }
-
-  document.body.appendChild(overlay);
 
   return () => {
     cancelButton.removeEventListener('click', onCancelClick);
-    overlay.remove();
+    stack.topBarSlot.replaceChildren();
+    stack.hintSlot.replaceChildren();
+    stack.footerSlot.replaceChildren();
+    stack.scanSquareSlot.querySelectorAll('[data-scanner-loading]').forEach((node) => {
+      node.remove();
+    });
   };
 }
 
 export function EventScannerCamera({
   eventName,
+  imageUrl,
   isProcessing,
   onBarcodeScanned,
   onCancel,
   overlayFooterLabel,
 }: EventScannerCameraProps) {
-  const cameraHostRef = useRef<HTMLDivElement | null>(null);
+  const stackRef = useRef<ScannerStack | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -265,12 +512,24 @@ export function EventScannerCamera({
 
   useEffect(() => {
     if (status === 'permission' || status === 'error') {
+      destroyScannerStack();
+      stackRef.current = null;
       return;
     }
 
-    const hint = isProcessing ? 'Validating…' : 'Point at the guest pass QR code';
+    let stack = stackRef.current;
 
-    return mountScannerOverlay({
+    if (!stack) {
+      stack = createScannerStack();
+      stackRef.current = stack;
+    }
+
+    syncScanSquareSize(stack.scanSquareSlot);
+    mountArtworkLayer(stack.artworkSlot, imageUrl, eventName);
+    mountScrimLayer(stack.scrimSlot);
+
+    const hint = isProcessing ? 'Validating…' : 'Point at the guest pass QR code';
+    const cleanupUi = mountScannerUiLayer(stack, {
       eventName,
       footerLabel: overlayFooterLabel,
       hint,
@@ -279,15 +538,28 @@ export function EventScannerCamera({
         onCancelRef.current();
       },
     });
-  }, [eventName, isProcessing, overlayFooterLabel, status]);
 
-  const assignCameraHostRef = useCallback((node: unknown) => {
-    const host = (node as HTMLDivElement | null) ?? null;
-    cameraHostRef.current = host;
+    const handleResize = () => {
+      if (!stackRef.current) {
+        return;
+      }
 
-    if (host) {
-      applyCameraHostStyles(host);
-    }
+      syncScanSquareSize(stackRef.current.scanSquareSlot);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      cleanupUi();
+    };
+  }, [eventName, imageUrl, isProcessing, overlayFooterLabel, status]);
+
+  useEffect(() => {
+    return () => {
+      destroyScannerStack();
+      stackRef.current = null;
+    };
   }, []);
 
   const stopStream = useCallback(() => {
@@ -371,6 +643,10 @@ export function EventScannerCamera({
   }, []);
 
   useEffect(() => {
+    if (status === 'permission' || status === 'error') {
+      return;
+    }
+
     let cancelled = false;
     let rafId: number | null = null;
     let video: HTMLVideoElement | null = null;
@@ -455,29 +731,30 @@ export function EventScannerCamera({
       }
     };
 
+    const mountVideoWhenReady = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const stack = stackRef.current;
+
+      if (!stack) {
+        rafId = requestAnimationFrame(mountVideoWhenReady);
+        return;
+      }
+
+      syncScanSquareSize(stack.scanSquareSlot);
+
+      video = document.createElement('video');
+      applyVideoElementStyles(video);
+      stack.scanSquareSlot.insertBefore(video, stack.scanSquareSlot.firstChild);
+      videoRef.current = video;
+
+      void run();
+    };
+
     rafId = requestAnimationFrame(() => {
-      rafId = requestAnimationFrame(() => {
-        rafId = null;
-
-        if (cancelled) {
-          return;
-        }
-
-        const host = cameraHostRef.current;
-
-        if (!host) {
-          return;
-        }
-
-        applyCameraHostStyles(host);
-
-        video = document.createElement('video');
-        applyVideoElementStyles(video);
-        document.body.appendChild(video);
-        videoRef.current = video;
-
-        void run();
-      });
+      rafId = requestAnimationFrame(mountVideoWhenReady);
     });
 
     return cleanup;
@@ -525,27 +802,17 @@ export function EventScannerCamera({
     );
   }
 
-  return (
-    <View pointerEvents="none" style={styles.container}>
-      <View ref={assignCameraHostRef} pointerEvents="none" style={styles.cameraHost} />
-    </View>
-  );
+  return <View pointerEvents="none" style={styles.hiddenHost} />;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: 'transparent',
+  hiddenHost: {
     height: 1,
     left: 0,
     opacity: 0,
     overflow: 'hidden',
     position: 'absolute',
     top: 0,
-    width: 1,
-  },
-  cameraHost: {
-    height: 1,
-    overflow: 'hidden',
     width: 1,
   },
   permissionContainer: {
@@ -562,7 +829,7 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     width: '100%',
-    zIndex: 1001,
+    zIndex: 10001,
   },
   permissionTitle: {
     color: scannerScreen.overlay.text,

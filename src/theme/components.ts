@@ -70,6 +70,17 @@ export const scannerScreen = {
     webBoxShadow: webShadows.scannerFrameGlow,
     webTextShadow: webShadows.scannerOverlayText,
   },
+  resultOverlays: {
+    valid: scanner.validOverlay,
+    already_used: scanner.alreadyUsedOverlay,
+    invalid: scanner.invalidOverlay,
+    wrong_event: scanner.wrongEventOverlay,
+    voided: scanner.voidedOverlay,
+  },
+  footer: {
+    pillBackground: scanner.footerPillBackground,
+  },
+  cameraScrim: scanner.cameraScrim,
   results: scanner,
 } as const;
 

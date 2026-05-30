@@ -106,15 +106,24 @@ export default function EventScannerScreen() {
   }
 
   if (phase === 'result' && scanResult) {
-    return <ScanResultView result={scanResult} onScanAnother={handleScanAnother} />;
+    return (
+      <ScanResultView
+        eventName={event.name}
+        footerLabel={`${issuedCount} / ${event.capacity} Checked In`}
+        imageUrl={event.image_url}
+        result={scanResult}
+        onScanAnother={handleScanAnother}
+      />
+    );
   }
 
   return (
     <View style={styles.scannerScreen}>
       <EventScannerCamera
         eventName={event.name}
+        imageUrl={event.image_url}
         isProcessing={isProcessing}
-        overlayFooterLabel={`${issuedCount} passes issued`}
+        overlayFooterLabel={`${issuedCount} / ${event.capacity} Checked In`}
         onBarcodeScanned={handleBarcodeScanned}
         onCancel={handleCancel}
       />
