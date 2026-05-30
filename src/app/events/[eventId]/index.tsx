@@ -275,9 +275,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    alignSelf: 'center',
     flexGrow: 1,
-    gap: Spacing.three,
+    gap: Spacing.two,
+    maxWidth: MaxContentWidth,
     paddingBottom: Spacing.six,
+    width: '100%',
   },
   centered: {
     alignItems: 'center',
@@ -290,7 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
   },
   backButtonOverlay: {
     paddingVertical: Spacing.two,
@@ -316,15 +319,13 @@ const styles = StyleSheet.create({
   },
   heroTextBlock: {
     gap: Spacing.one,
-    marginTop: Spacing.two,
     paddingHorizontal: Spacing.four,
+    width: '100%',
   },
   body: {
-    alignSelf: 'center',
-    gap: Spacing.three,
-    marginTop: Spacing.four,
-    maxWidth: MaxContentWidth,
-    paddingTop: Spacing.two,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.four,
     width: '100%',
   },
   title: {

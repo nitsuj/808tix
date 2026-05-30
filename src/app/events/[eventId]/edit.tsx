@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -86,6 +86,9 @@ type EditEventFormProps = {
 
 function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormProps) {
   const router = useRouter();
+  const goToEventDetail = () => {
+    router.replace(`/events/${eventId}` as Href);
+  };
   const [eventName, setEventName] = useState(event.name);
   const [venueName, setVenueName] = useState(event.venue_name ?? '');
   const [eventDate, setEventDate] = useState(event.event_date ?? '');
@@ -179,7 +182,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
     }
 
     await refetch();
-    router.back();
+    goToEventDetail();
   }
 
   return (
@@ -194,7 +197,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
             showsVerticalScrollIndicator={false}>
             <Pressable
               disabled={isSubmitting}
-              onPress={() => router.back()}
+              onPress={goToEventDetail}
               style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
               <ThemedText style={styles.backText}>Cancel</ThemedText>
             </Pressable>

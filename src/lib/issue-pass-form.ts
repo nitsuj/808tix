@@ -1,3 +1,5 @@
+import { validateGuestPhone } from '@/lib/phone-validation';
+
 export const DEFAULT_PASS_TYPE = 'General Admission';
 
 export type IssuePassFormValues = {
@@ -24,6 +26,12 @@ export function validateIssuePassForm(values: IssuePassFormValues): IssuePassFie
 
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     errors.guestEmail = 'Enter a valid email or leave blank.';
+  }
+
+  const phoneError = validateGuestPhone(values.guestPhone);
+
+  if (phoneError) {
+    errors.guestPhone = phoneError;
   }
 
   return errors;

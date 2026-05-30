@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,7 +20,6 @@ import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing
 import { organizer, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
-import { copyToClipboard } from '@/lib/copy-to-clipboard';
 import { formatIssuedCapacity } from '@/lib/event-display';
 import type { Pass } from '@/lib/database.types';
 import { issuePass } from '@/lib/issue-pass';
@@ -30,6 +29,7 @@ import {
   type IssuePassFieldErrors,
 } from '@/lib/issue-pass-form';
 import { buildPassLinkUrl } from '@/lib/pass-link';
+import { sendPassSms } from '@/lib/send-pass-sms';
 
 export default function IssuePassScreen() {
   const router = useRouter();
@@ -45,7 +45,9 @@ export default function IssuePassScreen() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createdPass, setCreatedPass] = useState<Pass | null>(null);
-  const [copyMessage, setCopyMessage] = useState<string | null>(null);
+  const [smsMessage, setSmsMessage] = useState<string | null>(null);
+  const [smsError, setSmsError] = useState<string | null>(null);
+  const [isSendingSms, setIsSendingSms] = useState(false);
 
   if (authGate.state === 'loading' || isLoading) {
     return (
@@ -76,6 +78,10 @@ export default function IssuePassScreen() {
 
   const activeEvent = event;
 
+  const goToEventDetail = () => {
+    router.replace(`/events/${eventId}` as Href);
+  };
+
   const passUrl = createdPass ? buildPassLinkUrl(createdPass.secure_token) : null;
   const atCapacity = issuedCount >= activeEvent.capacity;
 
@@ -90,7 +96,8 @@ export default function IssuePassScreen() {
 
     setFieldErrors({});
     setSubmitError(null);
-    setCopyMessage(null);
+    setSmsMessage(null);
+    setSmsError(null);
     setIsSubmitting(true);
 
     const result = await issuePass({
@@ -122,23 +129,11 @@ export default function IssuePassScreen() {
     setGuestPhone('');
     setFieldErrors({});
     setSubmitError(null);
-    setCopyMessage(null);
+    setSmsMessage(null);
+    setSmsError(null);
   }
 
-  async function handleCopyLink() {
-    if (!passUrl) {
-      return;
-    }
-
-    try {
-      await copyToClipboard(passUrl);
-      setCopyMessage('Link copied to clipboard.');
-    } catch {
-      setCopyMessage('Could not copy link.');
-    }
-  }
-
-  async function handleShareLink() {
+  async function handleSharePass() {
     if (!passUrl || !createdPass) {
       return;
     }
@@ -154,12 +149,45 @@ export default function IssuePassScreen() {
     }
   }
 
+  async function handleSendSms() {
+    if (!createdPass || !passUrl || !createdPass.guest_phone) {
+      return;
+    }
+
+    setSmsMessage(null);
+    setSmsError(null);
+    setIsSendingSms(true);
+
+    const result = await sendPassSms({
+      passId: createdPass.id,
+      eventName: activeEvent.name,
+      passUrl,
+      phone: createdPass.guest_phone,
+    });
+
+    setIsSendingSms(false);
+
+    if (!result.ok) {
+      setSmsError(result.error);
+      return;
+    }
+
+    if (result.mode === 'preview') {
+      setSmsMessage('Preview logged — SMS not configured.');
+      return;
+    }
+
+    setSmsMessage('SMS sent.');
+  }
+
+  const canSendSms = Boolean(createdPass?.guest_phone?.trim());
+
   if (createdPass && passUrl) {
     return (
       <ThemedView style={styles.container}>
         <SafeAreaView style={styles.safeArea}>
           <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Pressable onPress={goToEventDetail} style={styles.backButton}>
               <ThemedText style={styles.backText}>Back to Event</ThemedText>
             </Pressable>
 
@@ -167,7 +195,7 @@ export default function IssuePassScreen() {
 
             <ThemedText style={styles.title}>Pass issued</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-              Share this link with your guest.
+              {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
             </ThemedText>
 
             <ThemedView style={styles.summaryCard}>
@@ -182,28 +210,47 @@ export default function IssuePassScreen() {
               <SummaryRow label="Status" value={createdPass.status} />
             </ThemedView>
 
-            <ThemedText type="smallBold" style={styles.linkLabel}>
-              Pass link
+            <ThemedText selectable themeColor="textSecondary" style={styles.passLinkText} numberOfLines={2}>
+              {passUrl}
             </ThemedText>
-            <ThemedView style={styles.linkBox}>
-              <ThemedText selectable style={styles.linkText}>
-                {passUrl}
+
+            {smsMessage ? (
+              <ThemedText themeColor="textSecondary" style={styles.statusHint}>
+                {smsMessage}
               </ThemedText>
-            </ThemedView>
+            ) : null}
+            {smsError ? <ThemedText style={styles.errorText}>{smsError}</ThemedText> : null}
 
-            {copyMessage ? <ThemedText style={styles.copyMessage}>{copyMessage}</ThemedText> : null}
+            {canSendSms ? (
+              <Pressable
+                disabled={isSendingSms}
+                onPress={handleSendSms}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && !isSendingSms && styles.pressed,
+                  isSendingSms && styles.disabled,
+                ]}>
+                {isSendingSms ? (
+                  <ActivityIndicator color={OrganizerAccentTextOn} />
+                ) : (
+                  <ThemedText style={styles.primaryButtonText}>Send SMS</ThemedText>
+                )}
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleSharePass}
+                style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+                <ThemedText style={styles.primaryButtonText}>Share Pass</ThemedText>
+              </Pressable>
+            )}
 
-            <Pressable
-              onPress={handleCopyLink}
-              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
-              <ThemedText style={styles.primaryButtonText}>Copy Link</ThemedText>
-            </Pressable>
-
-            <Pressable
-              onPress={handleShareLink}
-              style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-              <ThemedText style={styles.secondaryButtonText}>Share Link</ThemedText>
-            </Pressable>
+            {canSendSms ? (
+              <Pressable
+                onPress={handleSharePass}
+                style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
+                <ThemedText style={styles.secondaryButtonText}>Share Pass</ThemedText>
+              </Pressable>
+            ) : null}
 
             <Pressable
               disabled={atCapacity}
@@ -237,7 +284,7 @@ export default function IssuePassScreen() {
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}>
-            <Pressable onPress={() => router.back()} style={styles.backButton}>
+            <Pressable onPress={goToEventDetail} style={styles.backButton}>
               <ThemedText style={styles.backText}>Cancel</ThemedText>
             </Pressable>
 
@@ -282,7 +329,9 @@ export default function IssuePassScreen() {
                 onChangeText={setGuestEmail}
               />
               <EventFormField
-                hint="Optional"
+                error={fieldErrors.guestPhone}
+                hint="Optional — enables Send SMS after issue"
+                keyboardType="phone-pad"
                 label="Guest Phone"
                 placeholder="808-555-0100"
                 value={guestPhone}
@@ -389,25 +438,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  linkLabel: {
-    marginTop: Spacing.one,
-  },
-  linkBox: {
-    backgroundColor: Surface.secondary,
-    borderColor: Surface.divider,
-    borderRadius: Radii.input,
-    borderWidth: 1,
-    marginHorizontal: Spacing.four,
-    padding: Spacing.three,
-  },
-  linkText: {
+  passLinkText: {
     fontFamily: 'monospace',
-    fontSize: 13,
-    lineHeight: 20,
+    fontSize: 12,
+    lineHeight: 18,
+    marginHorizontal: Spacing.four,
   },
-  copyMessage: {
-    color: OrganizerAccent,
-    fontSize: 14,
+  statusHint: {
+    fontSize: 13,
+    marginHorizontal: Spacing.four,
   },
   primaryButton: {
     alignItems: 'center',

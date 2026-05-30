@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -59,6 +59,10 @@ export default function CreateEventScreen() {
 
   const organizerId = authGate.organizerId;
 
+  const goToDashboard = () => {
+    router.replace('/' as Href);
+  };
+
   async function handleCreateEvent() {
     const values = { eventName, venueName, eventDate, startTime, maxPasses };
     const errors = validateCreateEventForm(values);
@@ -106,7 +110,7 @@ export default function CreateEventScreen() {
         return;
       }
 
-      router.back();
+      router.replace('/' as Href);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Could not create event.';
       setSubmitError(message);
@@ -127,7 +131,7 @@ export default function CreateEventScreen() {
             <View style={styles.topBar}>
               <Pressable
                 disabled={isSubmitting}
-                onPress={() => router.back()}
+                onPress={goToDashboard}
                 style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
                 <ThemedText style={styles.backText}>Cancel</ThemedText>
               </Pressable>
