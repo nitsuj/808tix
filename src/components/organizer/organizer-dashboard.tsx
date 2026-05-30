@@ -19,6 +19,7 @@ import {
   Radii,
   Spacing,
   Surface,
+  semantic,
 } from '@/constants/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
@@ -447,7 +448,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   errorText: {
-    color: '#FF6B6B',
+    color: semantic.errorSoft,
   },
   linkText: {
     color: OrganizerAccent,

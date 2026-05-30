@@ -2,7 +2,7 @@ import jsQR from 'jsqr';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { OrganizerAccent, Spacing } from '@/constants/theme';
+import { organizer, scannerScreen, spacing } from '@/theme';
 
 type EventScannerCameraProps = {
   eventName: string;
@@ -15,7 +15,8 @@ type EventScannerCameraProps = {
 type ScannerStatus = 'loading' | 'permission' | 'scanning' | 'error';
 
 const SCAN_DEBOUNCE_MS = 1500;
-const TEXT_SECONDARY = '#B0B4BA';
+const TEXT_SECONDARY = scannerScreen.overlay.textSecondary;
+const OVERLAY_TEXT_SHADOW = scannerScreen.frame.webTextShadow;
 
 function applyCameraHostStyles(host: HTMLDivElement) {
   host.style.position = 'absolute';
@@ -45,7 +46,7 @@ function applyVideoElementStyles(video: HTMLVideoElement) {
   video.style.height = '100vh';
   video.style.objectFit = 'cover';
   video.style.opacity = '1';
-  video.style.backgroundColor = '#000000';
+  video.style.backgroundColor = scannerScreen.overlay.background;
   video.style.zIndex = '999';
   video.style.pointerEvents = 'none';
 }
@@ -63,7 +64,6 @@ function removeVideoElement(video: HTMLVideoElement | null) {
 }
 
 const SCANNER_OVERLAY_Z_INDEX = '1000';
-const OVERLAY_TEXT_SHADOW = '0 1px 6px rgba(0, 0, 0, 0.95)';
 
 function mountScannerOverlay(options: {
   eventName: string;
@@ -93,7 +93,7 @@ function mountScannerOverlay(options: {
   topBar.style.display = 'flex';
   topBar.style.alignItems = 'flex-start';
   topBar.style.justifyContent = 'space-between';
-  topBar.style.padding = `${Spacing.five}px ${Spacing.four}px 0`;
+  topBar.style.padding = `${spacing.five}px ${spacing.four}px 0`;
   topBar.style.pointerEvents = 'none';
 
   const cancelButton = document.createElement('button');
@@ -102,11 +102,11 @@ function mountScannerOverlay(options: {
   cancelButton.style.pointerEvents = 'auto';
   cancelButton.style.background = 'transparent';
   cancelButton.style.border = 'none';
-  cancelButton.style.color = OrganizerAccent;
+  cancelButton.style.color = organizer.accent;
   cancelButton.style.cursor = 'pointer';
   cancelButton.style.fontSize = '16px';
   cancelButton.style.fontWeight = '600';
-  cancelButton.style.padding = `${Spacing.one}px 0`;
+  cancelButton.style.padding = `${spacing.one}px 0`;
   cancelButton.style.minWidth = '56px';
   cancelButton.style.textShadow = OVERLAY_TEXT_SHADOW;
 
@@ -121,12 +121,12 @@ function mountScannerOverlay(options: {
   eventHeader.style.display = 'flex';
   eventHeader.style.flexDirection = 'column';
   eventHeader.style.alignItems = 'center';
-  eventHeader.style.gap = `${Spacing.one}px`;
-  eventHeader.style.padding = `0 ${Spacing.two}px`;
+  eventHeader.style.gap = `${spacing.one}px`;
+  eventHeader.style.padding = `0 ${spacing.two}px`;
 
   const scanningLabel = document.createElement('div');
   scanningLabel.textContent = 'Scanning';
-  scanningLabel.style.color = OrganizerAccent;
+  scanningLabel.style.color = organizer.accent;
   scanningLabel.style.fontSize = '11px';
   scanningLabel.style.fontWeight = '800';
   scanningLabel.style.letterSpacing = '1.2px';
@@ -135,7 +135,7 @@ function mountScannerOverlay(options: {
 
   const eventName = document.createElement('div');
   eventName.textContent = options.eventName;
-  eventName.style.color = '#FFFFFF';
+  eventName.style.color = scannerScreen.overlay.text;
   eventName.style.fontSize = '22px';
   eventName.style.fontWeight = '800';
   eventName.style.lineHeight = '28px';
@@ -158,17 +158,17 @@ function mountScannerOverlay(options: {
   frameWrap.style.flexDirection = 'column';
   frameWrap.style.alignItems = 'center';
   frameWrap.style.justifyContent = 'center';
-  frameWrap.style.gap = `${Spacing.three}px`;
+  frameWrap.style.gap = `${spacing.three}px`;
   frameWrap.style.pointerEvents = 'none';
 
   const scanFrame = document.createElement('div');
   scanFrame.style.width = '260px';
   scanFrame.style.height = '260px';
-  scanFrame.style.border = `3px solid ${OrganizerAccent}`;
+  scanFrame.style.border = `3px solid ${organizer.accent}`;
   scanFrame.style.borderRadius = '16px';
   scanFrame.style.boxSizing = 'border-box';
   scanFrame.style.backgroundColor = 'transparent';
-  scanFrame.style.boxShadow = `0 0 0 1px rgba(57, 255, 20, 0.25), inset 0 0 24px rgba(57, 255, 20, 0.08)`;
+  scanFrame.style.boxShadow = scannerScreen.frame.webBoxShadow;
 
   const hint = document.createElement('div');
   hint.textContent = options.hint;
@@ -191,12 +191,12 @@ function mountScannerOverlay(options: {
     const footer = document.createElement('div');
     footer.style.display = 'flex';
     footer.style.justifyContent = 'center';
-    footer.style.padding = `0 ${Spacing.four}px ${Spacing.five}px`;
+    footer.style.padding = `0 ${spacing.four}px ${spacing.five}px`;
     footer.style.pointerEvents = 'none';
 
     const footerText = document.createElement('div');
     footerText.textContent = options.footerLabel;
-    footerText.style.color = OrganizerAccent;
+    footerText.style.color = organizer.accent;
     footerText.style.fontSize = '14px';
     footerText.style.fontWeight = '800';
     footerText.style.letterSpacing = '0.6px';
@@ -214,7 +214,7 @@ function mountScannerOverlay(options: {
     loadingIndicator.style.top = '50%';
     loadingIndicator.style.left = '50%';
     loadingIndicator.style.transform = 'translate(-50%, -50%)';
-    loadingIndicator.style.color = OrganizerAccent;
+    loadingIndicator.style.color = organizer.accent;
     loadingIndicator.style.fontSize = '14px';
     loadingIndicator.style.fontWeight = '700';
     loadingIndicator.style.textShadow = OVERLAY_TEXT_SHADOW;
@@ -549,15 +549,15 @@ const styles = StyleSheet.create({
     width: 1,
   },
   permissionContainer: {
-    backgroundColor: '#000000',
+    backgroundColor: scannerScreen.overlay.background,
     bottom: 0,
     flex: 1,
-    gap: Spacing.three,
+    gap: spacing.three,
     height: '100%',
     justifyContent: 'center',
     left: 0,
     minHeight: '100dvh',
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: spacing.five,
     position: 'fixed',
     right: 0,
     top: 0,
@@ -565,7 +565,7 @@ const styles = StyleSheet.create({
     zIndex: 1001,
   },
   permissionTitle: {
-    color: '#FFFFFF',
+    color: scannerScreen.overlay.text,
     fontSize: 24,
     fontWeight: '700',
   },
@@ -576,22 +576,22 @@ const styles = StyleSheet.create({
   },
   permissionButton: {
     alignItems: 'center',
-    backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    marginTop: Spacing.two,
-    paddingVertical: Spacing.three,
+    backgroundColor: organizer.accent,
+    borderRadius: spacing.two,
+    marginTop: spacing.two,
+    paddingVertical: spacing.three,
   },
   permissionButtonText: {
-    color: '#000000',
+    color: scannerScreen.overlay.textOnAccent,
     fontSize: 16,
     fontWeight: '700',
   },
   cancelLink: {
     alignItems: 'center',
-    paddingVertical: Spacing.two,
+    paddingVertical: spacing.two,
   },
   cancelLinkText: {
-    color: OrganizerAccent,
+    color: organizer.accent,
     fontSize: 16,
     fontWeight: '600',
   },

@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
+import { organizer, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
@@ -300,7 +301,7 @@ export default function IssuePassScreen() {
                 (isSubmitting || atCapacity) && styles.disabled,
               ]}>
               {isSubmitting ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={organizer.textOn} />
               ) : (
                 <ThemedText style={styles.primaryButtonText}>Issue Pass</ThemedText>
               )}
@@ -440,6 +441,6 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: semantic.errorSoft,
   },
 });

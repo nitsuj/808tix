@@ -17,6 +17,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
+import { organizer, semantic } from '@/theme';
 import {
   normalizeTimeInput,
   parseMaxPassesInput,
@@ -190,7 +191,7 @@ export default function CreateEventScreen() {
                 isSubmitting && styles.disabled,
               ]}>
               {isSubmitting ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={organizer.textOn} />
               ) : (
                 <ThemedText style={styles.primaryButtonText}>Create Event</ThemedText>
               )}
@@ -254,7 +255,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   errorText: {
-    color: '#FF3B3B',
+    color: semantic.error,
   },
   primaryButton: {
     alignItems: 'center',

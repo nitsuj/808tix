@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { Radii, Spacing, Surface } from '@/constants/theme';
+import { formField, radius, spacing, surface } from '@/theme';
 
 export type EventFormFieldProps = {
   label: string;
@@ -34,7 +34,7 @@ export function EventFormField({
         editable
         keyboardType={keyboardType}
         placeholder={placeholder}
-        placeholderTextColor="#666666"
+        placeholderTextColor={formField.placeholderColor}
         style={[eventFormStyles.input, error ? eventFormStyles.inputError : null]}
         value={value}
         onChangeText={onChangeText}
@@ -46,33 +46,33 @@ export function EventFormField({
 
 export const eventFormStyles = StyleSheet.create({
   form: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
-    borderRadius: Radii.card,
+    backgroundColor: surface.card,
+    borderColor: surface.divider,
+    borderRadius: radius.card,
     borderWidth: 1,
-    gap: Spacing.three,
-    padding: Spacing.four,
+    gap: spacing.three,
+    padding: spacing.four,
   },
   input: {
-    backgroundColor: Surface.input,
-    borderColor: Surface.divider,
-    borderRadius: Radii.input,
+    backgroundColor: formField.inputBackground,
+    borderColor: formField.inputBorder,
+    borderRadius: radius.input,
     borderWidth: 1,
-    color: '#FFFFFF',
+    color: formField.labelColor,
     fontSize: 16,
     fontWeight: '500',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.three,
   },
   inputError: {
-    borderColor: '#FF3B3B',
+    borderColor: formField.errorColor,
   },
   errorText: {
-    color: '#FF3B3B',
+    color: formField.errorColor,
     fontSize: 13,
   },
   field: {
-    gap: Spacing.one,
+    gap: spacing.one,
   },
   label: {
     fontSize: 13,

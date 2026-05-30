@@ -17,13 +17,17 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ThemedText } from '@/components/themed-text';
 import {
-  FanAccent,
-  FanAccentBright,
-  Fonts,
-  MaxContentWidth,
-  Spacing,
-  Surface,
-} from '@/constants/theme';
+  artwork,
+  fan,
+  fontFamily,
+  layout,
+  passScreen,
+  shadows,
+  spacing,
+  surface,
+  text,
+  typeScale,
+} from '@/theme';
 import { getPassStatusBanner } from '@/lib/pass-display';
 import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
@@ -38,13 +42,14 @@ const PASS_FALLBACK_ARTWORK = [
   'https://images.unsplash.com/photo-1429962710451-bb934ee8452c?auto=format&fit=crop&w=1400&q=80',
 ] as const;
 
-const WALLET_CARD_RADIUS = 24;
-const ART_BLUR = 28;
 const FAN_SANS = Platform.select({
-  ios: Fonts?.sans ?? 'System',
+  ios: fontFamily?.sans ?? 'System',
   android: 'sans-serif',
-  default: Fonts?.sans ?? 'System',
+  default: fontFamily?.sans ?? 'System',
 });
+
+const webBlurStyle =
+  Platform.OS === 'web' ? ({ filter: `blur(${artwork.blurRadius}px)` } as ViewStyle) : null;
 
 function hashName(name: string): number {
   let hash = 0;
@@ -108,8 +113,6 @@ function formatPassTimeLine(startTime: string | null): string | null {
     minute: '2-digit',
   });
 }
-
-const webBlurStyle = Platform.OS === 'web' ? ({ filter: `blur(${ART_BLUR}px)` } as ViewStyle) : null;
 
 export default function GuestPassScreen() {
   const { token } = useLocalSearchParams<{ token: string }>();
@@ -177,7 +180,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
     return (
       <View style={styles.container}>
         <SafeAreaView style={styles.centeredSafeArea}>
-          <ActivityIndicator size="large" color={FanAccent} />
+          <ActivityIndicator size="large" color={fan.primary} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
             Loading your pass…
           </ThemedText>
@@ -207,7 +210,7 @@ function PassArtEnvironment({ artworkUri }: { artworkUri: string }) {
     <View pointerEvents="none" style={styles.environment}>
       <View style={styles.artLayer}>
         <Image
-          blurRadius={Platform.OS === 'web' ? 0 : ART_BLUR}
+          blurRadius={Platform.OS === 'web' ? 0 : artwork.blurRadius}
           contentFit="cover"
           source={{ uri: artworkUri }}
           style={[styles.artImage, webBlurStyle]}
@@ -302,7 +305,7 @@ function ComingSoonAction({ label }: { label: string }) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
   },
   environment: {
@@ -311,7 +314,7 @@ const styles = StyleSheet.create({
   },
   artLayer: {
     ...StyleSheet.absoluteFillObject,
-    transform: [{ scale: 1.12 }],
+    transform: [{ scale: artwork.scale }],
   },
   artImage: {
     height: '100%',
@@ -319,45 +322,45 @@ const styles = StyleSheet.create({
   },
   envDarkOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.52)',
+    backgroundColor: artwork.darkOverlay,
   },
   envPurpleWash: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(42, 16, 64, 0.18)',
+    backgroundColor: fan.purpleWash,
   },
   envVignetteTop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.38)',
+    backgroundColor: artwork.vignetteMedium,
     bottom: '55%',
   },
   envVignetteBottom: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.45)',
+    backgroundColor: artwork.vignetteStrong,
     top: '55%',
   },
   envVignetteLeft: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.32)',
+    backgroundColor: artwork.vignetteEdge,
     right: '72%',
   },
   envVignetteRight: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.32)',
+    backgroundColor: artwork.vignetteEdge,
     left: '72%',
   },
   envGradientFadeHigh: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.28)',
+    backgroundColor: artwork.gradientHigh,
     top: '68%',
   },
   envGradientFadeMid: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.22)',
+    backgroundColor: artwork.gradientMid,
     top: '78%',
   },
   envGradientFadeLow: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(8, 8, 8, 0.18)',
+    backgroundColor: artwork.gradientLow,
     top: '88%',
   },
   safeArea: {
@@ -366,118 +369,107 @@ const styles = StyleSheet.create({
   centeredSafeArea: {
     alignItems: 'center',
     flex: 1,
-    gap: Spacing.two,
+    gap: spacing.two,
     justifyContent: 'center',
   },
   scrollContent: {
     alignSelf: 'center',
     flexGrow: 1,
-    maxWidth: MaxContentWidth,
-    paddingBottom: Spacing.six,
+    maxWidth: layout.maxContentWidth,
+    paddingBottom: spacing.six,
     width: '100%',
   },
   walletCard: {
-    backgroundColor: 'rgba(14, 14, 14, 0.88)',
-    borderColor: 'rgba(255, 255, 255, 0.09)',
-    borderRadius: WALLET_CARD_RADIUS,
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
     borderWidth: 1,
-    gap: Spacing.three,
-    marginHorizontal: Spacing.three,
-    paddingBottom: Spacing.four,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four + 4,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: Platform.select({ web: 0.55, default: 0.45 }) ?? 0.45,
-    shadowRadius: 40,
+    gap: spacing.three,
+    marginHorizontal: passScreen.credential.marginHorizontal,
+    paddingBottom: passScreen.credential.paddingBottom,
+    paddingHorizontal: passScreen.credential.paddingHorizontal,
+    paddingTop: passScreen.credential.paddingTop,
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
   },
   eventTitle: {
-    color: '#FFFFFF',
+    color: text.primary,
     fontFamily: FAN_SANS,
-    fontSize: 38,
-    fontWeight: '700',
-    letterSpacing: -0.8,
-    lineHeight: 44,
+    ...typeScale.passTitle,
   },
   metaStack: {
     gap: 5,
   },
   metaVenue: {
-    color: '#EDEDED',
+    color: text.venue,
     fontFamily: FAN_SANS,
-    fontSize: 19,
-    fontWeight: '500',
-    letterSpacing: -0.2,
-    lineHeight: 26,
+    ...typeScale.passVenue,
   },
   metaDate: {
-    color: '#A8ADB5',
+    color: text.tertiary,
     fontFamily: FAN_SANS,
-    fontSize: 16,
-    fontWeight: '400',
-    lineHeight: 22,
+    ...typeScale.passMeta,
   },
   metaTime: {
-    color: FanAccent,
+    color: fan.primary,
     fontFamily: FAN_SANS,
-    fontSize: 16,
+    fontSize: typeScale.passMeta.fontSize,
     fontWeight: '500',
-    lineHeight: 22,
+    lineHeight: typeScale.passMeta.lineHeight,
   },
   walletDivider: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: passScreen.credential.divider,
     height: 1,
-    marginVertical: Spacing.one,
+    marginVertical: spacing.one,
     width: '100%',
   },
   holderBlock: {
     gap: 4,
   },
   holderLabel: {
-    color: '#7E848C',
+    color: text.muted,
     fontFamily: FAN_SANS,
     fontSize: 12,
     fontWeight: '500',
   },
   holderName: {
-    color: '#FFFFFF',
+    color: text.primary,
     fontFamily: FAN_SANS,
-    fontSize: 26,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    lineHeight: 32,
+    ...typeScale.passHolderName,
   },
   qrSlot: {
     alignItems: 'center',
-    marginTop: Spacing.one,
+    marginTop: spacing.one,
     width: '100%',
   },
   passTypeBadge: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(162, 91, 255, 0.14)',
-    borderRadius: 999,
-    marginTop: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one + 2,
+    backgroundColor: passScreen.passTypeBadge.backgroundColor,
+    borderRadius: passScreen.passTypeBadge.borderRadius,
+    marginTop: spacing.one,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.one + 2,
   },
   passTypeBadgeText: {
-    color: '#E2CCFF',
+    color: passScreen.passTypeBadge.textColor,
     fontFamily: FAN_SANS,
     fontSize: 13,
     fontWeight: '600',
   },
   statusBanner: {
-    backgroundColor: 'rgba(20, 20, 20, 0.82)',
-    borderColor: FanAccentBright,
+    backgroundColor: passScreen.statusBanner.backgroundColor,
+    borderColor: fan.bright,
     borderLeftWidth: 3,
-    borderRadius: 12,
-    marginHorizontal: Spacing.three,
-    marginTop: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + 2,
+    borderRadius: passScreen.statusBanner.borderRadius,
+    marginHorizontal: passScreen.statusBanner.marginHorizontal,
+    marginTop: spacing.three,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.two + 2,
   },
   statusBannerText: {
-    color: '#FFFFFF',
+    color: text.primary,
     fontSize: 14,
     fontWeight: '500',
     lineHeight: 20,
@@ -485,41 +477,38 @@ const styles = StyleSheet.create({
   footerActions: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: spacing.two,
     justifyContent: 'center',
-    marginTop: Spacing.four,
-    paddingHorizontal: Spacing.four,
+    marginTop: spacing.four,
+    paddingHorizontal: spacing.four,
   },
   footerAction: {
-    opacity: 0.55,
-    paddingVertical: Spacing.one,
+    opacity: passScreen.footerActionOpacity,
+    paddingVertical: spacing.one,
   },
   footerActionLabel: {
-    color: '#E2E4E8',
+    color: text.footer,
     fontFamily: FAN_SANS,
     fontSize: 14,
     fontWeight: '500',
   },
   footerDot: {
-    color: 'rgba(255, 255, 255, 0.25)',
+    color: text.dotSeparator,
     fontSize: 14,
   },
   loadingText: {
-    marginTop: Spacing.two,
+    marginTop: spacing.two,
   },
   errorSafeArea: {
     flex: 1,
-    gap: Spacing.two,
+    gap: spacing.two,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: spacing.four,
   },
   errorTitle: {
-    color: '#FFFFFF',
+    color: text.primary,
     fontFamily: FAN_SANS,
-    fontSize: 32,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    lineHeight: 38,
+    ...typeScale.screenTitle,
   },
   errorBody: {
     fontSize: 16,

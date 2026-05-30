@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
-import { FanAccent, Spacing } from '@/constants/theme';
+import { qrCode, spacing } from '@/theme';
 
 type PassQrCodeProps = {
   secureToken: string;
@@ -16,7 +16,7 @@ export function PassQrCode({ secureToken, dimmed = false }: PassQrCodeProps) {
   const { width } = useWindowDimensions();
 
   const qrSize = useMemo(() => {
-    const available = width - Spacing.four * 2 - Spacing.four * 2;
+    const available = width - spacing.four * 2 - spacing.four * 2;
     return Math.max(QR_MIN_SIZE, Math.min(QR_MAX_SIZE, Math.floor(available)));
   }, [width]);
 
@@ -24,8 +24,8 @@ export function PassQrCode({ secureToken, dimmed = false }: PassQrCodeProps) {
     <View style={[styles.frame, dimmed && styles.frameDimmed]}>
       <View style={styles.qrPad}>
         <QRCode
-          backgroundColor="#FFFFFF"
-          color="#000000"
+          backgroundColor={qrCode.background}
+          color={qrCode.foreground}
           ecl="M"
           size={qrSize}
           value={secureToken}
@@ -39,21 +39,21 @@ const styles = StyleSheet.create({
   frame: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: FanAccent,
-    borderRadius: Spacing.three,
-    borderWidth: 2,
-    padding: Spacing.three,
-    shadowColor: FanAccent,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
+    backgroundColor: qrCode.background,
+    borderColor: qrCode.borderColor,
+    borderRadius: spacing.three,
+    borderWidth: qrCode.borderWidth,
+    padding: spacing.three,
+    shadowColor: qrCode.shadowColor,
+    shadowOffset: qrCode.shadowOffset,
+    shadowOpacity: qrCode.shadowOpacity,
+    shadowRadius: qrCode.shadowRadius,
   },
   frameDimmed: {
-    opacity: 0.45,
+    opacity: qrCode.dimmedOpacity,
   },
   qrPad: {
-    backgroundColor: '#FFFFFF',
-    padding: Spacing.two,
+    backgroundColor: qrCode.background,
+    padding: spacing.two,
   },
 });

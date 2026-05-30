@@ -15,6 +15,7 @@ import { EventFormField, eventFormStyles } from '@/components/organizer/event-fo
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
+import { organizer, semantic } from '@/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatTimeForInput } from '@/lib/event-display';
@@ -218,7 +219,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                 isSubmitting && styles.disabled,
               ]}>
               {isSubmitting ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={organizer.textOn} />
               ) : (
                 <ThemedText style={styles.primaryButtonText}>Save Changes</ThemedText>
               )}
@@ -290,6 +291,6 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: semantic.errorSoft,
   },
 });

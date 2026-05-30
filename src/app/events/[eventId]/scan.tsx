@@ -6,6 +6,7 @@ import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerAccent } from '@/constants/theme';
+import { scannerScreen, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { parseScannedSecureToken } from '@/lib/scan-payload';
@@ -131,13 +132,13 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: scannerScreen.overlay.background,
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: 24,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: semantic.errorSoft,
     fontSize: 16,
     textAlign: 'center',
   },

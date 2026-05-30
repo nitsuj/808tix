@@ -2,7 +2,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useCallback, useRef } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { OrganizerAccent, Spacing } from '@/constants/theme';
+import { organizer, scannerScreen, spacing } from '@/theme';
 
 type EventScannerCameraProps = {
   eventName: string;
@@ -42,7 +42,7 @@ export function EventScannerCamera({
   if (!permission) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={organizer.accent} />
       </View>
     );
   }
@@ -93,7 +93,7 @@ export function EventScannerCamera({
         <View style={styles.bottomBar}>
           {isProcessing ? (
             <View style={styles.processingRow}>
-              <ActivityIndicator color={OrganizerAccent} />
+              <ActivityIndicator color={organizer.accent} />
               <Text style={styles.hint}>Validating…</Text>
             </View>
           ) : (
@@ -107,7 +107,7 @@ export function EventScannerCamera({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#000000',
+    backgroundColor: scannerScreen.overlay.background,
     flex: 1,
   },
   camera: {
@@ -121,20 +121,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
+    paddingHorizontal: spacing.four,
+    paddingTop: spacing.five,
   },
   topSpacer: {
     width: 56,
   },
   cancelText: {
-    color: OrganizerAccent,
+    color: organizer.accent,
     fontSize: 16,
     fontWeight: '600',
     width: 56,
   },
   eventName: {
-    color: '#FFFFFF',
+    color: scannerScreen.overlay.text,
     flex: 1,
     fontSize: 16,
     fontWeight: '700',
@@ -145,19 +145,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   scanFrame: {
-    borderColor: OrganizerAccent,
-    borderRadius: Spacing.two,
+    borderColor: organizer.accent,
+    borderRadius: spacing.two,
     borderWidth: 3,
     height: 260,
     width: 260,
   },
   bottomBar: {
     alignItems: 'center',
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
+    paddingBottom: spacing.six,
+    paddingHorizontal: spacing.four,
   },
   hint: {
-    color: '#FFFFFF',
+    color: scannerScreen.overlay.text,
     fontSize: 16,
     fontWeight: '600',
     textAlign: 'center',
@@ -165,49 +165,49 @@ const styles = StyleSheet.create({
   processingRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: spacing.two,
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: '#000000',
+    backgroundColor: scannerScreen.overlay.background,
     flex: 1,
     justifyContent: 'center',
   },
   permissionContainer: {
-    backgroundColor: '#000000',
+    backgroundColor: scannerScreen.overlay.background,
     flex: 1,
-    gap: Spacing.three,
+    gap: spacing.three,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: spacing.five,
   },
   permissionTitle: {
-    color: '#FFFFFF',
+    color: scannerScreen.overlay.text,
     fontSize: 24,
     fontWeight: '700',
   },
   permissionBody: {
-    color: '#B0B4BA',
+    color: scannerScreen.overlay.textSecondary,
     fontSize: 16,
     lineHeight: 22,
   },
   permissionButton: {
     alignItems: 'center',
-    backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    marginTop: Spacing.two,
-    paddingVertical: Spacing.three,
+    backgroundColor: organizer.accent,
+    borderRadius: spacing.two,
+    marginTop: spacing.two,
+    paddingVertical: spacing.three,
   },
   permissionButtonText: {
-    color: '#000000',
+    color: scannerScreen.overlay.textOnAccent,
     fontSize: 16,
     fontWeight: '700',
   },
   cancelLink: {
     alignItems: 'center',
-    paddingVertical: Spacing.two,
+    paddingVertical: spacing.two,
   },
   cancelLinkText: {
-    color: OrganizerAccent,
+    color: organizer.accent,
     fontSize: 16,
     fontWeight: '600',
   },

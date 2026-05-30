@@ -6,7 +6,7 @@ import {
   getScannerResultTitle,
   ScannerResultColors,
 } from '@/constants/scanner-results';
-import { OrganizerAccent, Radii, Spacing } from '@/constants/theme';
+import { organizer, palette, radius, scanner, spacing, text } from '@/theme';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 
 type ScanResultViewProps = {
@@ -73,32 +73,32 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.four,
+    paddingHorizontal: spacing.four,
+    paddingVertical: spacing.four,
   },
   content: {
     alignItems: 'center',
     flex: 1,
-    gap: Spacing.three,
+    gap: spacing.three,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.two,
+    paddingHorizontal: spacing.two,
   },
   iconCircle: {
     alignItems: 'center',
-    borderRadius: 999,
+    borderRadius: radius.badge,
     height: 120,
     justifyContent: 'center',
-    marginBottom: Spacing.two,
+    marginBottom: spacing.two,
     width: 120,
   },
   iconCircleValid: {
-    backgroundColor: '#000000',
-    borderColor: OrganizerAccent,
+    backgroundColor: palette.pureBlack,
+    borderColor: organizer.accent,
     borderWidth: 4,
   },
   iconCircleInvalid: {
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    borderColor: '#FFFFFF',
+    backgroundColor: scanner.iconInvalidBackground,
+    borderColor: scanner.iconInvalidBorder,
     borderWidth: 3,
   },
   iconGlyph: {
@@ -107,10 +107,10 @@ const styles = StyleSheet.create({
     lineHeight: 60,
   },
   iconGlyphOnValid: {
-    color: OrganizerAccent,
+    color: organizer.accent,
   },
   iconGlyphOnDark: {
-    color: '#FFFFFF',
+    color: text.primary,
   },
   title: {
     fontSize: 40,
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   guestName: {
     fontSize: 28,
     fontWeight: '700',
-    marginTop: Spacing.two,
+    marginTop: spacing.two,
     textAlign: 'center',
   },
   passType: {
@@ -138,28 +138,28 @@ const styles = StyleSheet.create({
   },
   scanAnotherButton: {
     alignItems: 'center',
-    borderRadius: Radii.button,
+    borderRadius: radius.button,
     borderWidth: 2,
-    marginBottom: Spacing.two,
-    paddingVertical: Spacing.three,
+    marginBottom: spacing.two,
+    paddingVertical: spacing.three,
   },
   scanAnotherOnValid: {
-    backgroundColor: '#000000',
-    borderColor: '#000000',
+    backgroundColor: scanner.buttonOnValidBackground,
+    borderColor: scanner.buttonOnValidBorder,
   },
   scanAnotherOnDark: {
     backgroundColor: 'transparent',
-    borderColor: '#FFFFFF',
+    borderColor: scanner.buttonOnDarkBorder,
   },
   scanAnotherText: {
     fontSize: 18,
     fontWeight: '700',
   },
   scanAnotherTextOnValid: {
-    color: '#FFFFFF',
+    color: text.primary,
   },
   scanAnotherTextOnDark: {
-    color: '#FFFFFF',
+    color: text.primary,
   },
   pressed: {
     opacity: 0.85,

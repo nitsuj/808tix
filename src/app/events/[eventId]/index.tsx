@@ -7,6 +7,7 @@ import { MissingProfileScreen } from '@/components/organizer/missing-profile-scr
 import { ThemedText } from '@/components/themed-text';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
+import { organizerScreen, semantic, text } from '@/theme';
 import {
   MaxContentWidth,
   OrganizerAccent,
@@ -229,7 +230,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   liveBadge: {
-    backgroundColor: 'rgba(57, 255, 20, 0.15)',
+    backgroundColor: organizerScreen.liveBadge.backgroundColor,
     borderColor: OrganizerAccent,
     borderRadius: Radii.input,
     borderWidth: 1,
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     color: OrganizerAccentTextOn,
   },
   actionRowTextDisabled: {
-    color: '#888888',
+    color: text.disabled,
   },
   actionChevron: {
     color: OrganizerAccent,
@@ -335,7 +336,7 @@ const styles = StyleSheet.create({
     opacity: 0.88,
   },
   errorText: {
-    color: '#FF6B6B',
+    color: semantic.errorSoft,
     padding: Spacing.four,
   },
 });

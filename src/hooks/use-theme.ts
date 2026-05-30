@@ -2,8 +2,8 @@
  * 808Tix is dark-mode only for MVP.
  */
 
-import { Colors } from '@/constants/theme';
+import { themeColors } from '@/theme';
 
 export function useTheme() {
-  return Colors.dark;
+  return themeColors.dark;
 }

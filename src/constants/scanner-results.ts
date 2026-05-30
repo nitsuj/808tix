@@ -1,11 +1,13 @@
 import type { CheckInResult } from '@/lib/database.types';
+import { scanner } from '@/theme/colors';
 
+/** Scanner result screen colors — sourced from theme; do not hardcode here. */
 export const ScannerResultColors = {
-  valid: { background: '#39FF14', text: '#000000' },
-  already_used: { background: '#FFB020', text: '#000000' },
-  invalid: { background: '#FF3B3B', text: '#FFFFFF' },
-  wrong_event: { background: '#FF3B3B', text: '#FFFFFF' },
-  voided: { background: '#2E3135', text: '#B0B4BA' },
+  valid: scanner.valid,
+  already_used: scanner.alreadyUsed,
+  invalid: scanner.invalid,
+  wrong_event: scanner.wrongEvent,
+  voided: scanner.voided,
 } as const;
 
 export function getScannerResultTitle(result: CheckInResult): string {
