@@ -16,6 +16,10 @@
       "destination": "/events/[eventId]/edit.html"
     },
     {
+      "source": "/events/:eventId/passes",
+      "destination": "/events/[eventId]/passes.html"
+    },
+    {
       "source": "/events/:eventId",
       "destination": "/events/[eventId].html"
     },

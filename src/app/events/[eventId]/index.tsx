@@ -173,8 +173,20 @@ function EventDetailContent({
           <View style={styles.body}>
             <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
             <StatRow>
-              <StatBlock label="Issued" value={String(issuedCount)} />
-              <StatBlock label="Checked In" value={String(checkedInCount)} />
+              <StatBlock
+                label="Issued"
+                value={String(issuedCount)}
+                onPress={() =>
+                  router.push(`/events/${event.id}/passes?filter=issued` as Href)
+                }
+              />
+              <StatBlock
+                label="Checked In"
+                value={String(checkedInCount)}
+                onPress={() =>
+                  router.push(`/events/${event.id}/passes?filter=checked_in` as Href)
+                }
+              />
               <StatBlock label="Remaining" value={String(remainingCount)} />
               <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
             </StatRow>

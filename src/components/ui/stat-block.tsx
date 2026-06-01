@@ -1,4 +1,4 @@
-import { StyleSheet, View, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -9,16 +9,48 @@ type StatBlockProps = {
   value: string;
   accent?: boolean;
   compact?: boolean;
+  onPress?: () => void;
   style?: ViewStyle;
 };
 
-export function StatBlock({ label, value, accent = true, compact = false, style }: StatBlockProps) {
-  return (
-    <View style={[styles.block, compact && styles.blockCompact, style]}>
+export function StatBlock({
+  label,
+  value,
+  accent = true,
+  compact = false,
+  onPress,
+  style,
+}: StatBlockProps) {
+  const content = (
+    <>
       <ThemedText style={[styles.value, accent && styles.valueAccent]}>{value}</ThemedText>
       <ThemedText themeColor="textSecondary" style={styles.label}>
         {label}
       </ThemedText>
+      {onPress ? <ThemedText style={styles.tapHint}>View list ›</ThemedText> : null}
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.block,
+          styles.blockPressable,
+          compact && styles.blockCompact,
+          pressed && styles.pressed,
+          style,
+        ]}>
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={[styles.block, compact && styles.blockCompact, style]}>
+      {content}
     </View>
   );
 }
@@ -67,5 +99,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
+  },
+  blockPressable: {
+    borderColor: OrganizerAccent,
+  },
+  tapHint: {
+    color: OrganizerAccent,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginTop: Spacing.half,
+    textTransform: 'uppercase',
+  },
+  pressed: {
+    opacity: 0.88,
   },
 });
