@@ -19,7 +19,7 @@ GET {SUPABASE_URL}/functions/v1/wallet-apple?token={secure_token}&apikey={anon_k
 Supabase Edge Function `wallet-apple`
   • get_pass_by_token (anon RPC)
   • Load APPLE_* secrets
-  • Build pass.json + placeholder icons
+  • Build eventTicket pass.json + embedded icon/logo/strip
   • Sign with Pass Type ID cert + WWDR (passkit-generator)
         │
         ▼
@@ -38,6 +38,66 @@ Existing scanner → parseScannedSecureToken → validate_pass (unchanged)
 | `src/components/pass/add-to-apple-wallet.tsx` | Single button on guest pass |
 | `supabase/functions/wallet-apple/` | Sign and return `.pkpass` |
 | `supabase/config.toml` | `verify_jwt = false` for direct Safari GET |
+
+---
+
+## Pass style (Wallet Visual v1)
+
+| Item | Value |
+|------|--------|
+| **Pass type** | `eventTicket` (Apple Wallet event ticket layout) |
+| **Not used** | `generic`, `coupon`, `storeCard` |
+
+### Visual fields (front)
+
+| PassKit area | Content |
+|--------------|---------|
+| **Header** (right) | Compact date/time (`WHEN`) |
+| **Primary** (on strip) | Event name |
+| **Secondary** | Venue |
+| **Auxiliary** | Guest name, pass type |
+| **Strip image** | Purple → pink gradient banner behind primary |
+| **Logo** | 808Tix gradient wordmark image + `logoText` |
+| **Icon** | App icon slot (808-style mark) |
+
+### Back of pass
+
+Event, venue, full date/time, guest, pass type, optional description snippet, 808Tix entry copy.
+
+### Colors
+
+| Key | Value | Notes |
+|-----|--------|--------|
+| `backgroundColor` | `rgb(8, 6, 18)` | Dark event-ticket base |
+| `foregroundColor` | `rgb(255, 255, 255)` | Primary text |
+| `labelColor` | `rgb(226, 204, 255)` | Field labels (fan badge tone) |
+
+### QR / barcode (unchanged)
+
+| Property | Value |
+|----------|--------|
+| Format | `PKBarcodeFormatQR` |
+| `message` | Raw `secure_token` (64-char hex) — **no URL, no prefix** |
+| Scanner | `parseScannedSecureToken` → `validate_pass` (unchanged) |
+
+Apple Wallet controls QR size on screen; `eventTicket` layout uses the full-width barcode region. Prominence comes from field layout + strip, not a custom QR dimension.
+
+### Assets (embedded)
+
+Generated into `wallet-assets.ts` via `python3 scripts/generate-wallet-assets.py`:
+
+- `icon.png` / `@2x` / `@3x`
+- `logo.png` / `@2x` / `@3x`
+- `strip.png` / `@2x` / `@3x`
+
+**Deferred:** per-event `image_url` artwork (fetch/resize on Edge adds failure modes for v1).
+
+### Remaining visual polish (later)
+
+- Real 808Tix vector logo and strip art
+- Per-event hero/strip from `image_url` when stable
+- Localized field labels
+- Status-aware Wallet copy (checked in / voided)
 
 ---
 
@@ -124,7 +184,7 @@ npm run check:preflight
 ## Limitations (PoC)
 
 - iOS / iPhone Safari only (button hidden elsewhere).
-- Placeholder PassKit icons (purple squares, embedded in the Edge Function); no event artwork in Wallet yet.
+- Wallet Visual v1 uses generated gradient icon/logo/strip (not final brand assets); no per-event artwork yet.
 - No pass updates after check-in; Wallet may show stale status.
 - Anyone with `secure_token` can request a `.pkpass` (same capability as guest pass URL).
 - `apikey` (anon) required on function URL for Supabase gateway.
@@ -134,7 +194,8 @@ npm run check:preflight
 
 ## Known gaps before production
 
-- Branded PassKit asset pack (icon/logo/strip).
+- Final vector PassKit asset pack (replace generated gradients).
+- Per-event strip/background from `image_url`.
 - Rate limiting and abuse monitoring on `wallet-apple`.
 - Hide or disable Wallet button for `voided` / `checked_in` with clear UX.
 - Cert expiry monitoring and rotation runbook.
