@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
 import type { ReactNode } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
@@ -41,6 +41,7 @@ export function StatBlock({
           styles.blockPressable,
           compact && styles.blockCompact,
           pressed && styles.pressed,
+          Platform.OS === 'web' ? styles.blockWeb : null,
           style,
         ]}>
         {content}
@@ -102,6 +103,9 @@ const styles = StyleSheet.create({
   },
   blockPressable: {
     borderColor: OrganizerAccent,
+  },
+  blockWeb: {
+    cursor: 'pointer',
   },
   tapHint: {
     color: OrganizerAccent,

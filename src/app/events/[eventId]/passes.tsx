@@ -36,11 +36,19 @@ import type { Pass } from '@/lib/database.types';
 
 export default function EventPassesScreen() {
   const router = useRouter();
-  const { eventId, filter: filterParam } = useLocalSearchParams<{
-    eventId: string;
-    filter?: string;
+  const params = useLocalSearchParams<{
+    eventId: string | string[];
+    filter?: string | string[];
   }>();
+
+  const eventId = Array.isArray(params.eventId) ? params.eventId[0] : params.eventId;
+  const filterParam = Array.isArray(params.filter) ? params.filter[0] : params.filter;
   const filter = parseEventPassFilter(filterParam);
+
+  // TEMP DEBUG — remove after verifying navigation on Vercel/web
+  if (typeof console !== 'undefined') {
+    console.log('[pass-list screen] eventId:', eventId, 'filter:', filter, 'raw:', params);
+  }
   const authGate = useOrganizerAuthGate();
   const { event, isLoading: isEventLoading, error: eventError } = useEventDetail(eventId);
 

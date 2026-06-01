@@ -28,6 +28,7 @@ import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
+import { navigateToEventPassList } from '@/lib/event-pass-navigation';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import type { Event } from '@/lib/database.types';
 
@@ -176,16 +177,12 @@ function EventDetailContent({
               <StatBlock
                 label="Issued"
                 value={String(issuedCount)}
-                onPress={() =>
-                  router.push(`/events/${event.id}/passes?filter=issued` as Href)
-                }
+                onPress={() => navigateToEventPassList(router, event.id, 'issued')}
               />
               <StatBlock
                 label="Checked In"
                 value={String(checkedInCount)}
-                onPress={() =>
-                  router.push(`/events/${event.id}/passes?filter=checked_in` as Href)
-                }
+                onPress={() => navigateToEventPassList(router, event.id, 'checked_in')}
               />
               <StatBlock label="Remaining" value={String(remainingCount)} />
               <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
