@@ -2,10 +2,11 @@ import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
+  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,19 +14,50 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
-import { EventArtwork } from '@/components/ui/event-artwork';
-import { StatBlock, StatRow } from '@/components/ui/stat-block';
-import { chrome, fan, organizerScreen, semantic, surface, text } from '@/theme';
-import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
+import {
+  chrome,
+  fan,
+  organizer,
+  organizerScreen,
+  palette,
+  passScreen,
+  semantic,
+  shadows,
+  text,
+} from '@/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
-import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
+import {
+  resolveOrganizerArtworkUrl,
+  resolvePassArtworkUri,
+} from '@/lib/event-artwork-display';
 import type { Event } from '@/lib/database.types';
 
 const DASHBOARD_ROUTE = '/' as Href;
+const MOBILE_VIEWPORT_WIDTH = 390;
+
+const LAYOUT = {
+  horizontalPadding: 24,
+  contentTopInset: 12,
+  panelTopInset: 72,
+  panelBottomInset: 32,
+  metaToStats: 28,
+  statsToProgress: 16,
+  progressToActions: 24,
+  actionsGap: 10,
+  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
+  title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
+  subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
+  statValue: { fontSize: 20, lineHeight: 24 },
+  statLabel: { fontSize: 10, lineHeight: 12, letterSpacing: 0.7 },
+} as const;
+
+const webViewportMinHeight =
+  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 export default function EventDetailScreen() {
   const router = useRouter();
@@ -48,9 +80,11 @@ export default function EventDetailScreen() {
 
   if (authGate.state === 'loading' || isLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={fan.primary} />
-      </View>
+      <MobileViewport>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={fan.primary} />
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -65,14 +99,16 @@ export default function EventDetailScreen() {
 
   if (error || !event) {
     return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <Pressable onPress={goToDashboard} style={styles.backButtonOverlay}>
-            <ThemedText style={styles.backText}>← Dashboard</ThemedText>
-          </Pressable>
-          <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
-        </SafeAreaView>
-      </View>
+      <MobileViewport>
+        <View style={styles.screen}>
+          <SafeAreaView style={styles.errorSafeArea}>
+            <Pressable onPress={goToDashboard} style={styles.backHit}>
+              <Text style={styles.backText}>← Dashboard</Text>
+            </Pressable>
+            <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
+          </SafeAreaView>
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -85,6 +121,14 @@ export default function EventDetailScreen() {
       onGoToDashboard={goToDashboard}
       router={router}
     />
+  );
+}
+
+function MobileViewport({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>{children}</View>
+    </View>
   );
 }
 
@@ -105,9 +149,10 @@ function EventDetailContent({
   onGoToDashboard,
   router,
 }: EventDetailContentProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const artworkUri = resolveOrganizerArtworkUrl(event.image_url);
-  const hasUploadedArtwork = Boolean(artworkUri);
+  const hasUploadedArtwork = Boolean(event.image_url?.trim());
+  const artworkUri =
+    resolveOrganizerArtworkUrl(event.image_url) ??
+    resolvePassArtworkUri(event.image_url, event.name);
 
   const dateLabel = formatEventDateLabel(event.event_date, event.start_time);
   const startTimeLabel = formatTimeForInput(event.start_time) || '—';
@@ -119,168 +164,183 @@ function EventDetailContent({
   });
   const isLive = event.status === 'published';
 
+  const dateTimeLine = dateLabel
+    ? `${dateLabel.toUpperCase()}${startTimeLabel !== '—' ? ` · ${startTimeLabel}` : ''}`
+    : null;
+
   return (
-    <View style={styles.container}>
-      {hasUploadedArtwork ? (
-        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
-      ) : (
-        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
-          <EventArtwork
-            height={windowHeight}
-            imageUrl={null}
-            name={event.name}
-            rounded={false}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-      )}
+    <MobileViewport>
+      <View style={styles.screen}>
+        <ArtworkEnvironment artworkUri={artworkUri} isUploaded={hasUploadedArtwork} />
 
-      <SafeAreaView edges={['top']} style={styles.contentLayer}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.heroTopRow}>
-            <Pressable onPress={onGoToDashboard} style={styles.backButtonOverlay}>
-              <ThemedText style={styles.backText}>← Dashboard</ThemedText>
-            </Pressable>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.topBar}>
+              <Pressable onPress={onGoToDashboard} style={styles.backHit}>
+                <Text style={styles.backText}>← Dashboard</Text>
+              </Pressable>
+              {isLive ? (
+                <View style={styles.liveBadge}>
+                  <Text style={styles.liveBadgeText}>● LIVE</Text>
+                </View>
+              ) : (
+                <View style={styles.topBarSpacer} />
+              )}
+            </View>
 
-            {isLive ? (
-              <View style={styles.liveBadge}>
-                <ThemedText style={styles.liveBadgeText}>● Live</ThemedText>
+            <View style={styles.commandPanel}>
+              <View style={styles.metaBlock}>
+                {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
+                <Text style={styles.eventTitle}>{event.name}</Text>
+                {event.venue_name ? (
+                  <Text style={styles.venueLine}>{event.venue_name.toUpperCase()}</Text>
+                ) : null}
+                <Text style={styles.statusPill}>{formatEventStatus(event.status).toUpperCase()}</Text>
               </View>
-            ) : null}
-          </View>
 
-          <View style={styles.heroTextBlock}>
-            <ThemedText style={styles.title}>{event.name}</ThemedText>
-            {event.venue_name ? (
-              <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-                {event.venue_name}
-              </ThemedText>
-            ) : null}
-            {dateLabel ? (
-              <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-                {dateLabel} · {startTimeLabel}
-              </ThemedText>
-            ) : null}
-            <ThemedText style={styles.statusPill}>{formatEventStatus(event.status)}</ThemedText>
-          </View>
+              <View style={styles.statsPanel}>
+                <View style={styles.statsRow}>
+                  <StatChip
+                    label="Issued"
+                    value={String(issuedCount)}
+                    onPress={() => navigateToEventPassList(router, event.id, 'issued')}
+                  />
+                  <StatChip
+                    label="Checked In"
+                    value={String(checkedInCount)}
+                    onPress={() => navigateToEventPassList(router, event.id, 'checked_in')}
+                  />
+                </View>
+                <View style={styles.statsRow}>
+                  <StatChip label="Remaining" value={String(remainingCount)} />
+                  <StatChip label="Check-In Rate" value={`${checkInRate}%`} accent={false} />
+                </View>
+              </View>
 
-          <View style={styles.body}>
-            <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
-            <StatRow>
-              <StatBlock
-                label="Issued"
-                value={String(issuedCount)}
-                onPress={() => navigateToEventPassList(router, event.id, 'issued')}
-              />
-              <StatBlock
-                label="Checked In"
-                value={String(checkedInCount)}
-                onPress={() => navigateToEventPassList(router, event.id, 'checked_in')}
-              />
-              <StatBlock label="Remaining" value={String(remainingCount)} />
-              <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
-            </StatRow>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
+              </View>
 
-            <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
+              <View style={styles.actionsBlock}>
+                <Pressable
+                  onPress={() => router.push(`/events/${event.id}/issue` as Href)}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionPrimary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.actionPrimaryText}>Issue Pass</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push(`/events/${event.id}/scan` as Href)}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionSecondary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.actionSecondaryText}>Scan Passes</Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={() => router.push(`/events/${event.id}/edit` as Href)}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionSecondary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.actionSecondaryText}>Edit Event</Text>
+                </Pressable>
+              </View>
             </View>
-
-            <View style={styles.actionsCard}>
-              <ActionRow
-                label="Issue Pass"
-                onPress={() => router.push(`/events/${event.id}/issue` as Href)}
-                primary
-              />
-              <ActionRow
-                label="Scanner"
-                onPress={() => router.push(`/events/${event.id}/scan` as Href)}
-              />
-              <ActionRow
-                label="Edit Event"
-                onPress={() => router.push(`/events/${event.id}/edit` as Href)}
-              />
-            </View>
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </MobileViewport>
   );
 }
 
-function ActionRow({
+function StatChip({
   label,
+  value,
   onPress,
-  primary = false,
-  disabled = false,
+  accent = true,
 }: {
   label: string;
+  value: string;
   onPress?: () => void;
-  primary?: boolean;
-  disabled?: boolean;
+  accent?: boolean;
 }) {
-  return (
-    <Pressable
-      disabled={disabled || !onPress}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.actionRow,
-        primary && styles.actionRowPrimary,
-        disabled && styles.actionRowDisabled,
-        pressed && styles.pressed,
-      ]}>
-      <ThemedText
-        style={[
-          styles.actionRowText,
-          primary && styles.actionRowTextPrimary,
-          disabled && styles.actionRowTextDisabled,
-        ]}>
-        {label}
-      </ThemedText>
-      {!disabled ? <ThemedText style={styles.actionChevron}>›</ThemedText> : null}
-    </Pressable>
+  const content = (
+    <>
+      <Text style={[styles.statValue, accent && styles.statValueAccent]}>{value}</Text>
+      <Text style={styles.statLabel}>{label.toUpperCase()}</Text>
+      {onPress ? <Text style={styles.statTapHint}>View list ›</Text> : null}
+    </>
   );
+
+  if (onPress) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={onPress}
+        style={({ pressed }) => [styles.statChip, pressed && styles.pressed]}>
+        {content}
+      </Pressable>
+    );
+  }
+
+  return <View style={styles.statChip}>{content}</View>;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: surface.background,
+  viewportOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
+  },
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    width: '100%',
+    ...webViewportMinHeight,
+  },
+  screen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    overflow: 'hidden',
     position: 'relative',
   },
-  fallbackArtLayer: {
-    ...StyleSheet.absoluteFill,
-    overflow: 'hidden',
-  },
-  contentLayer: {
+  foreground: {
     flex: 1,
     zIndex: 1,
   },
-  safeArea: {
-    flex: 1,
-  },
   scrollContent: {
-    alignSelf: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
-    paddingBottom: Spacing.six,
-    width: '100%',
+    paddingBottom: LAYOUT.panelBottomInset,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    paddingTop: LAYOUT.contentTopInset,
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: surface.background,
+    backgroundColor: palette.pureBlack,
     flex: 1,
     justifyContent: 'center',
   },
-  heroTopRow: {
+  topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.one,
+    marginBottom: Spacing.two,
   },
-  backButtonOverlay: {
-    paddingVertical: Spacing.two,
+  topBarSpacer: {
+    width: 48,
+  },
+  backHit: {
+    paddingVertical: Spacing.one,
   },
   backText: {
     color: fan.badgeText,
@@ -297,110 +357,170 @@ const styles = StyleSheet.create({
   },
   liveBadgeText: {
     color: fan.primary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.5,
+    letterSpacing: 0.6,
   },
-  heroTextBlock: {
-    gap: Spacing.one,
-    paddingHorizontal: Spacing.four,
+  commandPanel: {
+    alignSelf: 'center',
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
+    borderWidth: 1,
+    gap: 0,
+    marginTop: LAYOUT.panelTopInset,
+    maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
+    paddingBottom: passScreen.credential.paddingBottom,
+    paddingHorizontal: passScreen.credential.paddingHorizontal,
+    paddingTop: passScreen.credential.paddingTop,
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
     width: '100%',
   },
-  body: {
-    gap: Spacing.two,
-    marginTop: Spacing.one,
-    paddingHorizontal: Spacing.four,
-    width: '100%',
+  metaBlock: {
+    alignItems: 'center',
+    gap: 0,
+    marginBottom: LAYOUT.metaToStats,
   },
-  title: {
-    fontSize: 32,
+  dateLine: {
+    color: fan.badgeText,
+    fontSize: LAYOUT.date.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.date.letterSpacing,
+    lineHeight: LAYOUT.date.lineHeight,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  eventTitle: {
+    color: text.primary,
+    fontSize: LAYOUT.title.fontSize,
     fontWeight: '800',
-    letterSpacing: -0.3,
-    lineHeight: 38,
+    letterSpacing: LAYOUT.title.letterSpacing,
+    lineHeight: LAYOUT.title.lineHeight,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  subtitle: {
-    fontSize: 16,
-    lineHeight: 22,
+  venueLine: {
+    color: text.secondary,
+    fontSize: LAYOUT.subtitle.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.subtitle.letterSpacing,
+    lineHeight: LAYOUT.subtitle.lineHeight,
+    textAlign: 'center',
   },
   statusPill: {
-    alignSelf: 'flex-start',
-    backgroundColor: chrome.glass.fill,
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 1,
+    color: organizer.accent,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: Spacing.two,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    textAlign: 'center',
+  },
+  statsPanel: {
+    gap: Spacing.two,
+    marginBottom: LAYOUT.statsToProgress,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  statChip: {
+    alignItems: 'center',
+    backgroundColor: chrome.glass.highlight,
     borderColor: chrome.glass.border,
     borderRadius: Radii.input,
     borderWidth: 1,
-    color: chrome.brand.eyebrow,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-    marginTop: Spacing.one,
-    overflow: 'hidden',
+    flex: 1,
+    gap: 4,
     paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.one,
-    textTransform: 'uppercase',
+    paddingVertical: Spacing.two + 2,
   },
-  sectionLabel: {
-    color: chrome.brand.eyebrow,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1,
-    paddingHorizontal: Spacing.four,
+  statValue: {
+    color: text.primary,
+    fontSize: LAYOUT.statValue.fontSize,
+    fontWeight: '700',
+    lineHeight: LAYOUT.statValue.lineHeight,
+  },
+  statValueAccent: {
+    color: fan.primary,
+  },
+  statLabel: {
+    color: text.muted,
+    fontSize: LAYOUT.statLabel.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.statLabel.letterSpacing,
+    lineHeight: LAYOUT.statLabel.lineHeight,
+    textAlign: 'center',
+  },
+  statTapHint: {
+    color: fan.badgeText,
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 2,
     textTransform: 'uppercase',
   },
   progressTrack: {
     backgroundColor: chrome.glass.highlight,
     borderRadius: 999,
-    height: 8,
-    marginHorizontal: Spacing.four,
+    height: 6,
+    marginBottom: LAYOUT.progressToActions,
     overflow: 'hidden',
+    width: '100%',
   },
   progressFill: {
     backgroundColor: fan.primary,
     borderRadius: 999,
     height: '100%',
   },
-  actionsCard: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    marginHorizontal: Spacing.four,
-    overflow: 'hidden',
+  actionsBlock: {
+    gap: LAYOUT.actionsGap,
   },
-  actionRow: {
+  actionButton: {
     alignItems: 'center',
-    borderBottomColor: chrome.glass.border,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.four,
+    borderRadius: Radii.button,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
-  actionRowPrimary: {
+  actionPrimary: {
     backgroundColor: fan.primary,
   },
-  actionRowDisabled: {
-    opacity: 0.45,
-  },
-  actionRowText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  actionRowTextPrimary: {
+  actionPrimaryText: {
     color: chrome.white,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
-  actionRowTextDisabled: {
-    color: text.disabled,
+  actionSecondary: {
+    backgroundColor: 'transparent',
+    borderColor: chrome.glass.border,
+    borderWidth: 1,
   },
-  actionChevron: {
-    color: fan.primary,
-    fontSize: 24,
-    fontWeight: '300',
+  actionSecondaryText: {
+    color: text.primary,
+    fontSize: 15,
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.88,
   },
+  errorSafeArea: {
+    flex: 1,
+    gap: Spacing.three,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+  },
   errorText: {
     color: semantic.errorSoft,
-    padding: Spacing.four,
+    fontSize: 15,
   },
 });
