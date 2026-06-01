@@ -41,6 +41,7 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~56.0.4",
+    "tsx": "^4.20.3",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -50,7 +51,11 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint",
-    "test:supabase": "node ./scripts/test-supabase-connection.mjs"
+    "test:supabase": "node ./scripts/test-supabase-connection.mjs",
+    "check:vercel": "node scripts/check-vercel-config.mjs",
+    "check:export": "npx expo export --platform web && node scripts/check-export-routes.mjs",
+    "check:links": "tsx scripts/check-pass-links.ts",
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links"
   },
   "private": true
 }
