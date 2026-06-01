@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer';
 import { PKPass } from 'passkit-generator';
 
 import type { ApplePassConfig } from './certs.ts';
+import { walletIcon1x, walletIcon2x, walletIcon3x } from './wallet-assets.ts';
 
 export type PublicPassRow = {
   guest_name: string;
@@ -16,12 +17,6 @@ export type PublicPassRow = {
   description: string | null;
   image_url: string | null;
 };
-
-const ASSET_DIR = new URL('./assets/', import.meta.url);
-
-async function readAsset(name: string): Promise<Uint8Array> {
-  return await Deno.readFile(new URL(name, ASSET_DIR));
-}
 
 function formatEventDateLine(eventDate: string | null, startTime: string | null): string | null {
   if (!eventDate) {
@@ -89,23 +84,14 @@ function buildPassJson(pass: PublicPassRow, config: ApplePassConfig): Record<str
   };
 }
 
-export async function buildSignedPkpass(
-  pass: PublicPassRow,
-  config: ApplePassConfig,
-): Promise<Uint8Array> {
-  const [icon, icon2x, icon3x] = await Promise.all([
-    readAsset('icon.png'),
-    readAsset('icon@2x.png'),
-    readAsset('icon@3x.png'),
-  ]);
-
+export function buildSignedPkpass(pass: PublicPassRow, config: ApplePassConfig): Uint8Array {
   const passJson = buildPassJson(pass, config);
 
   const pkPass = new PKPass(
     {
-      'icon.png': Buffer.from(icon),
-      'icon@2x.png': Buffer.from(icon2x),
-      'icon@3x.png': Buffer.from(icon3x),
+      'icon.png': Buffer.from(walletIcon1x),
+      'icon@2x.png': Buffer.from(walletIcon2x),
+      'icon@3x.png': Buffer.from(walletIcon3x),
       'pass.json': Buffer.from(JSON.stringify(passJson)),
     },
     config.certificates,

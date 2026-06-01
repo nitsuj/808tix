@@ -124,7 +124,7 @@ npm run check:preflight
 ## Limitations (PoC)
 
 - iOS / iPhone Safari only (button hidden elsewhere).
-- Placeholder PassKit icons (purple squares); no event artwork in Wallet yet.
+- Placeholder PassKit icons (purple squares, embedded in the Edge Function); no event artwork in Wallet yet.
 - No pass updates after check-in; Wallet may show stale status.
 - Anyone with `secure_token` can request a `.pkpass` (same capability as guest pass URL).
 - `apikey` (anon) required on function URL for Supabase gateway.
@@ -148,7 +148,7 @@ npm run check:preflight
 | Symptom | Check |
 |---------|--------|
 | JSON `APPLE_CONFIG_MISSING` | All six `APPLE_*` secrets on deployed project |
-| JSON `PKPASS_BUILD_FAILED` | P12 password, WWDR PEM, cert matches `pass.com.808tix.pass` |
+| JSON `PKPASS_BUILD_FAILED` | P12 password, WWDR PEM, cert matches `pass.com.808tix.pass`; asset `path not found` → icons must be embedded (see `wallet-assets.ts`) |
 | Wallet won’t add pass | Team ID / Pass Type ID in `pass.json` match portal; cert not expired |
 | Scanner invalid | Barcode must be raw hex token only — compare to web QR value |
 | 401 on function | Redeploy with `verify_jwt = false` or include `apikey` query param |

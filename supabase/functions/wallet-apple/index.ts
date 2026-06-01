@@ -103,7 +103,7 @@ Deno.serve(async (request) => {
   }
 
   try {
-    const pkpassBytes = await buildSignedPkpass(pass, config);
+    const pkpassBytes = buildSignedPkpass(pass, config);
 
     return new Response(pkpassBytes, {
       status: 200,
