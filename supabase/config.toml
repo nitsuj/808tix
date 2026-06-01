@@ -1,0 +1,3 @@
+# Wallet PoC: guest Safari opens a direct GET link (no user JWT).
+[functions.wallet-apple]
+verify_jwt = false

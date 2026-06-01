@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { AddToAppleWallet } from '@/components/pass/add-to-apple-wallet';
 import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
@@ -205,6 +206,8 @@ function TicketDetailView({ pass }: { pass: PublicPassView }) {
                 {statusBanner ? (
                   <Text style={styles.statusLine}>{statusBanner.toUpperCase()}</Text>
                 ) : null}
+
+                <AddToAppleWallet disabled={!isEntryValid} secureToken={pass.secure_token} />
               </View>
             </View>
           </ScrollView>
