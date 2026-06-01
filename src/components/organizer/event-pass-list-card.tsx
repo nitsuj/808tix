@@ -3,8 +3,8 @@ import { ActivityIndicator, Linking, Platform, Pressable, Share, StyleSheet, Vie
 
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
-import { semantic } from '@/theme';
+import { Radii, Spacing } from '@/constants/theme';
+import { chrome, fan, semantic } from '@/theme';
 import type { Pass } from '@/lib/database.types';
 import { formatPassTimestamp } from '@/lib/pass-datetime';
 import { formatPassStatusLabel } from '@/lib/pass-display';
@@ -125,7 +125,7 @@ export function EventPassListCard({ pass, eventName }: EventPassListCardProps) {
               isSendingSms && styles.disabled,
             ]}>
             {isSendingSms ? (
-              <ActivityIndicator color={OrganizerAccent} size="small" />
+              <ActivityIndicator color={fan.primary} size="small" />
             ) : (
               <ThemedText style={styles.actionSecondaryText}>Resend SMS</ThemedText>
             )}
@@ -149,8 +149,8 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     gap: Spacing.two,
@@ -208,19 +208,19 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   actionPrimary: {
-    backgroundColor: OrganizerAccent,
+    backgroundColor: fan.primary,
   },
   actionPrimaryText: {
-    color: OrganizerAccentTextOn,
+    color: chrome.white,
     fontSize: 14,
     fontWeight: '800',
   },
   actionSecondary: {
-    borderColor: Surface.divider,
+    borderColor: chrome.glass.border,
     borderWidth: 1,
   },
   actionSecondaryText: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 14,
     fontWeight: '700',
   },

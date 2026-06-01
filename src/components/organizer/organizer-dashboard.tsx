@@ -11,16 +11,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EventArtwork } from '@/components/ui/event-artwork';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
-import {
-  MaxContentWidth,
-  OrganizerAccent,
-  OrganizerAccentTextOn,
-  Radii,
-  Spacing,
-  Surface,
-  semantic,
-} from '@/constants/theme';
+import { MaxContentWidth, Radii, Spacing, semantic } from '@/constants/theme';
+import { chrome, fan, surface, text } from '@/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
@@ -140,11 +134,12 @@ export function OrganizerDashboard({
 
   return (
     <View style={styles.container}>
+      <OrganizerAmbientBackground />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
-              <ThemedText style={styles.screenTitle}>Overview</ThemedText>
+              <ThemedText style={styles.screenTitle}>Command center</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
                 {displayName} · {displayEmail}
               </ThemedText>
@@ -155,7 +150,7 @@ export function OrganizerDashboard({
               onPress={handleSignOut}
               style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}>
               {isSigningOut ? (
-                <ActivityIndicator color={OrganizerAccent} size="small" />
+                <ActivityIndicator color={fan.primary} size="small" />
               ) : (
                 <ThemedText style={styles.signOutText}>Sign out</ThemedText>
               )}
@@ -187,7 +182,7 @@ export function OrganizerDashboard({
 
           {isLoading ? (
             <View style={styles.stateCard}>
-              <ActivityIndicator color={OrganizerAccent} />
+              <ActivityIndicator color={fan.primary} />
               <ThemedText themeColor="textSecondary">Loading events…</ThemedText>
             </View>
           ) : null}
@@ -311,7 +306,7 @@ function formatEventDate(eventDate: string | null, startTime: string | null): st
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
   },
   safeArea: {
@@ -349,24 +344,24 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   signOutText: {
-    color: OrganizerAccent,
+    color: text.secondary,
     fontSize: 14,
     fontWeight: '600',
   },
   createButton: {
     alignItems: 'center',
-    backgroundColor: OrganizerAccent,
+    backgroundColor: fan.primary,
     borderRadius: Radii.button,
     paddingVertical: Spacing.three,
   },
   createButtonText: {
-    color: OrganizerAccentTextOn,
+    color: chrome.white,
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.3,
   },
   sectionTitle: {
-    color: OrganizerAccent,
+    color: chrome.brand.eyebrow,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 1,
@@ -375,8 +370,8 @@ const styles = StyleSheet.create({
   },
   stateCard: {
     alignItems: 'center',
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     gap: Spacing.two,
@@ -390,8 +385,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     overflow: 'hidden',
@@ -419,7 +414,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   chevron: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontSize: 28,
     fontWeight: '300',
     lineHeight: 28,
@@ -429,15 +424,17 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   miniStat: {
-    backgroundColor: Surface.secondary,
+    backgroundColor: chrome.glass.highlight,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.input,
+    borderWidth: 1,
     flex: 1,
     gap: 2,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.two,
   },
   miniStatValue: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontSize: 18,
     fontWeight: '800',
   },
@@ -451,7 +448,7 @@ const styles = StyleSheet.create({
     color: semantic.errorSoft,
   },
   linkText: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontWeight: '700',
   },
   pressed: {

@@ -113,8 +113,30 @@ export const artworkUpload = {
   actionText: organizer.accent,
 } as const;
 
-/** Shared chrome. */
+/** Shared chrome — premium dark UI surfaces (login, dashboard, ops screens). */
 export const chrome = {
   pureBlack: palette.pureBlack,
   white: palette.white,
+  screen: {
+    background: surface.background,
+    ambientTop: 'rgba(162, 91, 255, 0.18)',
+    ambientBottom: 'rgba(255, 45, 120, 0.1)',
+    scrim: 'rgba(8, 8, 8, 0.65)',
+  },
+  glass: {
+    fill: 'rgba(18, 18, 24, 0.88)',
+    border: 'rgba(255, 255, 255, 0.09)',
+    highlight: 'rgba(255, 255, 255, 0.04)',
+  },
+  brand: {
+    wordmark: fan.primary,
+    tagline: text.secondary,
+    eyebrow: fan.badgeText,
+    opsAccent: organizer.accent,
+  },
+  input: {
+    background: 'rgba(10, 10, 14, 0.95)',
+    border: 'rgba(255, 255, 255, 0.1)',
+    placeholder: text.placeholder,
+  },
 } as const;

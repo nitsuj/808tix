@@ -15,15 +15,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
-import { organizerScreen, semantic, text } from '@/theme';
-import {
-  MaxContentWidth,
-  OrganizerAccent,
-  OrganizerAccentTextOn,
-  Radii,
-  Spacing,
-  Surface,
-} from '@/constants/theme';
+import { chrome, fan, organizerScreen, semantic, surface, text } from '@/theme';
+import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
@@ -56,7 +49,7 @@ export default function EventDetailScreen() {
   if (authGate.state === 'loading' || isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={fan.primary} />
       </View>
     );
   }
@@ -250,7 +243,7 @@ function ActionRow({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
     position: 'relative',
   },
@@ -275,7 +268,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
     justifyContent: 'center',
   },
@@ -290,20 +283,20 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.two,
   },
   backText: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 15,
     fontWeight: '700',
   },
   liveBadge: {
     backgroundColor: organizerScreen.liveBadge.backgroundColor,
-    borderColor: OrganizerAccent,
+    borderColor: fan.muted,
     borderRadius: Radii.input,
     borderWidth: 1,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
   liveBadgeText: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 0.5,
@@ -331,9 +324,11 @@ const styles = StyleSheet.create({
   },
   statusPill: {
     alignSelf: 'flex-start',
-    backgroundColor: Surface.secondary,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.input,
-    color: OrganizerAccent,
+    borderWidth: 1,
+    color: chrome.brand.eyebrow,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
@@ -344,7 +339,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   sectionLabel: {
-    color: OrganizerAccent,
+    color: chrome.brand.eyebrow,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 1,
@@ -352,20 +347,20 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   progressTrack: {
-    backgroundColor: Surface.secondary,
+    backgroundColor: chrome.glass.highlight,
     borderRadius: 999,
     height: 8,
     marginHorizontal: Spacing.four,
     overflow: 'hidden',
   },
   progressFill: {
-    backgroundColor: OrganizerAccent,
+    backgroundColor: fan.primary,
     borderRadius: 999,
     height: '100%',
   },
   actionsCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     marginHorizontal: Spacing.four,
@@ -373,7 +368,7 @@ const styles = StyleSheet.create({
   },
   actionRow: {
     alignItems: 'center',
-    borderBottomColor: Surface.divider,
+    borderBottomColor: chrome.glass.border,
     borderBottomWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -381,7 +376,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   actionRowPrimary: {
-    backgroundColor: OrganizerAccent,
+    backgroundColor: fan.primary,
   },
   actionRowDisabled: {
     opacity: 0.45,
@@ -391,13 +386,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   actionRowTextPrimary: {
-    color: OrganizerAccentTextOn,
+    color: chrome.white,
   },
   actionRowTextDisabled: {
     color: text.disabled,
   },
   actionChevron: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontSize: 24,
     fontWeight: '300',
   },

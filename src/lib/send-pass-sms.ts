@@ -50,10 +50,6 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
     return { ok: false, error: 'A valid guest phone number is required to send SMS.' };
   }
 
-  // TEMP DEBUG — remove after verifying Vercel → Supabase project routing
-  console.log('[SMS debug] EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-  console.log('[SMS debug] function name:', SMS_FUNCTION_NAME);
-
   const invokeResult = await supabase.functions.invoke<SendPassSmsResponse>(SMS_FUNCTION_NAME, {
     body: {
       pass_id: input.passId,
@@ -66,10 +62,6 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
   const { data, error } = invokeResult;
   const response = 'response' in invokeResult ? invokeResult.response : undefined;
   const invokeStatus = resolveInvokeStatus(error, response);
-
-  console.log('[SMS debug] invoke response:', data);
-  console.log('[SMS debug] invoke error:', error);
-  console.log('[SMS debug] invoke status:', invokeStatus);
 
   if (error) {
     return { ok: false, error: error.message || 'Could not send SMS.' };

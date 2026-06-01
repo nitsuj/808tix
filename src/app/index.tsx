@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
+  Text,
   TextInput,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,8 +15,21 @@ import { MissingProfileScreen } from '@/components/organizer/missing-profile-scr
 import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { MaxContentWidth, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
+import { formatAuthSignInError, getSupabaseTargetInfo } from '@/lib/supabase-target';
+import {
+  chrome,
+  fan,
+  organizer,
+  semantic,
+  spacing,
+  surface,
+  text,
+  typeScale,
+} from '@/theme';
 
 export default function IndexScreen() {
   const {
@@ -30,12 +45,15 @@ export default function IndexScreen() {
 
   if (isLoading || (isAuthenticated && isProfileLoading)) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
-        <ThemedText themeColor="textSecondary" style={styles.loadingText}>
-          Loading session…
-        </ThemedText>
-      </ThemedView>
+      <View style={styles.bootScreen}>
+        <OrganizerAmbientBackground />
+        <ThemedView style={styles.centered}>
+          <ActivityIndicator size="large" color={fan.primary} />
+          <ThemedText themeColor="textSecondary" style={styles.loadingText}>
+            Loading session…
+          </ThemedText>
+        </ThemedView>
+      </View>
     );
   }
 
@@ -69,6 +87,7 @@ function LoginForm({ onSignIn }: LoginFormProps) {
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const supabaseTarget = useMemo(() => getSupabaseTargetInfo(), []);
 
   async function handleSignIn() {
     if (!email.trim() || !password) {
@@ -82,26 +101,26 @@ function LoginForm({ onSignIn }: LoginFormProps) {
     const { error } = await onSignIn(email, password);
 
     if (error) {
-      setErrorMessage(error.message);
+      setErrorMessage(formatAuthSignInError(error, supabaseTarget));
     }
 
     setIsSubmitting(false);
   }
 
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.bootScreen}>
+      <OrganizerAmbientBackground />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.keyboardView}>
         <SafeAreaView style={styles.safeArea}>
-          <ThemedText type="subtitle" style={styles.title}>
-            808Tix
-          </ThemedText>
-          <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-            Organizer sign in
-          </ThemedText>
+          <View style={styles.brandBlock}>
+            <Text style={styles.wordmark}>808Tix</Text>
+            <Text style={styles.tagline}>Independent events, verified at the door.</Text>
+            <Text style={styles.eyebrow}>Organizer access</Text>
+          </View>
 
-          <ThemedView type="backgroundElement" style={styles.form}>
+          <GlassCard style={styles.formCard}>
             <ThemedText type="smallBold" style={styles.label}>
               Email
             </ThemedText>
@@ -112,7 +131,7 @@ function LoginForm({ onSignIn }: LoginFormProps) {
               editable={!isSubmitting}
               keyboardType="email-address"
               placeholder="you@venue.com"
-              placeholderTextColor="#666"
+              placeholderTextColor={chrome.input.placeholder}
               style={styles.input}
               textContentType="emailAddress"
               value={email}
@@ -127,7 +146,7 @@ function LoginForm({ onSignIn }: LoginFormProps) {
               autoComplete="password"
               editable={!isSubmitting}
               placeholder="Password"
-              placeholderTextColor="#666"
+              placeholderTextColor={chrome.input.placeholder}
               secureTextEntry
               style={styles.input}
               textContentType="password"
@@ -135,9 +154,7 @@ function LoginForm({ onSignIn }: LoginFormProps) {
               onChangeText={setPassword}
             />
 
-            {errorMessage ? (
-              <ThemedText style={styles.errorText}>{errorMessage}</ThemedText>
-            ) : null}
+            {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
 
             <Pressable
               disabled={isSubmitting}
@@ -148,88 +165,134 @@ function LoginForm({ onSignIn }: LoginFormProps) {
               ]}
               onPress={handleSignIn}>
               {isSubmitting ? (
-                <ActivityIndicator color="#000" />
+                <ActivityIndicator color={organizer.textOn} />
               ) : (
-                <ThemedText style={styles.primaryButtonText}>Sign in</ThemedText>
+                <Text style={styles.primaryButtonText}>Sign in</Text>
               )}
             </Pressable>
-          </ThemedView>
+          </GlassCard>
+
+          <View style={styles.envFooter}>
+            <Text style={styles.envLabel}>
+              Auth: {supabaseTarget.label} · {supabaseTarget.host}
+            </Text>
+            {!supabaseTarget.isConfigured ? (
+              <Text style={styles.envHint}>
+                Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in .env, then restart
+                the dev server.
+              </Text>
+            ) : null}
+          </View>
         </SafeAreaView>
       </KeyboardAvoidingView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  bootScreen: {
+    backgroundColor: surface.background,
     flex: 1,
   },
   keyboardView: {
     flex: 1,
   },
   safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.five,
-    gap: Spacing.three,
-    maxWidth: MaxContentWidth,
     alignSelf: 'center',
+    flex: 1,
+    gap: spacing.five,
+    justifyContent: 'center',
+    maxWidth: MaxContentWidth,
+    paddingHorizontal: spacing.four,
+    paddingVertical: spacing.five,
     width: '100%',
   },
   centered: {
-    flex: 1,
     alignItems: 'center',
+    backgroundColor: 'transparent',
+    flex: 1,
     justifyContent: 'center',
-    gap: Spacing.two,
+    gap: spacing.two,
   },
   loadingText: {
-    marginTop: Spacing.two,
+    marginTop: spacing.two,
   },
-  title: {
-    fontSize: 32,
-    lineHeight: 40,
+  brandBlock: {
+    gap: spacing.two,
   },
-  subtitle: {
-    marginBottom: Spacing.two,
+  wordmark: {
+    color: chrome.brand.wordmark,
+    fontSize: typeScale.screenTitle.fontSize + 8,
+    fontWeight: '800',
+    letterSpacing: -1,
+    lineHeight: 48,
   },
-  form: {
-    gap: Spacing.two,
-    padding: Spacing.four,
-    borderRadius: Spacing.three,
+  tagline: {
+    color: chrome.brand.tagline,
+    fontSize: 16,
+    lineHeight: 24,
+    maxWidth: 320,
+  },
+  eyebrow: {
+    color: chrome.brand.eyebrow,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginTop: spacing.one,
+    textTransform: 'uppercase',
+  },
+  formCard: {
+    gap: spacing.two,
   },
   label: {
-    marginTop: Spacing.one,
+    marginTop: spacing.one,
   },
   input: {
-    backgroundColor: '#111',
-    borderColor: '#333',
-    borderRadius: Spacing.two,
+    backgroundColor: chrome.input.background,
+    borderColor: chrome.input.border,
+    borderRadius: 12,
     borderWidth: 1,
-    color: '#fff',
+    color: text.primary,
     fontSize: 16,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.two + 2,
   },
   errorText: {
-    color: '#ff6b6b',
-    marginTop: Spacing.one,
+    color: semantic.errorSoft,
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: spacing.one,
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: OrganizerAccent,
-    borderRadius: Spacing.two,
-    marginTop: Spacing.three,
-    paddingVertical: Spacing.three,
+    backgroundColor: fan.primary,
+    borderRadius: 12,
+    marginTop: spacing.three,
+    paddingVertical: spacing.three,
   },
   primaryButtonPressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
   primaryButtonDisabled: {
     opacity: 0.6,
   },
   primaryButtonText: {
-    color: '#000',
+    color: chrome.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+  envFooter: {
+    gap: spacing.one,
+  },
+  envLabel: {
+    color: text.muted,
+    fontSize: 11,
+    letterSpacing: 0.3,
+    lineHeight: 16,
+  },
+  envHint: {
+    color: fan.badgeText,
+    fontSize: 11,
+    lineHeight: 16,
   },
 });

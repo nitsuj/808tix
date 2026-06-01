@@ -16,6 +16,7 @@ import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
 import {
+  chrome,
   fan,
   fontFamily,
   layout,
@@ -90,16 +91,7 @@ export default function GuestPassScreen() {
   const secureToken = typeof token === 'string' ? token.trim() : '';
 
   if (!secureToken) {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.errorSafeArea}>
-          <Text style={styles.errorTitle}>Pass unavailable</Text>
-          <ThemedText themeColor="textSecondary" style={styles.errorBody}>
-            Pass link is invalid.
-          </ThemedText>
-        </SafeAreaView>
-      </View>
-    );
+    return <PassUnavailable message="Pass link is invalid." />;
   }
 
   return <GuestPassContent secureToken={secureToken} />;
@@ -161,16 +153,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
   }
 
   if (error || !pass) {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.errorSafeArea}>
-          <Text style={styles.errorTitle}>Pass unavailable</Text>
-          <ThemedText themeColor="textSecondary" style={styles.errorBody}>
-            {error ?? 'Pass not found.'}
-          </ThemedText>
-        </SafeAreaView>
-      </View>
-    );
+    return <PassUnavailable message={error ?? 'Pass not found.'} />;
   }
 
   return <GuestPassView pass={pass} />;
@@ -237,6 +220,21 @@ function GuestPassView({ pass }: { pass: PublicPassView }) {
             <ComingSoonAction label="Add to Wallet" />
           </View>
         </ScrollView>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+function PassUnavailable({ message }: { message: string }) {
+  return (
+    <View style={styles.container}>
+      <View style={styles.unavailableAmbientTop} />
+      <View style={styles.unavailableAmbientBottom} />
+      <SafeAreaView style={styles.errorSafeArea}>
+        <Text style={styles.errorTitle}>Pass unavailable</Text>
+        <ThemedText themeColor="textSecondary" style={styles.errorBody}>
+          {message}
+        </ThemedText>
       </SafeAreaView>
     </View>
   );
@@ -393,11 +391,22 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: spacing.two,
   },
+  unavailableAmbientTop: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: chrome.screen.ambientTop,
+    bottom: '50%',
+  },
+  unavailableAmbientBottom: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: chrome.screen.ambientBottom,
+    top: '50%',
+  },
   errorSafeArea: {
     flex: 1,
     gap: spacing.two,
     justifyContent: 'center',
     paddingHorizontal: spacing.four,
+    zIndex: 1,
   },
   errorTitle: {
     color: text.primary,

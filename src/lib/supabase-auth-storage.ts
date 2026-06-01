@@ -18,47 +18,43 @@ const memoryStorage: AuthStorage = {
   },
 };
 
-const webStorage: AuthStorage = {
+/**
+ * Web auth storage must read/write localStorage at call time.
+ * Caching memory storage during SSR/static export broke login (sessions never persisted).
+ */
+const webAuthStorage: AuthStorage = {
   getItem: (key) => {
-    if (typeof window === 'undefined') {
-      return null;
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return window.localStorage.getItem(key);
     }
-    return window.localStorage.getItem(key);
+    return memoryStore.get(key) ?? null;
   },
   setItem: (key, value) => {
-    if (typeof window === 'undefined') {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(key, value);
       return;
     }
-    window.localStorage.setItem(key, value);
+    memoryStore.set(key, value);
   },
   removeItem: (key) => {
-    if (typeof window === 'undefined') {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem(key);
       return;
     }
-    window.localStorage.removeItem(key);
+    memoryStore.delete(key);
   },
 };
 
-let cachedStorage: AuthStorage | null = null;
+let nativeStorage: AuthStorage | null = null;
 
 export function getSupabaseAuthStorage(): AuthStorage {
-  if (cachedStorage) {
-    return cachedStorage;
-  }
-
   if (Platform.OS !== 'web') {
-    // Lazy-load to avoid pulling AsyncStorage into Expo web SSR bundles.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const asyncStorage = require('@react-native-async-storage/async-storage').default as AuthStorage;
-    cachedStorage = asyncStorage;
-    return asyncStorage;
+    if (!nativeStorage) {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      nativeStorage = require('@react-native-async-storage/async-storage').default as AuthStorage;
+    }
+    return nativeStorage;
   }
 
-  if (typeof window !== 'undefined') {
-    cachedStorage = webStorage;
-    return cachedStorage;
-  }
-
-  cachedStorage = memoryStorage;
-  return cachedStorage;
+  return webAuthStorage;
 }

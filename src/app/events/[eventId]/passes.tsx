@@ -15,14 +15,9 @@ import { MissingProfileScreen } from '@/components/organizer/missing-profile-scr
 import { ThemedText } from '@/components/themed-text';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
-import {
-  MaxContentWidth,
-  OrganizerAccent,
-  Radii,
-  Spacing,
-  Surface,
-} from '@/constants/theme';
-import { organizerScreen, semantic } from '@/theme';
+import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
+import { GlassCard } from '@/components/ui/glass-card';
+import { chrome, fan, organizerScreen, semantic, surface } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import {
@@ -45,10 +40,6 @@ export default function EventPassesScreen() {
   const filterParam = Array.isArray(params.filter) ? params.filter[0] : params.filter;
   const filter = parseEventPassFilter(filterParam);
 
-  // TEMP DEBUG — remove after verifying navigation on Vercel/web
-  if (typeof console !== 'undefined') {
-    console.log('[pass-list screen] eventId:', eventId, 'filter:', filter, 'raw:', params);
-  }
   const authGate = useOrganizerAuthGate();
   const { event, isLoading: isEventLoading, error: eventError } = useEventDetail(eventId);
 
@@ -97,7 +88,7 @@ export default function EventPassesScreen() {
   if (authGate.state === 'loading' || isEventLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={fan.primary} />
       </View>
     );
   }
@@ -181,7 +172,7 @@ function EventPassesContent({
             <ThemedText style={styles.backText}>← Event</ThemedText>
           </Pressable>
 
-          <View style={styles.headerCard}>
+          <GlassCard style={styles.headerCard}>
             <ThemedText style={styles.title}>{title}</ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.subtitle}>
               {eventName}
@@ -189,13 +180,13 @@ function EventPassesContent({
             <ThemedText themeColor="textSecondary" style={styles.countLine}>
               {isLoading ? 'Loading…' : `${passes.length} pass${passes.length === 1 ? '' : 'es'}`}
             </ThemedText>
-          </View>
+          </GlassCard>
 
           {listError ? <ThemedText style={styles.errorText}>{listError}</ThemedText> : null}
 
           {isLoading ? (
             <View style={styles.loadingBlock}>
-              <ActivityIndicator color={OrganizerAccent} size="large" />
+              <ActivityIndicator color={fan.primary} size="large" />
             </View>
           ) : passes.length === 0 ? (
             <View style={styles.emptyCard}>
@@ -220,7 +211,7 @@ function EventPassesContent({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
     position: 'relative',
   },
@@ -243,7 +234,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.four,
@@ -253,17 +244,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 16,
     fontWeight: '600',
   },
   headerCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
-    borderRadius: Radii.card,
-    borderWidth: 1,
     gap: Spacing.one,
-    padding: Spacing.four,
   },
   title: {
     fontSize: 26,
@@ -287,8 +273,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.six,
   },
   emptyCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     padding: Spacing.five,

@@ -19,8 +19,8 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
-import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
-import { organizer, organizerScreen, semantic, shadows } from '@/theme';
+import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
+import { chrome, fan, organizer, organizerScreen, semantic, shadows, surface } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { formatIssuedCapacity } from '@/lib/event-display';
@@ -56,7 +56,7 @@ export default function IssuePassScreen() {
   if (authGate.state === 'loading' || isLoading) {
     return (
       <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={fan.primary} />
       </ThemedView>
     );
   }
@@ -368,7 +368,7 @@ function IssuePassFormView({
                   (isSubmitting || atCapacity) && styles.disabled,
                 ]}>
                 {isSubmitting ? (
-                  <ActivityIndicator color={OrganizerAccentTextOn} />
+                  <ActivityIndicator color={chrome.white} />
                 ) : (
                   <ThemedText style={styles.primaryButtonText}>Issue Pass</ThemedText>
                 )}
@@ -479,7 +479,7 @@ function IssuePassSuccessView({
                   isSendingSms && styles.disabled,
                 ]}>
                 {isSendingSms ? (
-                  <ActivityIndicator color={OrganizerAccentTextOn} />
+                  <ActivityIndicator color={chrome.white} />
                 ) : (
                   <ThemedText style={styles.primaryButtonText}>Send SMS</ThemedText>
                 )}
@@ -534,7 +534,7 @@ function IssuePassSuccessView({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
   },
   keyboardView: {
@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backText: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -570,24 +570,24 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     alignItems: 'center',
-    backgroundColor: OrganizerAccent,
+    backgroundColor: fan.primary,
     borderRadius: Radii.button,
     paddingVertical: Spacing.three,
   },
   primaryButtonText: {
-    color: OrganizerAccentTextOn,
+    color: chrome.white,
     fontSize: 16,
     fontWeight: '800',
   },
   secondaryButton: {
     alignItems: 'center',
-    borderColor: Surface.divider,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.button,
     borderWidth: 1,
     paddingVertical: Spacing.three,
   },
   secondaryButtonText: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -603,7 +603,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   artworkScreen: {
-    backgroundColor: Surface.background,
+    backgroundColor: surface.background,
     flex: 1,
     position: 'relative',
   },
@@ -629,8 +629,8 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   floatingCard: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     gap: Spacing.three,
@@ -652,14 +652,14 @@ const styles = StyleSheet.create({
   capacityBadge: {
     alignSelf: 'flex-start',
     backgroundColor: organizerScreen.liveBadge.backgroundColor,
-    borderColor: OrganizerAccent,
+    borderColor: fan.muted,
     borderRadius: Radii.input,
     borderWidth: 1,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
   capacityBadgeText: {
-    color: OrganizerAccent,
+    color: fan.primary,
     fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.4,

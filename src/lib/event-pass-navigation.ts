@@ -18,14 +18,5 @@ export function navigateToEventPassList(
   eventId: string,
   filter: EventPassFilter,
 ): void {
-  const href = buildEventPassListHref(eventId, filter);
-  const destination = `/events/${eventId}/passes?filter=${filter}`;
-
-  // TEMP DEBUG — remove after verifying navigation on Vercel/web
-  console.log('[pass-list nav] eventId:', eventId);
-  console.log('[pass-list nav] filter:', filter);
-  console.log('[pass-list nav] destination:', destination);
-  console.log('[pass-list nav] href:', href);
-
-  router.push(href);
+  router.push(buildEventPassListHref(eventId, filter));
 }

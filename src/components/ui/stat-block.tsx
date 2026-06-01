@@ -2,7 +2,8 @@ import { Platform, Pressable, StyleSheet, View, type ViewStyle } from 'react-nat
 import type { ReactNode } from 'react';
 
 import { ThemedText } from '@/components/themed-text';
-import { OrganizerAccent, Radii, Spacing, Surface } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
+import { chrome, fan } from '@/theme';
 
 type StatBlockProps = {
   label: string;
@@ -72,8 +73,8 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   block: {
-    backgroundColor: Surface.card,
-    borderColor: Surface.divider,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
     flex: 1,
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
   },
   valueAccent: {
-    color: OrganizerAccent,
+    color: fan.primary,
   },
   label: {
     fontSize: 11,
@@ -102,13 +103,13 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   blockPressable: {
-    borderColor: OrganizerAccent,
+    borderColor: fan.muted,
   },
   blockWeb: {
     cursor: 'pointer',
   },
   tapHint: {
-    color: OrganizerAccent,
+    color: fan.badgeText,
     fontSize: 10,
     fontWeight: '700',
     letterSpacing: 0.6,

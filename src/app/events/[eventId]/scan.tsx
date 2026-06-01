@@ -5,9 +5,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
-import { OrganizerAccent } from '@/constants/theme';
 import { formatScannerCheckInFooter } from '@/lib/event-stats';
-import { scannerScreen, semantic } from '@/theme';
+import { fan, scannerScreen, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { parseScannedSecureToken } from '@/lib/scan-payload';
@@ -91,7 +90,7 @@ export default function EventScannerScreen() {
   if (showInitialGate) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={fan.primary} />
       </View>
     );
   }
