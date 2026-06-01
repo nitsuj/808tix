@@ -1,32 +1,35 @@
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
-  useWindowDimensions,
+  TextInput,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EventPassListCard } from '@/components/organizer/event-pass-list-card';
+import { EventPassListRow } from '@/components/organizer/event-pass-list-row';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
-import { EventArtwork } from '@/components/ui/event-artwork';
 import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
-import { GlassCard } from '@/components/ui/glass-card';
-import { chrome, fan, organizerScreen, semantic, surface } from '@/theme';
+import { chrome, fan, organizer, semantic, surface, text } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import {
+  DEFAULT_EVENT_PASS_SORT,
+  EVENT_PASS_SORT_OPTIONS,
+  prepareEventPassList,
+  toggleEventPassSort,
+  type EventPassSort,
+} from '@/lib/event-pass-list-ui';
 import {
   fetchEventPasses,
   getEventPassListTitle,
   parseEventPassFilter,
   type EventPassFilter,
 } from '@/lib/event-passes';
-import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import type { Pass } from '@/lib/database.types';
 
 export default function EventPassesScreen() {
@@ -114,7 +117,6 @@ export default function EventPassesScreen() {
     <EventPassesContent
       eventName={event.name}
       filter={filter}
-      imageUrl={event.image_url}
       isLoading={isPassesLoading}
       listError={passesError}
       onGoToEventDetail={goToEventDetail}
@@ -125,7 +127,6 @@ export default function EventPassesScreen() {
 
 type EventPassesContentProps = {
   eventName: string;
-  imageUrl: string | null;
   filter: EventPassFilter;
   passes: Pass[];
   isLoading: boolean;
@@ -135,74 +136,113 @@ type EventPassesContentProps = {
 
 function EventPassesContent({
   eventName,
-  imageUrl,
   filter,
   passes,
   isLoading,
   listError,
   onGoToEventDetail,
 }: EventPassesContentProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const artworkUri = resolveOrganizerArtworkUrl(imageUrl);
-  const hasUploadedArtwork = Boolean(artworkUri);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sort, setSort] = useState<EventPassSort>(DEFAULT_EVENT_PASS_SORT);
+
   const title = getEventPassListTitle(filter);
-  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.1));
+  const visiblePasses = useMemo(
+    () => prepareEventPassList(passes, searchQuery, sort),
+    [passes, searchQuery, sort],
+  );
+
+  const countLabel = isLoading
+    ? 'Loading…'
+    : searchQuery.trim()
+      ? `${visiblePasses.length} of ${passes.length} pass${passes.length === 1 ? '' : 'es'}`
+      : `${passes.length} pass${passes.length === 1 ? '' : 'es'}`;
 
   return (
     <View style={styles.container}>
-      {hasUploadedArtwork ? (
-        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
-      ) : (
-        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
-          <EventArtwork
-            height={windowHeight}
-            imageUrl={null}
-            name={eventName}
-            rounded={false}
-            style={StyleSheet.absoluteFill}
-          />
-        </View>
-      )}
-
-      <SafeAreaView edges={['top', 'bottom']} style={styles.contentLayer}>
+      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
         <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: cardTopInset }]}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <Pressable onPress={onGoToEventDetail} style={styles.backButton}>
             <ThemedText style={styles.backText}>← Event</ThemedText>
           </Pressable>
 
-          <GlassCard style={styles.headerCard}>
+          <View style={styles.headerBlock}>
             <ThemedText style={styles.title}>{title}</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.subtitle}>
+            <ThemedText numberOfLines={2} themeColor="textSecondary" style={styles.subtitle}>
               {eventName}
             </ThemedText>
             <ThemedText themeColor="textSecondary" style={styles.countLine}>
-              {isLoading ? 'Loading…' : `${passes.length} pass${passes.length === 1 ? '' : 'es'}`}
+              {countLabel}
             </ThemedText>
-          </GlassCard>
+          </View>
+
+          <View style={styles.toolbar}>
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              placeholder="Search name, email, phone, type, status…"
+              placeholderTextColor={chrome.input.placeholder}
+              style={styles.searchInput}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+
+            <ScrollView
+              horizontal
+              contentContainerStyle={styles.sortRow}
+              showsHorizontalScrollIndicator={false}>
+              {EVENT_PASS_SORT_OPTIONS.map((option) => {
+                const isActive = sort.key === option.key;
+                const arrow = isActive ? (sort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => setSort((current) => toggleEventPassSort(current, option.key))}
+                    style={({ pressed }) => [
+                      styles.sortChip,
+                      isActive && styles.sortChipActive,
+                      pressed && styles.pressed,
+                    ]}>
+                    <ThemedText style={[styles.sortChipText, isActive && styles.sortChipTextActive]}>
+                      {option.label}
+                      {arrow}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
 
           {listError ? <ThemedText style={styles.errorText}>{listError}</ThemedText> : null}
 
-          {isLoading ? (
-            <View style={styles.loadingBlock}>
-              <ActivityIndicator color={fan.primary} size="large" />
-            </View>
-          ) : passes.length === 0 ? (
-            <View style={styles.emptyCard}>
-              <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                {filter === 'checked_in'
-                  ? 'No guests checked in yet.'
-                  : 'No passes issued yet. Issue a pass from the event screen.'}
-              </ThemedText>
-            </View>
-          ) : (
-            <View style={styles.list}>
-              {passes.map((pass) => (
-                <EventPassListCard key={pass.id} eventName={eventName} pass={pass} />
-              ))}
-            </View>
-          )}
+          <View style={styles.listShell}>
+            {isLoading ? (
+              <View style={styles.loadingBlock}>
+                <ActivityIndicator color={organizer.accent} size="large" />
+              </View>
+            ) : visiblePasses.length === 0 ? (
+              <View style={styles.emptyBlock}>
+                <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+                  {passes.length === 0
+                    ? filter === 'checked_in'
+                      ? 'No guests checked in yet.'
+                      : 'No passes issued yet. Issue a pass from the event screen.'
+                    : 'No passes match your search.'}
+                </ThemedText>
+              </View>
+            ) : (
+              visiblePasses.map((pass, index) => (
+                <View key={pass.id}>
+                  {index === 0 ? null : <View style={styles.rowDivider} />}
+                  <EventPassListRow eventName={eventName} pass={pass} />
+                </View>
+              ))
+            )}
+          </View>
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -213,23 +253,18 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: surface.background,
     flex: 1,
-    position: 'relative',
   },
-  fallbackArtLayer: {
-    ...StyleSheet.absoluteFill,
-    overflow: 'hidden',
-  },
-  contentLayer: {
+  safeArea: {
     flex: 1,
-    zIndex: 1,
   },
   scrollContent: {
     alignSelf: 'center',
     flexGrow: 1,
-    gap: Spacing.three,
+    gap: Spacing.two,
     maxWidth: MaxContentWidth,
     paddingBottom: Spacing.six,
     paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
     width: '100%',
   },
   centered: {
@@ -240,53 +275,96 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
   },
   backButton: {
-    paddingHorizontal: Spacing.one,
+    alignSelf: 'flex-start',
     paddingVertical: Spacing.one,
   },
   backText: {
     color: fan.badgeText,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
-  headerCard: {
-    gap: Spacing.one,
+  headerBlock: {
+    gap: 2,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 32,
+    lineHeight: 28,
   },
   subtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
   },
   countLine: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     marginTop: Spacing.half,
   },
-  list: {
-    gap: Spacing.three,
+  toolbar: {
+    gap: Spacing.two,
   },
-  loadingBlock: {
-    alignItems: 'center',
-    paddingVertical: Spacing.six,
+  searchInput: {
+    backgroundColor: chrome.input.background,
+    borderColor: chrome.input.border,
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    color: text.primary,
+    fontSize: 15,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
-  emptyCard: {
+  sortRow: {
+    gap: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  sortChip: {
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one + 2,
+  },
+  sortChipActive: {
+    borderColor: organizer.accent,
+  },
+  sortChipText: {
+    color: fan.badgeText,
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sortChipTextActive: {
+    color: organizer.accent,
+  },
+  listShell: {
     backgroundColor: chrome.glass.fill,
     borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
-    padding: Spacing.five,
+    overflow: 'hidden',
+  },
+  rowDivider: {
+    backgroundColor: chrome.glass.border,
+    height: StyleSheet.hairlineWidth,
+  },
+  loadingBlock: {
+    alignItems: 'center',
+    paddingVertical: Spacing.five,
+  },
+  emptyBlock: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.five,
   },
   emptyText: {
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   errorText: {
     color: semantic.errorSoft,
     fontSize: 14,
-    paddingHorizontal: Spacing.one,
+  },
+  pressed: {
+    opacity: 0.88,
   },
 });
