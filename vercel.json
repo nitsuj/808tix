@@ -4,9 +4,6 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
-      "handle": "filesystem"
-    },
-    {
       "source": "/events/:eventId/scan",
       "destination": "/events/[eventId]/scan.html"
     },
