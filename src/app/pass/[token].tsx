@@ -1,89 +1,101 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   useWindowDimensions,
   View,
+  type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PassQrCode } from '@/components/pass/pass-qr-code';
-import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
-import {
-  chrome,
-  fan,
-  fontFamily,
-  layout,
-  passScreen,
-  shadows,
-  spacing,
-  surface,
-  text,
-  typeScale,
-} from '@/theme';
 import { getPassStatusBanner } from '@/lib/pass-display';
 import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
 import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
+import { fan, organizer, palette, text } from '@/theme';
 
-const FAN_SANS = Platform.select({
-  ios: fontFamily?.sans ?? 'System',
-  android: 'sans-serif',
-  default: fontFamily?.sans ?? 'System',
-});
+/** UI Source of Truth — Ticket Detail frame (mobile mock). */
+const MOBILE_VIEWPORT_WIDTH = 390;
+const REFERENCE_VIEWPORT_HEIGHT = 844;
+const HERO_HEIGHT_RATIO = 0.4;
 
-function titleCaseLabel(value: string): string {
-  const trimmed = value.trim();
+/** Measured from Ticket Detail mock at 390×844. */
+const LAYOUT = {
+  horizontalPadding: 24,
+  headerIconSize: 22,
+  headerHorizontalInset: 20,
+  headerTopInset: 8,
+  contentTopPadding: 20,
+  dateToTitle: 8,
+  titleToVenue: 6,
+  venueToQr: 36,
+  qrSize: 220,
+  qrBorderRadius: 12,
+  qrPad: 14,
+  qrToBadge: 16,
+  qrCenterMarkSize: 36,
+  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
+  title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
+  venue: { fontSize: 14, lineHeight: 18, letterSpacing: 0.8 },
+  badge: { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, paddingH: 16, paddingV: 6 },
+  status: { fontSize: 11, lineHeight: 14, letterSpacing: 0.8, marginTop: 12 },
+  actions: {
+    paddingBottom: 28,
+    paddingTop: 20,
+    iconSize: 22,
+    labelSize: 11,
+    labelMarginTop: 6,
+    labelLetterSpacing: 0.3,
+  },
+} as const;
 
-  if (!trimmed) {
-    return 'General Admission';
-  }
+const heroFadeWeb = {
+  experimental_backgroundImage:
+    'linear-gradient(180deg, rgba(0,0,0,0) 38%, rgba(0,0,0,0.55) 72%, #000000 100%)',
+} as ViewStyle;
 
-  return trimmed
-    .split(/\s+/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
-}
-
-function formatPassDateLine(eventDate: string | null): string | null {
+function formatTicketDateTimeLine(
+  eventDate: string | null,
+  startTime: string | null,
+): string | null {
   if (!eventDate) {
     return null;
   }
 
-  const parsed = new Date(`${eventDate}T12:00:00`);
+  const parsed = new Date(`${eventDate}T${startTime ?? '12:00:00'}`);
 
   if (Number.isNaN(parsed.getTime())) {
-    return eventDate;
+    return null;
   }
 
-  return parsed.toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-  });
+  const weekday = parsed.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const monthDay = parsed
+    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    .toUpperCase()
+    .replace('.', '');
+
+  if (!startTime) {
+    return `${weekday}, ${monthDay}`;
+  }
+
+  const time = parsed
+    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+    .toUpperCase()
+    .replace(/\s/g, '');
+
+  return `${weekday}, ${monthDay} • ${time}`;
 }
 
-function formatPassTimeLine(startTime: string | null): string | null {
-  if (!startTime) {
-    return null;
-  }
-
-  const parsed = new Date(`1970-01-01T${startTime}`);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return parsed.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+function formatPassTypeLabel(value: string): string {
+  const trimmed = value.trim();
+  return (trimmed || 'GENERAL ADMISSION').toUpperCase();
 }
 
 export default function GuestPassScreen() {
@@ -141,14 +153,14 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
 
   if (isLoading) {
     return (
-      <View style={styles.container}>
-        <SafeAreaView style={styles.centeredSafeArea}>
+      <MobileViewport>
+        <View style={styles.loadingRoot}>
           <ActivityIndicator size="large" color={fan.primary} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
             Loading your pass…
           </ThemedText>
-        </SafeAreaView>
-      </View>
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -156,265 +168,343 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
     return <PassUnavailable message={error ?? 'Pass not found.'} />;
   }
 
-  return <GuestPassView pass={pass} />;
+  return <TicketDetailView pass={pass} />;
 }
 
-function GuestPassView({ pass }: { pass: PublicPassView }) {
+function MobileViewport({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>{children}</View>
+    </View>
+  );
+}
+
+function TicketDetailView({ pass }: { pass: PublicPassView }) {
   const { height: windowHeight } = useWindowDimensions();
   const statusBanner = getPassStatusBanner(pass.status);
   const isEntryValid = pass.status === 'active';
-  const passTypeLabel = titleCaseLabel(pass.pass_type);
+  const passTypeLabel = formatPassTypeLabel(pass.pass_type);
   const hasUploadedArtwork = Boolean(pass.image_url?.trim());
   const artworkUri = resolvePassArtworkUri(pass.image_url, pass.event_name);
-  const cardTopInset = Math.max(72, Math.round(windowHeight * 0.22));
 
-  const { dateLine, timeLine } = useMemo(() => {
-    return {
-      dateLine: formatPassDateLine(pass.event_date),
-      timeLine: formatPassTimeLine(pass.start_time),
-    };
-  }, [pass.event_date, pass.start_time]);
+  const heroHeight = Math.round(Math.min(windowHeight, REFERENCE_VIEWPORT_HEIGHT) * HERO_HEIGHT_RATIO);
+
+  const dateTimeLine = useMemo(
+    () => formatTicketDateTimeLine(pass.event_date, pass.start_time),
+    [pass.event_date, pass.start_time],
+  );
+
+  const venueLine = pass.venue_name?.trim().toUpperCase() ?? null;
+  const eventTitle = pass.event_name.trim().toUpperCase();
 
   return (
-    <View style={styles.container}>
-      <ArtworkEnvironment artworkUri={artworkUri} isUploaded={hasUploadedArtwork} />
+    <MobileViewport>
+      <View style={styles.screen}>
+        <View style={[styles.hero, { height: heroHeight }]}>
+          <Image
+            cachePolicy={hasUploadedArtwork ? 'none' : 'memory-disk'}
+            contentFit="cover"
+            recyclingKey={artworkUri}
+            source={{ uri: artworkUri }}
+            style={StyleSheet.absoluteFill}
+          />
+          <View style={[styles.heroFade, Platform.OS === 'web' ? heroFadeWeb : null]} />
+          {Platform.OS !== 'web' ? (
+            <>
+              <View style={styles.heroFadeNativeMid} />
+              <View style={styles.heroFadeNativeBottom} />
+            </>
+          ) : null}
+          {!hasUploadedArtwork ? <View style={styles.heroFallbackTint} /> : null}
 
-      <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-        <ScrollView
-          contentContainerStyle={[styles.scrollContent, { paddingTop: cardTopInset }]}
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.walletCard}>
-            <Text style={styles.eventTitle}>{pass.event_name}</Text>
+          <SafeAreaView edges={['top']} style={styles.heroHeader}>
+            <Pressable accessibilityRole="button" disabled style={styles.headerIconHit}>
+              <Text style={styles.headerIcon}>‹</Text>
+            </Pressable>
+            <Pressable accessibilityRole="button" disabled style={styles.headerIconHit}>
+              <Text style={styles.headerIcon}>⋮</Text>
+            </Pressable>
+          </SafeAreaView>
+        </View>
 
-            <View style={styles.metaStack}>
-              {pass.venue_name ? <Text style={styles.metaVenue}>{pass.venue_name}</Text> : null}
-              {dateLine ? <Text style={styles.metaDate}>{dateLine}</Text> : null}
-              {timeLine ? <Text style={styles.metaTime}>{timeLine}</Text> : null}
-            </View>
+        <View style={styles.body}>
+          <View style={styles.textBlock}>
+            {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
+            <Text style={styles.eventTitle}>{eventTitle}</Text>
+            {venueLine ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
+          </View>
 
-            <View style={styles.walletDivider} />
-
-            <View style={styles.holderBlock}>
-              <Text style={styles.holderLabel}>Admitted to</Text>
-              <Text style={styles.holderName}>{pass.guest_name}</Text>
-            </View>
-
-            <View style={styles.qrSlot}>
-              <PassQrCode dimmed={!isEntryValid} secureToken={pass.secure_token} />
+          <View style={styles.qrBlock}>
+            <View style={[styles.qrShell, !isEntryValid && styles.qrShellDimmed]}>
+              <PassQrCode bare secureToken={pass.secure_token} size={LAYOUT.qrSize} />
+              <View style={styles.qrCenterMark}>
+                <Text style={styles.qrCenterMarkText}>808</Text>
+              </View>
             </View>
 
             <View style={styles.passTypeBadge}>
               <Text style={styles.passTypeBadgeText}>{passTypeLabel}</Text>
             </View>
+
+            {statusBanner ? (
+              <Text style={styles.statusLine}>{statusBanner.toUpperCase()}</Text>
+            ) : null}
           </View>
 
-          {statusBanner ? (
-            <View style={styles.statusBanner}>
-              <ThemedText style={styles.statusBannerText}>{statusBanner}</ThemedText>
-            </View>
-          ) : null}
+          <View style={styles.actionsSpacer} />
 
-          <View style={styles.footerActions}>
-            <ComingSoonAction label="Transfer pass" />
-            <Text style={styles.footerDot}>·</Text>
-            <ComingSoonAction label="Add to Wallet" />
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+          <SafeAreaView edges={['bottom']} style={styles.actionsRow}>
+            <TicketAction icon="⇄" label="Transfer" />
+            <TicketAction icon="▣" label="Add to Wallet" />
+            <TicketAction icon="☰" label="Details" />
+          </SafeAreaView>
+        </View>
+      </View>
+    </MobileViewport>
+  );
+}
+
+function TicketAction({ icon, label }: { icon: string; label: string }) {
+  return (
+    <Pressable accessibilityRole="button" disabled style={styles.actionItem}>
+      <Text style={styles.actionIcon}>{icon}</Text>
+      <Text style={styles.actionLabel}>{label}</Text>
+    </Pressable>
   );
 }
 
 function PassUnavailable({ message }: { message: string }) {
   return (
-    <View style={styles.container}>
-      <View style={styles.unavailableAmbientTop} />
-      <View style={styles.unavailableAmbientBottom} />
-      <SafeAreaView style={styles.errorSafeArea}>
-        <Text style={styles.errorTitle}>Pass unavailable</Text>
-        <ThemedText themeColor="textSecondary" style={styles.errorBody}>
-          {message}
-        </ThemedText>
-      </SafeAreaView>
-    </View>
-  );
-}
-
-function ComingSoonAction({ label }: { label: string }) {
-  return (
-    <Pressable disabled style={styles.footerAction}>
-      <Text style={styles.footerActionLabel}>{label}</Text>
-    </Pressable>
+    <MobileViewport>
+      <View style={styles.unavailableRoot}>
+        <SafeAreaView style={styles.unavailableInner}>
+          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
+          <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
+            {message}
+          </ThemedText>
+        </SafeAreaView>
+      </View>
+    </MobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: surface.background,
-    flex: 1,
-    position: 'relative',
-  },
-  safeArea: {
-    flex: 1,
-    zIndex: 1,
-  },
-  centeredSafeArea: {
+  viewportOuter: {
     alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
-    gap: spacing.two,
-    justifyContent: 'center',
   },
-  scrollContent: {
-    alignSelf: 'center',
-    flexGrow: 1,
-    maxWidth: layout.maxContentWidth,
-    paddingBottom: spacing.six,
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
     width: '100%',
   },
-  walletCard: {
-    backgroundColor: passScreen.credential.cardBackground,
-    borderColor: passScreen.credential.cardBorder,
-    borderRadius: passScreen.credential.borderRadius,
-    borderWidth: 1,
-    gap: spacing.three,
-    marginHorizontal: passScreen.credential.marginHorizontal,
-    paddingBottom: passScreen.credential.paddingBottom,
-    paddingHorizontal: passScreen.credential.paddingHorizontal,
-    paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
+  screen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+  },
+  hero: {
+    overflow: 'hidden',
+    position: 'relative',
+    width: '100%',
+  },
+  heroFade: {
+    ...StyleSheet.absoluteFill,
+  },
+  heroFadeNativeMid: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    top: '48%',
+  },
+  heroFadeNativeBottom: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: palette.pureBlack,
+    top: '72%',
+  },
+  heroFallbackTint: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(8, 8, 8, 0.28)',
+  },
+  heroHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: LAYOUT.headerHorizontalInset,
+    paddingTop: LAYOUT.headerTopInset,
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    zIndex: 2,
+  },
+  headerIconHit: {
+    minHeight: 40,
+    minWidth: 40,
+    justifyContent: 'center',
+  },
+  headerIcon: {
+    color: palette.white,
+    fontSize: LAYOUT.headerIconSize,
+    fontWeight: '600',
+    lineHeight: LAYOUT.headerIconSize + 4,
+  },
+  body: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+  },
+  textBlock: {
+    alignItems: 'center',
+    gap: 0,
+    paddingTop: LAYOUT.contentTopPadding,
+  },
+  dateLine: {
+    color: fan.badgeText,
+    fontSize: LAYOUT.date.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.date.letterSpacing,
+    lineHeight: LAYOUT.date.lineHeight,
+    marginBottom: LAYOUT.dateToTitle,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
   eventTitle: {
     color: text.primary,
-    fontFamily: FAN_SANS,
-    ...typeScale.passTitle,
+    fontSize: LAYOUT.title.fontSize,
+    fontWeight: '800',
+    letterSpacing: LAYOUT.title.letterSpacing,
+    lineHeight: LAYOUT.title.lineHeight,
+    marginBottom: LAYOUT.titleToVenue,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
-  metaStack: {
-    gap: 5,
-  },
-  metaVenue: {
-    color: text.venue,
-    fontFamily: FAN_SANS,
-    ...typeScale.passVenue,
-  },
-  metaDate: {
-    color: text.tertiary,
-    fontFamily: FAN_SANS,
-    ...typeScale.passMeta,
-  },
-  metaTime: {
-    color: fan.primary,
-    fontFamily: FAN_SANS,
-    fontSize: typeScale.passMeta.fontSize,
-    fontWeight: '500',
-    lineHeight: typeScale.passMeta.lineHeight,
-  },
-  walletDivider: {
-    backgroundColor: passScreen.credential.divider,
-    height: 1,
-    marginVertical: spacing.one,
-    width: '100%',
-  },
-  holderBlock: {
-    gap: 4,
-  },
-  holderLabel: {
-    color: text.muted,
-    fontFamily: FAN_SANS,
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  holderName: {
+  venueLine: {
     color: text.primary,
-    fontFamily: FAN_SANS,
-    ...typeScale.passHolderName,
+    fontSize: LAYOUT.venue.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.venue.letterSpacing,
+    lineHeight: LAYOUT.venue.lineHeight,
+    textAlign: 'center',
+    textTransform: 'uppercase',
   },
-  qrSlot: {
+  qrBlock: {
     alignItems: 'center',
-    marginTop: spacing.one,
-    width: '100%',
+    marginTop: LAYOUT.venueToQr,
+  },
+  qrShell: {
+    alignItems: 'center',
+    backgroundColor: palette.white,
+    borderRadius: LAYOUT.qrBorderRadius,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    padding: LAYOUT.qrPad,
+    position: 'relative',
+  },
+  qrShellDimmed: {
+    opacity: 0.45,
+  },
+  qrCenterMark: {
+    alignItems: 'center',
+    backgroundColor: palette.white,
+    borderRadius: 6,
+    height: LAYOUT.qrCenterMarkSize,
+    justifyContent: 'center',
+    left: '50%',
+    marginLeft: -LAYOUT.qrCenterMarkSize / 2,
+    marginTop: -LAYOUT.qrCenterMarkSize / 2,
+    position: 'absolute',
+    top: '50%',
+    width: LAYOUT.qrCenterMarkSize,
+  },
+  qrCenterMarkText: {
+    color: organizer.accent,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.5,
   },
   passTypeBadge: {
-    alignSelf: 'center',
-    backgroundColor: passScreen.passTypeBadge.backgroundColor,
-    borderRadius: passScreen.passTypeBadge.borderRadius,
-    marginTop: spacing.one,
-    paddingHorizontal: spacing.three,
-    paddingVertical: spacing.one + 2,
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginTop: LAYOUT.qrToBadge,
+    paddingHorizontal: LAYOUT.badge.paddingH,
+    paddingVertical: LAYOUT.badge.paddingV,
   },
   passTypeBadgeText: {
-    color: passScreen.passTypeBadge.textColor,
-    fontFamily: FAN_SANS,
-    fontSize: 13,
+    color: organizer.accent,
+    fontSize: LAYOUT.badge.fontSize,
+    fontWeight: '700',
+    letterSpacing: LAYOUT.badge.letterSpacing,
+    lineHeight: LAYOUT.badge.lineHeight,
+    textTransform: 'uppercase',
+  },
+  statusLine: {
+    color: fan.bright,
+    fontSize: LAYOUT.status.fontSize,
     fontWeight: '600',
+    letterSpacing: LAYOUT.status.letterSpacing,
+    lineHeight: LAYOUT.status.lineHeight,
+    marginTop: LAYOUT.status.marginTop,
+    textAlign: 'center',
   },
-  statusBanner: {
-    backgroundColor: passScreen.statusBanner.backgroundColor,
-    borderColor: fan.bright,
-    borderLeftWidth: 3,
-    borderRadius: passScreen.statusBanner.borderRadius,
-    marginHorizontal: passScreen.statusBanner.marginHorizontal,
-    marginTop: spacing.three,
-    paddingHorizontal: spacing.three,
-    paddingVertical: spacing.two + 2,
+  actionsSpacer: {
+    flex: 1,
+    minHeight: 16,
   },
-  statusBannerText: {
-    color: text.primary,
-    fontSize: 14,
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  footerActions: {
-    alignItems: 'center',
+  actionsRow: {
     flexDirection: 'row',
-    gap: spacing.two,
-    justifyContent: 'center',
-    marginTop: spacing.four,
-    paddingHorizontal: spacing.four,
+    justifyContent: 'space-between',
+    paddingBottom: LAYOUT.actions.paddingBottom,
+    paddingTop: LAYOUT.actions.paddingTop,
   },
-  footerAction: {
-    opacity: passScreen.footerActionOpacity,
-    paddingVertical: spacing.one,
+  actionItem: {
+    alignItems: 'center',
+    flex: 1,
+    opacity: 0.92,
   },
-  footerActionLabel: {
-    color: text.footer,
-    fontFamily: FAN_SANS,
-    fontSize: 14,
+  actionIcon: {
+    color: palette.white,
+    fontSize: LAYOUT.actions.iconSize,
     fontWeight: '500',
+    lineHeight: LAYOUT.actions.iconSize + 4,
   },
-  footerDot: {
-    color: text.dotSeparator,
-    fontSize: 14,
+  actionLabel: {
+    color: palette.white,
+    fontSize: LAYOUT.actions.labelSize,
+    fontWeight: '500',
+    letterSpacing: LAYOUT.actions.labelLetterSpacing,
+    lineHeight: LAYOUT.actions.labelSize + 4,
+    marginTop: LAYOUT.actions.labelMarginTop,
+    textAlign: 'center',
+  },
+  loadingRoot: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    gap: 12,
+    justifyContent: 'center',
   },
   loadingText: {
-    marginTop: spacing.two,
+    fontSize: 15,
   },
-  unavailableAmbientTop: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: chrome.screen.ambientTop,
-    bottom: '50%',
-  },
-  unavailableAmbientBottom: {
-    ...StyleSheet.absoluteFill,
-    backgroundColor: chrome.screen.ambientBottom,
-    top: '50%',
-  },
-  errorSafeArea: {
+  unavailableRoot: {
+    backgroundColor: palette.pureBlack,
     flex: 1,
-    gap: spacing.two,
+  },
+  unavailableInner: {
+    flex: 1,
+    gap: 10,
     justifyContent: 'center',
-    paddingHorizontal: spacing.four,
-    zIndex: 1,
+    paddingHorizontal: LAYOUT.horizontalPadding,
   },
-  errorTitle: {
+  unavailableTitle: {
     color: text.primary,
-    fontFamily: FAN_SANS,
-    ...typeScale.screenTitle,
+    fontSize: 32,
+    fontWeight: '700',
+    lineHeight: 38,
   },
-  errorBody: {
-    fontSize: 16,
+  unavailableBody: {
+    fontSize: 17,
     lineHeight: 24,
   },
 });
