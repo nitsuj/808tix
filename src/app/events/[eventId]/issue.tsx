@@ -176,12 +176,7 @@ export default function IssuePassScreen() {
       return;
     }
 
-    if (result.mode === 'preview') {
-      setSmsMessage('Preview logged — SMS not configured.');
-      return;
-    }
-
-    setSmsMessage('SMS sent.');
+    setSmsMessage(result.message);
   }
 
   const canSendSms = Boolean(createdPass?.guest_phone?.trim());

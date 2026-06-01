@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npx expo export --platform web",
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/events/:eventId/scan",
+      "destination": "/events/[eventId]/scan.html"
+    },
+    {
+      "source": "/events/:eventId/issue",
+      "destination": "/events/[eventId]/issue.html"
+    },
+    {
+      "source": "/events/:eventId/edit",
+      "destination": "/events/[eventId]/edit.html"
+    },
+    {
+      "source": "/events/:eventId",
+      "destination": "/events/[eventId].html"
+    },
+    {
+      "source": "/pass/:token",
+      "destination": "/pass/[token].html"
+    }
+  ]
+}

@@ -6,6 +6,7 @@ import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerAccent } from '@/constants/theme';
+import { formatScannerCheckInFooter } from '@/lib/event-stats';
 import { scannerScreen, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
@@ -19,12 +20,14 @@ export default function EventScannerScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const authGate = useOrganizerAuthGate();
-  const { event, issuedCount, isLoading, error } = useEventDetail(eventId);
+  const { event, stats, isLoading, error, refetch } = useEventDetail(eventId);
 
   const [phase, setPhase] = useState<ScannerPhase>('camera');
   const [isProcessing, setIsProcessing] = useState(false);
   const [scanResult, setScanResult] = useState<ScanValidationDisplay | null>(null);
   const isProcessingRef = useRef(isProcessing);
+
+  const checkInFooterLabel = formatScannerCheckInFooter(stats);
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -55,6 +58,7 @@ export default function EventScannerScreen() {
       if (!secureToken) {
         setScanResult({
           result: 'invalid',
+          clientReason: 'not_808tix_pass',
         });
         setPhase('result');
         return;
@@ -74,8 +78,12 @@ export default function EventScannerScreen() {
 
       setScanResult(outcome.data);
       setPhase('result');
+
+      if (outcome.data.result === 'valid') {
+        await refetch();
+      }
     },
-    [eventId],
+    [eventId, refetch],
   );
 
   const showInitialGate = (authGate.state === 'loading' || isLoading) && !event;
@@ -108,8 +116,8 @@ export default function EventScannerScreen() {
   if (phase === 'result' && scanResult) {
     return (
       <ScanResultView
+        checkInFooterLabel={checkInFooterLabel}
         eventName={event.name}
-        footerLabel={`${issuedCount} / ${event.capacity} Checked In`}
         imageUrl={event.image_url}
         result={scanResult}
         onScanAnother={handleScanAnother}
@@ -123,7 +131,7 @@ export default function EventScannerScreen() {
         eventName={event.name}
         imageUrl={event.image_url}
         isProcessing={isProcessing}
-        overlayFooterLabel={`${issuedCount} / ${event.capacity} Checked In`}
+        overlayFooterLabel={checkInFooterLabel}
         onBarcodeScanned={handleBarcodeScanned}
         onCancel={handleCancel}
       />

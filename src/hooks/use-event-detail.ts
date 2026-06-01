@@ -1,18 +1,26 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import type { Event } from '@/lib/database.types';
+import { fetchEventStats, type EventStats } from '@/lib/event-stats';
 import { supabase } from '@/lib/supabase';
+
+const EMPTY_STATS: EventStats = {
+  issuedCount: 0,
+  checkedInCount: 0,
+  capacity: 0,
+  remainingCount: 0,
+};
 
 export function useEventDetail(eventId: string | undefined) {
   const [event, setEvent] = useState<Event | null>(null);
-  const [issuedCount, setIssuedCount] = useState(0);
+  const [stats, setStats] = useState<EventStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!eventId) {
       setEvent(null);
-      setIssuedCount(0);
+      setStats(EMPTY_STATS);
       setIsLoading(false);
       return;
     }
@@ -29,7 +37,7 @@ export function useEventDetail(eventId: string | undefined) {
     if (eventError) {
       setError(eventError.message);
       setEvent(null);
-      setIssuedCount(0);
+      setStats(EMPTY_STATS);
       setIsLoading(false);
       return;
     }
@@ -37,27 +45,23 @@ export function useEventDetail(eventId: string | undefined) {
     if (!eventData) {
       setError('Event not found.');
       setEvent(null);
-      setIssuedCount(0);
+      setStats(EMPTY_STATS);
       setIsLoading(false);
       return;
     }
 
-    const { count, error: countError } = await supabase
-      .from('passes')
-      .select('*', { count: 'exact', head: true })
-      .eq('event_id', eventId)
-      .in('status', ['active', 'checked_in']);
+    const statsOutcome = await fetchEventStats(eventId);
 
-    if (countError) {
-      setError(countError.message);
+    if (!statsOutcome.ok) {
+      setError(statsOutcome.error);
       setEvent(null);
-      setIssuedCount(0);
+      setStats(EMPTY_STATS);
       setIsLoading(false);
       return;
     }
 
     setEvent(eventData);
-    setIssuedCount(count ?? 0);
+    setStats(statsOutcome.stats);
     setIsLoading(false);
   }, [eventId]);
 
@@ -79,7 +83,11 @@ export function useEventDetail(eventId: string | undefined) {
 
   return {
     event,
-    issuedCount,
+    stats,
+    issuedCount: stats.issuedCount,
+    checkedInCount: stats.checkedInCount,
+    remainingCount: stats.remainingCount,
+    capacity: stats.capacity,
     isLoading,
     error,
     refetch: load,

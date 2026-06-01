@@ -21,6 +21,28 @@ type SendPassSmsResponse = {
   error?: string;
 };
 
+const SMS_FUNCTION_NAME = 'send-pass-sms';
+
+function resolveInvokeStatus(error: unknown, response?: unknown): number | string {
+  if (response instanceof Response) {
+    return response.status;
+  }
+
+  if (error && typeof error === 'object' && 'context' in error) {
+    const context = (error as { context: unknown }).context;
+
+    if (context instanceof Response) {
+      return context.status;
+    }
+  }
+
+  if (!error) {
+    return 200;
+  }
+
+  return 'unknown';
+}
+
 export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsResult> {
   const phone = normalizePhoneNumber(input.phone);
 
@@ -28,7 +50,11 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
     return { ok: false, error: 'A valid guest phone number is required to send SMS.' };
   }
 
-  const { data, error } = await supabase.functions.invoke<SendPassSmsResponse>('send-pass-sms', {
+  // TEMP DEBUG — remove after verifying Vercel → Supabase project routing
+  console.log('[SMS debug] EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+  console.log('[SMS debug] function name:', SMS_FUNCTION_NAME);
+
+  const invokeResult = await supabase.functions.invoke<SendPassSmsResponse>(SMS_FUNCTION_NAME, {
     body: {
       pass_id: input.passId,
       event_name: input.eventName,
@@ -36,6 +62,14 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
       phone,
     },
   });
+
+  const { data, error } = invokeResult;
+  const response = 'response' in invokeResult ? invokeResult.response : undefined;
+  const invokeStatus = resolveInvokeStatus(error, response);
+
+  console.log('[SMS debug] invoke response:', data);
+  console.log('[SMS debug] invoke error:', error);
+  console.log('[SMS debug] invoke status:', invokeStatus);
 
   if (error) {
     return { ok: false, error: error.message || 'Could not send SMS.' };

@@ -3,39 +3,54 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
 import {
+  getScannerDisplayState,
+  getScannerResultColors,
   getScannerResultSubtitle,
   getScannerResultTitle,
-  ScannerResultColors,
 } from '@/constants/scanner-results';
+import { formatCheckedInAt } from '@/lib/check-in-display';
 import { organizer, palette, radius, scanner, scannerScreen, spacing, text } from '@/theme';
-import type { CheckInResult } from '@/lib/database.types';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 
 type ScanResultViewProps = {
   result: ScanValidationDisplay;
   eventName: string;
   imageUrl?: string | null;
-  footerLabel?: string;
+  checkInFooterLabel: string;
   onScanAnother: () => void;
 };
 
-function getResultOverlayColor(result: CheckInResult): string {
-  return scannerScreen.resultOverlays[result];
+function getResultOverlayColor(result: ScanValidationDisplay): string {
+  const state = getScannerDisplayState(result);
+
+  if (state === 'confirmed') {
+    return scannerScreen.resultOverlays.valid;
+  }
+
+  if (state === 'already_checked_in') {
+    return scannerScreen.resultOverlays.already_used;
+  }
+
+  return scannerScreen.resultOverlays.invalid;
 }
 
 export function ScanResultView({
   result,
   eventName,
   imageUrl,
-  footerLabel,
+  checkInFooterLabel,
   onScanAnother,
 }: ScanResultViewProps) {
-  const colors = ScannerResultColors[result.result];
-  const overlayColor = getResultOverlayColor(result.result);
-  const title = getScannerResultTitle(result.result);
-  const subtitle = getScannerResultSubtitle(result.result);
+  const displayState = getScannerDisplayState(result);
+  const colors = getScannerResultColors(result);
+  const overlayColor = getResultOverlayColor(result);
+  const title = getScannerResultTitle(result);
+  const subtitle = getScannerResultSubtitle(result);
   const showGuest = Boolean(result.guest_name);
-  const isValid = result.result === 'valid';
+  const isConfirmed = displayState === 'confirmed';
+  const isAlreadyCheckedIn = displayState === 'already_checked_in';
+  const isUnconfirmed = displayState === 'unconfirmed';
+  const checkedInAtLabel = formatCheckedInAt(result.checked_in_at);
   const isDarkText = colors.text === text.primary || colors.text === '#000000';
 
   return (
@@ -48,14 +63,17 @@ export function ScanResultView({
           <View
             style={[
               styles.iconCircle,
-              isValid ? styles.iconCircleValid : styles.iconCircleInvalid,
+              isConfirmed && styles.iconCircleConfirmed,
+              isAlreadyCheckedIn && styles.iconCircleWarning,
+              isUnconfirmed && styles.iconCircleUnconfirmed,
             ]}>
             <Text
               style={[
                 styles.iconGlyph,
-                isValid ? styles.iconGlyphOnValid : styles.iconGlyphOnDark,
+                isConfirmed && styles.iconGlyphOnConfirmed,
+                !isConfirmed && styles.iconGlyphOnDark,
               ]}>
-              {isValid ? '✓' : '✕'}
+              {isConfirmed ? '✓' : isAlreadyCheckedIn ? '!' : '✕'}
             </Text>
           </View>
 
@@ -72,17 +90,40 @@ export function ScanResultView({
           {result.pass_type ? (
             <Text style={[styles.passType, { color: colors.text }]}>{result.pass_type}</Text>
           ) : null}
-        </View>
 
-        <View style={styles.footerBlock}>
-          {footerLabel && isValid ? (
+          {isAlreadyCheckedIn && checkedInAtLabel ? (
+            <Text style={[styles.checkedInAt, { color: colors.text }]}>
+              Checked in at {checkedInAtLabel}
+            </Text>
+          ) : null}
+
+          {isConfirmed ? (
             <View style={styles.footerPill}>
               <Text
                 style={[
                   styles.footerText,
                   isDarkText ? styles.footerTextDark : styles.footerTextLight,
                 ]}>
-                {footerLabel}
+                {checkInFooterLabel}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.footerBlock}>
+          {!isConfirmed ? (
+            <View
+              style={[
+                styles.footerPill,
+                isAlreadyCheckedIn && styles.footerPillWarning,
+                isUnconfirmed && styles.footerPillMuted,
+              ]}>
+              <Text
+                style={[
+                  styles.footerText,
+                  isDarkText ? styles.footerTextDark : styles.footerTextLight,
+                ]}>
+                {checkInFooterLabel}
               </Text>
             </View>
           ) : null}
@@ -92,12 +133,12 @@ export function ScanResultView({
             style={({ pressed }) => [
               styles.scanAnotherButton,
               pressed && styles.pressed,
-              isValid ? styles.scanAnotherOnValid : styles.scanAnotherOnDark,
+              isConfirmed ? styles.scanAnotherOnConfirmed : styles.scanAnotherOnDark,
             ]}>
             <Text
               style={[
                 styles.scanAnotherText,
-                isValid ? styles.scanAnotherTextOnValid : styles.scanAnotherTextOnDark,
+                isConfirmed ? styles.scanAnotherTextOnConfirmed : styles.scanAnotherTextOnDark,
               ]}>
               Scan Another
             </Text>
@@ -139,7 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.two,
     width: 132,
   },
-  iconCircleValid: {
+  iconCircleConfirmed: {
     backgroundColor: palette.pureBlack,
     borderColor: organizer.accent,
     borderWidth: 4,
@@ -153,7 +194,12 @@ const styles = StyleSheet.create({
       : null),
     ...(Platform.OS === 'android' ? { elevation: 8 } : null),
   },
-  iconCircleInvalid: {
+  iconCircleWarning: {
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderColor: scanner.alreadyUsed.text,
+    borderWidth: 4,
+  },
+  iconCircleUnconfirmed: {
     backgroundColor: scanner.iconInvalidBackground,
     borderColor: scanner.iconInvalidBorder,
     borderWidth: 3,
@@ -163,34 +209,41 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 68,
   },
-  iconGlyphOnValid: {
+  iconGlyphOnConfirmed: {
     color: organizer.accent,
   },
   iconGlyphOnDark: {
     color: text.primary,
   },
   title: {
-    fontSize: 42,
+    fontSize: 40,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    opacity: 0.92,
+    lineHeight: 24,
+    opacity: 0.95,
     textAlign: 'center',
   },
   guestName: {
     fontSize: 30,
     fontWeight: '700',
-    marginTop: spacing.two,
+    marginTop: spacing.one,
     textAlign: 'center',
   },
   passType: {
     fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.2,
+    opacity: 0.9,
+    textAlign: 'center',
+  },
+  checkedInAt: {
+    fontSize: 16,
+    fontWeight: '600',
     opacity: 0.9,
     textAlign: 'center',
   },
@@ -205,6 +258,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.four,
     paddingVertical: spacing.two,
+  },
+  footerPillWarning: {
+    borderColor: scanner.alreadyUsed.background,
+  },
+  footerPillMuted: {
+    borderColor: scanner.buttonOnDarkBorder,
   },
   footerText: {
     fontSize: 14,
@@ -225,7 +284,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.two,
     paddingVertical: spacing.three,
   },
-  scanAnotherOnValid: {
+  scanAnotherOnConfirmed: {
     backgroundColor: scanner.buttonOnValidBackground,
     borderColor: scanner.buttonOnValidBorder,
   },
@@ -237,7 +296,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  scanAnotherTextOnValid: {
+  scanAnotherTextOnConfirmed: {
     color: text.primary,
   },
   scanAnotherTextOnDark: {

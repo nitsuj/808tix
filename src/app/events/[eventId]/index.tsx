@@ -1,5 +1,5 @@
 import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -27,9 +27,9 @@ import {
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import type { Event } from '@/lib/database.types';
-import { supabase } from '@/lib/supabase';
 
 const DASHBOARD_ROUTE = '/' as Href;
 
@@ -37,8 +37,8 @@ export default function EventDetailScreen() {
   const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const authGate = useOrganizerAuthGate();
-  const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
-  const [checkedInCount, setCheckedInCount] = useState(0);
+  const { event, issuedCount, checkedInCount, remainingCount, isLoading, error, refetch } =
+    useEventDetail(eventId);
 
   const goToDashboard = useCallback(() => {
     router.replace(DASHBOARD_ROUTE);
@@ -51,33 +51,6 @@ export default function EventDetailScreen() {
       }
     }, [authGate.state, refetch]),
   );
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadCheckedInCount() {
-      if (!eventId) {
-        setCheckedInCount(0);
-        return;
-      }
-
-      const { count } = await supabase
-        .from('passes')
-        .select('*', { count: 'exact', head: true })
-        .eq('event_id', eventId)
-        .eq('status', 'checked_in');
-
-      if (!cancelled) {
-        setCheckedInCount(count ?? 0);
-      }
-    }
-
-    void loadCheckedInCount();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [eventId, issuedCount]);
 
   if (authGate.state === 'loading' || isLoading) {
     return (
@@ -114,6 +87,7 @@ export default function EventDetailScreen() {
       checkedInCount={checkedInCount}
       event={event}
       issuedCount={issuedCount}
+      remainingCount={remainingCount}
       onGoToDashboard={goToDashboard}
       router={router}
     />
@@ -124,6 +98,7 @@ type EventDetailContentProps = {
   event: Event;
   issuedCount: number;
   checkedInCount: number;
+  remainingCount: number;
   onGoToDashboard: () => void;
   router: ReturnType<typeof useRouter>;
 };
@@ -132,6 +107,7 @@ function EventDetailContent({
   event,
   issuedCount,
   checkedInCount,
+  remainingCount,
   onGoToDashboard,
   router,
 }: EventDetailContentProps) {
@@ -141,7 +117,12 @@ function EventDetailContent({
 
   const dateLabel = formatEventDateLabel(event.event_date, event.start_time);
   const startTimeLabel = formatTimeForInput(event.start_time) || '—';
-  const checkInRate = issuedCount > 0 ? Math.round((checkedInCount / issuedCount) * 100) : 0;
+  const checkInRate = formatCheckInRatePercent({
+    issuedCount,
+    checkedInCount,
+    capacity: event.capacity,
+    remainingCount,
+  });
   const isLive = event.status === 'published';
 
   return (
@@ -192,8 +173,9 @@ function EventDetailContent({
           <View style={styles.body}>
             <ThemedText style={styles.sectionLabel}>Performance</ThemedText>
             <StatRow>
-              <StatBlock label="Passes Issued" value={String(issuedCount)} />
+              <StatBlock label="Issued" value={String(issuedCount)} />
               <StatBlock label="Checked In" value={String(checkedInCount)} />
+              <StatBlock label="Remaining" value={String(remainingCount)} />
               <StatBlock label="Check-In Rate" value={`${checkInRate}%`} />
             </StatRow>
 

@@ -1,8 +1,12 @@
 import type { CheckInResult, ValidatePassResponse } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 
+export type ScanClientReason = 'not_808tix_pass';
+
 export type ScanValidationDisplay = ValidatePassResponse & {
   pass_type?: string;
+  checked_in_at?: string | null;
+  clientReason?: ScanClientReason;
 };
 
 export async function validatePassScan(
@@ -25,21 +29,25 @@ export async function validatePassScan(
   const response = data as ValidatePassResponse;
   const enriched: ScanValidationDisplay = { ...response };
 
-  if (response.pass_id && shouldLoadPassType(response.result)) {
+  if (response.pass_id && shouldLoadPassDetails(response.result)) {
     const { data: passRow } = await supabase
       .from('passes')
-      .select('pass_type')
+      .select('pass_type, checked_in_at')
       .eq('id', response.pass_id)
       .maybeSingle();
 
     if (passRow?.pass_type) {
       enriched.pass_type = passRow.pass_type;
     }
+
+    if (passRow?.checked_in_at) {
+      enriched.checked_in_at = passRow.checked_in_at;
+    }
   }
 
   return { ok: true, data: enriched };
 }
 
-function shouldLoadPassType(result: CheckInResult): boolean {
+function shouldLoadPassDetails(result: CheckInResult): boolean {
   return result === 'valid' || result === 'already_used' || result === 'voided';
 }

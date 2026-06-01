@@ -120,6 +120,17 @@ export type Database = {
         };
         Returns: PublicPassView | null;
       };
+      get_event_stats: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: {
+          issued_count: number;
+          checked_in_count: number;
+          capacity: number;
+          remaining_count: number;
+        };
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

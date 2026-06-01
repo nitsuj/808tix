@@ -1,7 +1,10 @@
 import type { CheckInResult } from '@/lib/database.types';
 import { scanner } from '@/theme/colors';
+import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 
-/** Scanner result screen colors — sourced from theme; do not hardcode here. */
+export type ScannerDisplayState = 'confirmed' | 'already_checked_in' | 'unconfirmed';
+
+/** Scanner result screen colors — sourced from theme. */
 export const ScannerResultColors = {
   valid: scanner.valid,
   already_used: scanner.alreadyUsed,
@@ -10,36 +13,73 @@ export const ScannerResultColors = {
   voided: scanner.voided,
 } as const;
 
-export function getScannerResultTitle(result: CheckInResult): string {
-  switch (result) {
-    case 'valid':
-      return 'VALID';
-    case 'already_used':
-      return 'ALREADY USED';
-    case 'invalid':
-      return 'INVALID';
+export function getScannerDisplayState(result: ScanValidationDisplay): ScannerDisplayState {
+  if (result.result === 'valid') {
+    return 'confirmed';
+  }
+
+  if (result.result === 'already_used') {
+    return 'already_checked_in';
+  }
+
+  return 'unconfirmed';
+}
+
+export function getScannerResultTitle(result: ScanValidationDisplay): string {
+  const state = getScannerDisplayState(result);
+
+  if (state === 'confirmed') {
+    return 'CONFIRMED';
+  }
+
+  if (state === 'already_checked_in') {
+    return 'ALREADY CHECKED IN';
+  }
+
+  return 'UNCONFIRMED';
+}
+
+export function getScannerResultSubtitle(result: ScanValidationDisplay): string | null {
+  const state = getScannerDisplayState(result);
+
+  if (state === 'confirmed') {
+    return 'Checked in — admit guest';
+  }
+
+  if (state === 'already_checked_in') {
+    if (result.checked_in_at) {
+      return 'Previously checked in — do not admit again';
+    }
+
+    return 'This pass was already scanned — investigate';
+  }
+
+  if (result.clientReason === 'not_808tix_pass') {
+    return 'Not an 808Tix pass';
+  }
+
+  switch (result.result as CheckInResult) {
     case 'wrong_event':
-      return 'WRONG EVENT';
+      return 'Wrong event';
     case 'voided':
-      return 'VOIDED';
+      return 'Voided pass';
+    case 'invalid':
+      return 'Invalid pass';
     default:
-      return 'INVALID';
+      return 'Do not admit';
   }
 }
 
-export function getScannerResultSubtitle(result: CheckInResult): string | null {
-  switch (result) {
-    case 'valid':
-      return 'Checked in successfully';
-    case 'already_used':
-      return 'This pass was already scanned';
-    case 'invalid':
-      return 'Pass not recognized';
-    case 'wrong_event':
-      return 'Pass is for a different event';
-    case 'voided':
-      return 'This pass is no longer valid';
-    default:
-      return null;
+export function getScannerResultColors(result: ScanValidationDisplay) {
+  const state = getScannerDisplayState(result);
+
+  if (state === 'confirmed') {
+    return ScannerResultColors.valid;
   }
+
+  if (state === 'already_checked_in') {
+    return ScannerResultColors.already_used;
+  }
+
+  return ScannerResultColors.invalid;
 }
