@@ -14,6 +14,7 @@ This runs, in order:
 2. `npm run check:vercel` — `vercel.json` shape and rewrite rules
 3. `npm run check:export` — `npx expo export --platform web` + `dist/` route files
 4. `npm run check:links` — pass URL normalization and absolute link rules
+5. `npm run check:issue-pass` — Issue Pass contact validation rules
 
 If any step fails, **do not** report the task as complete until fixed.
 
@@ -24,6 +25,7 @@ If any step fails, **do not** report the task as complete until fixed.
 | `vercel.json` | `check:vercel` (and `check:export` if routes changed) |
 | New/changed Expo routes | `check:export` |
 | `src/lib/pass-link.ts` / `pass-link.core.ts` | `check:links` |
+| `src/lib/issue-pass-form.ts` | `check:issue-pass` |
 | Deploy to Vercel | Full `check:preflight` + manual smoke below |
 
 ## Individual scripts

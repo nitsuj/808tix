@@ -2,6 +2,9 @@ import { validateGuestPhone } from '@/lib/phone-validation';
 
 export const DEFAULT_PASS_TYPE = 'General Admission';
 
+export const CONTACT_REQUIRED_MESSAGE =
+  'Add a phone number or email before issuing this pass.';
+
 export type IssuePassFormValues = {
   guestName: string;
   passType: string;
@@ -10,6 +13,8 @@ export type IssuePassFormValues = {
 };
 
 export type IssuePassFieldErrors = Partial<Record<keyof IssuePassFormValues, string>>;
+
+const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateIssuePassForm(values: IssuePassFormValues): IssuePassFieldErrors {
   const errors: IssuePassFieldErrors = {};
@@ -23,15 +28,25 @@ export function validateIssuePassForm(values: IssuePassFormValues): IssuePassFie
   }
 
   const email = values.guestEmail.trim();
+  const phone = values.guestPhone.trim();
+  const hasEmail = Boolean(email);
+  const hasPhone = Boolean(phone);
 
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    errors.guestEmail = 'Enter a valid email or leave blank.';
+  if (!hasEmail && !hasPhone) {
+    errors.guestPhone = CONTACT_REQUIRED_MESSAGE;
+    return errors;
   }
 
-  const phoneError = validateGuestPhone(values.guestPhone);
+  if (hasEmail && !EMAIL_FORMAT.test(email)) {
+    errors.guestEmail = 'Enter a valid email address.';
+  }
 
-  if (phoneError) {
-    errors.guestPhone = phoneError;
+  if (hasPhone) {
+    const phoneError = validateGuestPhone(values.guestPhone);
+
+    if (phoneError) {
+      errors.guestPhone = phoneError;
+    }
   }
 
   return errors;

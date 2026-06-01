@@ -9,7 +9,7 @@ export type EventFormFieldProps = {
   placeholder: string;
   hint?: string;
   error?: string;
-  keyboardType?: 'default' | 'number-pad';
+  keyboardType?: 'default' | 'number-pad' | 'phone-pad';
   onChangeText: (value: string) => void;
 };
 

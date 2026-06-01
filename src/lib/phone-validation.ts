@@ -39,7 +39,7 @@ export function validateGuestPhone(input: string): string | null {
   const normalized = normalizePhoneNumber(trimmed);
 
   if (!/^\+[1-9]\d{9,14}$/.test(normalized)) {
-    return 'Enter a valid phone number (10+ digits) or leave blank.';
+    return 'Enter a valid phone number (10+ digits).';
   }
 
   return null;

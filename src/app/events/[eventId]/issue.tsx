@@ -336,23 +336,26 @@ function IssuePassFormView({
                   value={passType}
                   onChangeText={onPassTypeChange}
                 />
-                <EventFormField
-                  error={fieldErrors.guestEmail}
-                  hint="Optional"
-                  keyboardType="default"
-                  label="Guest Email"
-                  placeholder="alex@example.com"
-                  value={guestEmail}
-                  onChangeText={onGuestEmailChange}
-                />
+                <ThemedText themeColor="textSecondary" style={styles.contactSectionHint}>
+                  Delivery contact — phone or email required.
+                </ThemedText>
                 <EventFormField
                   error={fieldErrors.guestPhone}
-                  hint="Optional — enables Send SMS after issue"
+                  hint="Preferred for Send SMS after issue"
                   keyboardType="phone-pad"
                   label="Guest Phone"
                   placeholder="808-555-0100"
                   value={guestPhone}
                   onChangeText={onGuestPhoneChange}
+                />
+                <EventFormField
+                  error={fieldErrors.guestEmail}
+                  hint="Share pass link by email if no phone"
+                  keyboardType="default"
+                  label="Guest Email"
+                  placeholder="alex@example.com"
+                  value={guestEmail}
+                  onChangeText={onGuestEmailChange}
                 />
               </ThemedView>
 
@@ -672,5 +675,11 @@ const styles = StyleSheet.create({
   },
   cardSecondaryButton: {
     marginHorizontal: 0,
+  },
+  contactSectionHint: {
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: Spacing.half,
   },
 });

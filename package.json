@@ -55,7 +55,8 @@
     "check:vercel": "node scripts/check-vercel-config.mjs",
     "check:export": "npx expo export --platform web && node scripts/check-export-routes.mjs",
     "check:links": "tsx scripts/check-pass-links.ts",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links"
+    "check:issue-pass": "tsx scripts/check-issue-pass-form.ts",
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass"
   },
   "private": true
 }
