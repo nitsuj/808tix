@@ -58,7 +58,8 @@
     "check:issue-pass": "tsx scripts/check-issue-pass-form.ts",
     "check:pass-list": "tsx scripts/check-event-pass-list-ui.ts",
     "check:organizer-auth": "tsx scripts/check-organizer-auth-form.ts",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth"
+    "check:auth-redirect": "tsx scripts/check-auth-redirect-url.ts",
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect"
   },
   "private": true
 }

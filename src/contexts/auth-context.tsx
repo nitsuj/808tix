@@ -10,6 +10,7 @@ import {
 } from 'react';
 
 import type { Profile } from '@/lib/database.types';
+import { resolveAuthEmailRedirectUrl } from '@/lib/auth-redirect-url';
 import { supabase } from '@/lib/supabase';
 
 type SignInResult = {
@@ -184,9 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUpWithEmail = useCallback(async (email: string, password: string) => {
+    const emailRedirectTo = resolveAuthEmailRedirectUrl();
+
     const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
       password,
+      options: {
+        emailRedirectTo,
+      },
     });
 
     if (error) {

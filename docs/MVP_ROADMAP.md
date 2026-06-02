@@ -23,6 +23,19 @@ supabase db push
 
 Or run the migration SQL in the Supabase dashboard.
 
+### Supabase Auth URL configuration (hosted)
+
+Signup confirmation emails use `emailRedirectTo` from the app (`window.location.origin` on web, else `EXPO_PUBLIC_PASS_LINK_BASE_URL`). Also set in **Supabase Dashboard → Authentication → URL Configuration**:
+
+| Setting | Production value |
+|---------|------------------|
+| **Site URL** | `https://808tix.vercel.app` |
+| **Redirect URLs** | `https://808tix.vercel.app/**` |
+| | `http://localhost:8081/**` (Expo web dev) |
+| | `http://127.0.0.1:54321/**` (local Supabase, if used) |
+
+Do **not** leave Site URL as `http://localhost:3000` on the hosted project — confirmation links will redirect there.
+
 ### Known limitations
 
 - **Email confirmation:** If hosted Supabase requires email confirm, signup shows “check your email” and the user must confirm before sign-in.
