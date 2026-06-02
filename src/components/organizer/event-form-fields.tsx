@@ -12,6 +12,7 @@ export type EventFormFieldProps = {
   keyboardType?: 'default' | 'number-pad' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   onChangeText: (value: string) => void;
+  onBlur?: () => void;
 };
 
 export function EventFormField({
@@ -23,6 +24,7 @@ export function EventFormField({
   keyboardType = 'default',
   autoCapitalize = 'sentences',
   onChangeText,
+  onBlur,
 }: EventFormFieldProps) {
   return (
     <View style={eventFormStyles.field}>
@@ -40,6 +42,7 @@ export function EventFormField({
         placeholderTextColor={formField.placeholderColor}
         style={[eventFormStyles.input, error ? eventFormStyles.inputError : null]}
         value={value}
+        onBlur={onBlur}
         onChangeText={onChangeText}
       />
       {error ? <ThemedText style={eventFormStyles.errorText}>{error}</ThemedText> : null}

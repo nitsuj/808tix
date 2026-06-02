@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
 
 import type { Event } from '@/lib/database.types';
 import { fetchEventStats, type EventStats } from '@/lib/event-stats';
@@ -11,75 +12,91 @@ const EMPTY_STATS: EventStats = {
   remainingCount: 0,
 };
 
+type LoadOptions = {
+  /** Keep showing current event/stats while refreshing (focus return from Issue Pass). */
+  silent?: boolean;
+};
+
 export function useEventDetail(eventId: string | undefined) {
   const [event, setEvent] = useState<Event | null>(null);
   const [stats, setStats] = useState<EventStats>(EMPTY_STATS);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+  const hasLoadedRef = useRef(false);
 
-  const load = useCallback(async () => {
-    if (!eventId) {
-      setEvent(null);
-      setStats(EMPTY_STATS);
+  const load = useCallback(
+    async (options?: LoadOptions) => {
+      if (!eventId) {
+        setEvent(null);
+        setStats(EMPTY_STATS);
+        setIsLoading(false);
+        setStatsError(null);
+        hasLoadedRef.current = false;
+        return;
+      }
+
+      if (!options?.silent) {
+        setIsLoading(true);
+      }
+
+      setError(null);
+
+      const { data: eventData, error: eventError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (eventError) {
+        setError(eventError.message);
+        setEvent(null);
+        setStats(EMPTY_STATS);
+        setStatsError(null);
+        setIsLoading(false);
+        hasLoadedRef.current = false;
+        return;
+      }
+
+      if (!eventData) {
+        setError('Event not found.');
+        setEvent(null);
+        setStats(EMPTY_STATS);
+        setStatsError(null);
+        setIsLoading(false);
+        hasLoadedRef.current = false;
+        return;
+      }
+
+      const statsOutcome = await fetchEventStats(eventId, eventData.capacity);
+
+      if (!statsOutcome.ok) {
+        setEvent(eventData);
+        setStats(EMPTY_STATS);
+        setStatsError(statsOutcome.error);
+        setIsLoading(false);
+        hasLoadedRef.current = true;
+        return;
+      }
+
+      setEvent(eventData);
+      setStats(statsOutcome.stats);
+      setStatsError(null);
       setIsLoading(false);
-      return;
-    }
+      hasLoadedRef.current = true;
+    },
+    [eventId],
+  );
 
-    setIsLoading(true);
-    setError(null);
+  useFocusEffect(
+    useCallback(() => {
+      if (!eventId) {
+        return;
+      }
 
-    const { data: eventData, error: eventError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .maybeSingle();
-
-    if (eventError) {
-      setError(eventError.message);
-      setEvent(null);
-      setStats(EMPTY_STATS);
-      setIsLoading(false);
-      return;
-    }
-
-    if (!eventData) {
-      setError('Event not found.');
-      setEvent(null);
-      setStats(EMPTY_STATS);
-      setIsLoading(false);
-      return;
-    }
-
-    const statsOutcome = await fetchEventStats(eventId);
-
-    if (!statsOutcome.ok) {
-      setError(statsOutcome.error);
-      setEvent(null);
-      setStats(EMPTY_STATS);
-      setIsLoading(false);
-      return;
-    }
-
-    setEvent(eventData);
-    setStats(statsOutcome.stats);
-    setIsLoading(false);
-  }, [eventId]);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchDetail() {
-      await load();
-    }
-
-    if (isMounted) {
-      void fetchDetail();
-    }
-
-    return () => {
-      isMounted = false;
-    };
-  }, [load]);
+      void load({ silent: hasLoadedRef.current });
+    }, [eventId, load]),
+  );
 
   return {
     event,
@@ -90,6 +107,7 @@ export function useEventDetail(eventId: string | undefined) {
     capacity: stats.capacity,
     isLoading,
     error,
-    refetch: load,
+    statsError,
+    refetch: () => load({ silent: true }),
   };
 }

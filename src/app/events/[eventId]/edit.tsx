@@ -24,6 +24,7 @@ import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatTimeForInput } from '@/lib/event-display';
 import {
+  formatTimeInputForDisplay,
   normalizeTimeInput,
   parseMaxPassesInput,
   validateEditEventForm,
@@ -99,8 +100,24 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingArtwork, setPendingArtwork] = useState<PendingArtworkSelection | null>(null);
 
+  function handleStartTimeBlur() {
+    setStartTime((current) => formatTimeInputForDisplay(current));
+  }
+
   async function handleSave() {
-    const values = { eventName, venueName, eventDate, startTime, maxPasses };
+    const formattedStartTime = formatTimeInputForDisplay(startTime);
+
+    if (formattedStartTime !== startTime) {
+      setStartTime(formattedStartTime);
+    }
+
+    const values = {
+      eventName,
+      venueName,
+      eventDate,
+      startTime: formattedStartTime,
+      maxPasses,
+    };
     const errors = validateEditEventForm(values, issuedCount);
 
     if (Object.keys(errors).length > 0) {
@@ -115,7 +132,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
       return;
     }
 
-    const normalizedStart = normalizeTimeInput(startTime);
+    const normalizedStart = normalizeTimeInput(formattedStartTime);
 
     if (!normalizedStart) {
       setFieldErrors({ startTime: 'Use 24-hour format HH:MM (e.g. 21:00).' });
@@ -240,10 +257,11 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
               />
               <EventFormField
                 error={fieldErrors.startTime}
-                hint="24-hour HH:MM"
+                hint="24-hour HH:MM (e.g. 21:00 or 1900)"
                 label="Start Time"
                 placeholder="21:00"
                 value={startTime}
+                onBlur={handleStartTimeBlur}
                 onChangeText={setStartTime}
               />
               <EventFormField

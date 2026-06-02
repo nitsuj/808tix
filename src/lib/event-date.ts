@@ -8,6 +8,11 @@ export function formatDateToYyyyMmDd(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Local calendar today as YYYY-MM-DD (for create-event validation). */
+export function getTodayYyyyMmDdLocal(): string {
+  return formatDateToYyyyMmDd(new Date());
+}
+
 /** Parse YYYY-MM-DD to local midnight (for pickers). */
 export function parseYyyyMmDdToLocalDate(value: string): Date | null {
   const trimmed = value.trim();

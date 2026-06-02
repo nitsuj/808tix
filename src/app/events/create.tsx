@@ -27,6 +27,7 @@ import { formatEventDateForDisplay } from '@/lib/event-date';
 import { persistEventArtworkUrl, uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
 import {
+  formatTimeInputForDisplay,
   normalizeTimeInput,
   parseMaxPassesInput,
   validateCreateEventForm,
@@ -113,8 +114,24 @@ export default function CreateEventScreen() {
 
   const organizerId = authGate.organizerId;
 
+  function handleStartTimeBlur() {
+    setStartTime((current) => formatTimeInputForDisplay(current));
+  }
+
   async function handleCreateEvent() {
-    const values = { eventName, venueName, eventDate, startTime, maxPasses };
+    const formattedStartTime = formatTimeInputForDisplay(startTime);
+
+    if (formattedStartTime !== startTime) {
+      setStartTime(formattedStartTime);
+    }
+
+    const values = {
+      eventName,
+      venueName,
+      eventDate,
+      startTime: formattedStartTime,
+      maxPasses,
+    };
     const errors = validateCreateEventForm(values);
 
     if (Object.keys(errors).length > 0) {
@@ -129,7 +146,7 @@ export default function CreateEventScreen() {
       return;
     }
 
-    const normalizedStart = normalizeTimeInput(startTime);
+    const normalizedStart = normalizeTimeInput(formattedStartTime);
 
     if (!normalizedStart) {
       setFieldErrors({ startTime: 'Use 24-hour format HH:MM (e.g. 21:00).' });
@@ -276,10 +293,11 @@ export default function CreateEventScreen() {
                   />
                   <EventFormField
                     error={fieldErrors.startTime}
-                    hint="24-hour HH:MM"
+                    hint="24-hour HH:MM (e.g. 21:00 or 1900)"
                     label="Start Time"
                     placeholder="21:00"
                     value={startTime}
+                    onBlur={handleStartTimeBlur}
                     onChangeText={setStartTime}
                   />
                   <EventFormField

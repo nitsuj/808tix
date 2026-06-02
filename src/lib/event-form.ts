@@ -1,4 +1,5 @@
 import type { EventStatus } from '@/lib/database.types';
+import { getTodayYyyyMmDdLocal } from '@/lib/event-date';
 
 export type { EventStatus };
 
@@ -24,6 +25,16 @@ export const EVENT_STATUS_OPTIONS: EventStatus[] = [
   'cancelled',
 ];
 
+export function isEventDateTodayOrFuture(eventDate: string): boolean {
+  const trimmed = eventDate.trim();
+
+  if (!isValidDateInput(trimmed)) {
+    return false;
+  }
+
+  return trimmed >= getTodayYyyyMmDdLocal();
+}
+
 export function validateCreateEventForm(values: CreateEventFormValues): CreateEventFieldErrors {
   const errors: CreateEventFieldErrors = {};
 
@@ -39,12 +50,14 @@ export function validateCreateEventForm(values: CreateEventFormValues): CreateEv
     errors.eventDate = 'Event date is required.';
   } else if (!isValidDateInput(values.eventDate)) {
     errors.eventDate = 'Use format YYYY-MM-DD.';
+  } else if (!isEventDateTodayOrFuture(values.eventDate)) {
+    errors.eventDate = 'Event date must be today or in the future.';
   }
 
   if (!values.startTime.trim()) {
     errors.startTime = 'Start time is required.';
   } else if (!normalizeTimeInput(values.startTime)) {
-    errors.startTime = 'Use 24-hour format HH:MM (e.g. 21:00).';
+    errors.startTime = 'Use 24-hour format HH:MM (e.g. 21:00 or 1900).';
   }
 
   if (!values.maxPasses.trim()) {
@@ -108,21 +121,55 @@ export function isValidDateInput(input: string): boolean {
   return !Number.isNaN(parsed.getTime());
 }
 
-/** Returns Postgres-compatible time string HH:MM:SS or null if invalid. */
-export function normalizeTimeInput(input: string): string | null {
-  const trimmed = input.trim();
-  const match = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-
-  if (!match) {
+function parseCompactTimeDigits(trimmed: string): { hours: number; minutes: number } | null {
+  if (!/^\d{3,4}$/.test(trimmed)) {
     return null;
   }
 
-  const hours = Number(match[1]);
-  const minutes = Number(match[2]);
+  const padded = trimmed.padStart(4, '0');
+  const hours = Number(padded.slice(0, 2));
+  const minutes = Number(padded.slice(2, 4));
 
   if (hours > 23 || minutes > 59) {
     return null;
   }
 
-  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+  return { hours, minutes };
+}
+
+/** Returns Postgres-compatible time string HH:MM:SS or null if invalid. */
+export function normalizeTimeInput(input: string): string | null {
+  const trimmed = input.trim();
+
+  const colonMatch = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
+
+  if (colonMatch) {
+    const hours = Number(colonMatch[1]);
+    const minutes = Number(colonMatch[2]);
+
+    if (hours > 23 || minutes > 59) {
+      return null;
+    }
+
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
+  }
+
+  const compact = parseCompactTimeDigits(trimmed);
+
+  if (!compact) {
+    return null;
+  }
+
+  return `${String(compact.hours).padStart(2, '0')}:${String(compact.minutes).padStart(2, '0')}:00`;
+}
+
+/** Normalize compact times for display in HH:MM (e.g. 1900 → 19:00). */
+export function formatTimeInputForDisplay(input: string): string {
+  const normalized = normalizeTimeInput(input);
+
+  if (!normalized) {
+    return input.trim();
+  }
+
+  return normalized.slice(0, 5);
 }

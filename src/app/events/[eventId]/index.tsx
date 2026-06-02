@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
@@ -69,20 +69,12 @@ export default function EventDetailScreen() {
     artworkUploadFailed?: string;
   }>();
   const authGate = useOrganizerAuthGate();
-  const { event, issuedCount, checkedInCount, remainingCount, isLoading, error, refetch } =
+  const { event, issuedCount, checkedInCount, remainingCount, isLoading, error } =
     useEventDetail(eventId);
 
   const goToDashboard = useCallback(() => {
     router.replace(DASHBOARD_ROUTE);
   }, [router]);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (authGate.state === 'ready') {
-        void refetch();
-      }
-    }, [authGate.state, refetch]),
-  );
 
   if (authGate.state === 'loading' || isLoading) {
     return (

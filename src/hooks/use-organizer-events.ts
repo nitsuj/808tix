@@ -1,20 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import type { Event } from '@/lib/database.types';
+import { isOrganizerDashboardEvent } from '@/lib/organizer-dashboard-events';
 import { supabase } from '@/lib/supabase';
-
-function isUpcomingEvent(event: Event): boolean {
-  if (event.status === 'completed' || event.status === 'cancelled') {
-    return false;
-  }
-
-  if (!event.event_date) {
-    return true;
-  }
-
-  const today = new Date().toISOString().slice(0, 10);
-  return event.event_date >= today;
-}
 
 export function useOrganizerEvents(organizerId: string | undefined) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -25,6 +13,7 @@ export function useOrganizerEvents(organizerId: string | undefined) {
     if (!organizerId) {
       setEvents([]);
       setIsLoading(false);
+      setError(null);
       return;
     }
 
@@ -39,6 +28,7 @@ export function useOrganizerEvents(organizerId: string | undefined) {
       .order('created_at', { ascending: false });
 
     if (fetchError) {
+      console.warn('[organizer-events] Failed to load events:', fetchError.message);
       setError(fetchError.message);
       setEvents([]);
     } else {
@@ -48,53 +38,11 @@ export function useOrganizerEvents(organizerId: string | undefined) {
     setIsLoading(false);
   }, [organizerId]);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchEvents() {
-      if (!organizerId) {
-        if (isMounted) {
-          setEvents([]);
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      const { data, error: fetchError } = await supabase
-        .from('events')
-        .select('*')
-        .eq('organizer_id', organizerId)
-        .order('event_date', { ascending: true, nullsFirst: false })
-        .order('created_at', { ascending: false });
-
-      if (!isMounted) {
-        return;
-      }
-
-      if (fetchError) {
-        setError(fetchError.message);
-        setEvents([]);
-      } else {
-        setEvents(data ?? []);
-      }
-
-      setIsLoading(false);
-    }
-
-    void fetchEvents();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [organizerId]);
-
-  const upcomingEvents = useMemo(() => events.filter(isUpcomingEvent), [events]);
+  const dashboardEvents = useMemo(() => events.filter(isOrganizerDashboardEvent), [events]);
 
   return {
-    upcomingEvents,
+    events,
+    dashboardEvents,
     isLoading,
     error,
     refetch: loadEvents,

@@ -7,6 +7,7 @@ import { eventFormStyles } from '@/components/organizer/event-form-fields';
 import {
   formatDateToYyyyMmDd,
   formatEventDateForDisplay,
+  getTodayYyyyMmDdLocal,
   parseYyyyMmDdToLocalDate,
 } from '@/lib/event-date';
 import { formField, spacing, text as textTokens } from '@/theme';
@@ -61,6 +62,7 @@ export function EventDateFormField({
           ]}>
           <input
             disabled={disabled}
+            min={getTodayYyyyMmDdLocal()}
             type="date"
             value={value}
             onChange={(event) => onChange(event.target.value)}
@@ -95,6 +97,7 @@ export function EventDateFormField({
       {showPicker ? (
         <DateTimePicker
           display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          minimumDate={parseYyyyMmDdToLocalDate(getTodayYyyyMmDdLocal()) ?? undefined}
           mode="date"
           value={pickerDate}
           onChange={handlePickerChange}

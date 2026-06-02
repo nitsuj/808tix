@@ -42,7 +42,7 @@ export function OrganizerDashboard({
   onDismissWelcome,
 }: OrganizerDashboardProps) {
   const router = useRouter();
-  const { upcomingEvents, isLoading, error, refetch } = useOrganizerEvents(organizerId);
+  const { events, dashboardEvents, isLoading, error, refetch } = useOrganizerEvents(organizerId);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [statsByEvent, setStatsByEvent] = useState<Record<string, EventPassStats>>({});
@@ -57,12 +57,12 @@ export function OrganizerDashboard({
     let cancelled = false;
 
     async function loadPassStats() {
-      if (upcomingEvents.length === 0) {
+      if (dashboardEvents.length === 0) {
         setStatsByEvent({});
         return;
       }
 
-      const eventIds = upcomingEvents.map((event) => event.id);
+      const eventIds = dashboardEvents.map((event) => event.id);
       const { data } = await supabase
         .from('passes')
         .select('event_id, status')
@@ -101,7 +101,7 @@ export function OrganizerDashboard({
     return () => {
       cancelled = true;
     };
-  }, [upcomingEvents]);
+  }, [dashboardEvents]);
 
   const aggregateStats = useMemo(() => {
     let issued = 0;
@@ -115,12 +115,12 @@ export function OrganizerDashboard({
     const checkInRate = issued > 0 ? Math.round((checkedIn / issued) * 100) : 0;
 
     return {
-      events: upcomingEvents.length,
+      events: dashboardEvents.length,
       issued,
       checkedIn,
       checkInRate,
     };
-  }, [statsByEvent, upcomingEvents.length]);
+  }, [statsByEvent, dashboardEvents.length]);
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -196,7 +196,7 @@ export function OrganizerDashboard({
             </StatRow>
           ) : null}
 
-          <ThemedText style={styles.sectionTitle}>Today&apos;s Events</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Your events</ThemedText>
 
           {isLoading ? (
             <View style={styles.stateCard}>
@@ -214,7 +214,17 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
-          {!isLoading && !error && upcomingEvents.length === 0 ? (
+          {!isLoading && !error && dashboardEvents.length === 0 && events.length > 0 ? (
+            <View style={styles.stateCard}>
+              <ThemedText style={styles.emptyTitle}>No active events</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
+                You have {events.length} completed or cancelled event
+                {events.length === 1 ? '' : 's'}. Create a new event to issue passes.
+              </ThemedText>
+            </View>
+          ) : null}
+
+          {!isLoading && !error && events.length === 0 ? (
             <View style={styles.stateCard}>
               <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
@@ -224,7 +234,7 @@ export function OrganizerDashboard({
           ) : null}
 
           {!isLoading && !error
-            ? upcomingEvents.map((event) => (
+            ? dashboardEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
