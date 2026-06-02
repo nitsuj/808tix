@@ -33,6 +33,18 @@ export function validateSignInForm(values: SignInFormValues): OrganizerAuthField
   return errors;
 }
 
+export function validateResendConfirmationEmail(email: string): string | null {
+  if (!email.trim()) {
+    return 'Email is required.';
+  }
+
+  if (!EMAIL_FORMAT.test(email.trim())) {
+    return 'Enter a valid email address.';
+  }
+
+  return null;
+}
+
 export function validateSignUpForm(values: SignUpFormValues): OrganizerAuthFieldErrors {
   const errors: OrganizerAuthFieldErrors = {};
 

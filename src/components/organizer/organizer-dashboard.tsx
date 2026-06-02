@@ -29,6 +29,8 @@ type OrganizerDashboardProps = {
   displayName: string;
   displayEmail: string;
   onSignOut: () => Promise<void>;
+  welcomeMessage?: string;
+  onDismissWelcome?: () => void;
 };
 
 export function OrganizerDashboard({
@@ -36,6 +38,8 @@ export function OrganizerDashboard({
   displayName,
   displayEmail,
   onSignOut,
+  welcomeMessage,
+  onDismissWelcome,
 }: OrganizerDashboardProps) {
   const router = useRouter();
   const { upcomingEvents, isLoading, error, refetch } = useOrganizerEvents(organizerId);
@@ -158,6 +162,20 @@ export function OrganizerDashboard({
           </View>
 
           {signOutError ? <ThemedText style={styles.errorText}>{signOutError}</ThemedText> : null}
+
+          {welcomeMessage ? (
+            <View style={styles.welcomeBanner}>
+              <ThemedText style={styles.welcomeBannerText}>{welcomeMessage}</ThemedText>
+              {onDismissWelcome ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={onDismissWelcome}
+                  style={({ pressed }) => [styles.welcomeDismiss, pressed && styles.pressed]}>
+                  <ThemedText style={styles.welcomeDismissText}>Dismiss</ThemedText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
 
           <Pressable
             onPress={() => router.push('/events/create' as Href)}
@@ -443,6 +461,34 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
+  },
+  welcomeBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(57, 255, 20, 0.1)',
+    borderColor: 'rgba(57, 255, 20, 0.35)',
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  welcomeBannerText: {
+    color: text.primary,
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  welcomeDismiss: {
+    paddingHorizontal: Spacing.one,
+    paddingVertical: Spacing.half,
+  },
+  welcomeDismissText: {
+    color: fan.primary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   errorText: {
     color: semantic.errorSoft,

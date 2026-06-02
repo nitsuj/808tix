@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
+import { SignUpCheckEmailScreen } from '@/components/organizer/signup-check-email-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/glass-card';
@@ -43,23 +44,31 @@ type AuthMode = 'sign_in' | 'create_account';
 export default function IndexScreen() {
   const {
     isLoading,
+    isAuthCallbackProcessing,
     isProfileLoading,
     isAuthenticated,
     profile,
     profileMissing,
     session,
-    signInWithEmail,
+    accountJustConfirmed,
     signOut,
+    dismissAccountJustConfirmed,
   } = useAuth();
 
-  if (isLoading || (isAuthenticated && isProfileLoading)) {
+  if (isLoading || isAuthCallbackProcessing || (isAuthenticated && isProfileLoading)) {
+    const loadingMessage = isAuthCallbackProcessing
+      ? 'Confirming your account…'
+      : isAuthenticated
+        ? 'Loading your profile…'
+        : 'Loading session…';
+
     return (
       <View style={styles.bootScreen}>
         <OrganizerAmbientBackground />
         <ThemedView style={styles.centered}>
           <ActivityIndicator size="large" color={fan.primary} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
-            Loading session…
+            {loadingMessage}
           </ThemedText>
         </ThemedView>
       </View>
@@ -80,26 +89,26 @@ export default function IndexScreen() {
         displayName={displayName}
         organizerId={profile.id}
         onSignOut={signOut}
+        welcomeMessage={
+          accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined
+        }
+        onDismissWelcome={dismissAccountJustConfirmed}
       />
     );
   }
 
-  return <OrganizerAuthScreen onSignIn={signInWithEmail} />;
+  return <OrganizerAuthScreen />;
 }
 
-type OrganizerAuthScreenProps = {
-  onSignIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
-};
-
-function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
-  const { signUpWithEmail } = useAuth();
+function OrganizerAuthScreen() {
+  const { signInWithEmail, signUpWithEmail, authCallbackError, clearAuthCallbackError } = useAuth();
   const [mode, setMode] = useState<AuthMode>('sign_in');
+  const [pendingSignupEmail, setPendingSignupEmail] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<OrganizerAuthFieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabaseTarget = useMemo(() => getSupabaseTargetInfo(), []);
 
@@ -107,8 +116,18 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
     setMode(nextMode);
     setFieldErrors({});
     setErrorMessage(null);
-    setSuccessMessage(null);
+    clearAuthCallbackError();
     setConfirmPassword('');
+  }
+
+  function handleBackToSignIn() {
+    setPendingSignupEmail(null);
+    switchMode('sign_in');
+  }
+
+  function handleChangeEmail() {
+    setPendingSignupEmail(null);
+    switchMode('create_account');
   }
 
   async function handleSignIn() {
@@ -122,9 +141,9 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
     setIsSubmitting(true);
     setFieldErrors({});
     setErrorMessage(null);
-    setSuccessMessage(null);
+    clearAuthCallbackError();
 
-    const { error } = await onSignIn(email, password);
+    const { error } = await signInWithEmail(email, password);
 
     if (error) {
       setErrorMessage(formatAuthError(error, supabaseTarget));
@@ -144,7 +163,7 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
     setIsSubmitting(true);
     setFieldErrors({});
     setErrorMessage(null);
-    setSuccessMessage(null);
+    clearAuthCallbackError();
 
     const { error, needsEmailConfirmation } = await signUpWithEmail(email, password);
 
@@ -155,10 +174,7 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
     }
 
     if (needsEmailConfirmation) {
-      setSuccessMessage(
-        'Account created. Check your email to confirm your address, then sign in here.',
-      );
-      setMode('sign_in');
+      setPendingSignupEmail(email.trim());
       setPassword('');
       setConfirmPassword('');
     }
@@ -166,7 +182,18 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
     setIsSubmitting(false);
   }
 
+  if (pendingSignupEmail) {
+    return (
+      <SignUpCheckEmailScreen
+        email={pendingSignupEmail}
+        onBackToSignIn={handleBackToSignIn}
+        onChangeEmail={handleChangeEmail}
+      />
+    );
+  }
+
   const isSignIn = mode === 'sign_in';
+  const displayError = errorMessage ?? authCallbackError;
 
   return (
     <View style={styles.bootScreen}>
@@ -261,12 +288,7 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
               </>
             ) : null}
 
-            {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
-            {successMessage ? (
-              <ThemedText themeColor="textSecondary" style={styles.successText}>
-                {successMessage}
-              </ThemedText>
-            ) : null}
+            {displayError ? <ThemedText style={styles.errorText}>{displayError}</ThemedText> : null}
 
             <Pressable
               disabled={isSubmitting}
@@ -399,10 +421,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: semantic.errorSoft,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  successText: {
     fontSize: 14,
     lineHeight: 20,
   },

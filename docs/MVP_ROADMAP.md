@@ -36,9 +36,17 @@ Signup confirmation emails use `emailRedirectTo` from the app (`window.location.
 
 Do **not** leave Site URL as `http://localhost:3000` on the hosted project — confirmation links will redirect there.
 
-### Known limitations
+### Signup and email confirmation flow (app)
 
-- **Email confirmation:** If hosted Supabase requires email confirm, signup shows “check your email” and the user must confirm before sign-in.
+1. **Create Account** → if Supabase requires confirmation, the form is replaced by a full-page **Check your email** screen (not an inline hint).
+2. User opens the link in the confirmation email → returns to the same origin (`808tix.vercel.app` or `localhost:8081`).
+3. App reads auth tokens from the URL (`detectSessionInUrl` on web + `completeAuthCallbackFromUrl`), establishes the session, strips tokens from the address bar, loads/creates the organizer profile, and routes to the dashboard.
+4. Dashboard shows **Account confirmed. Welcome to 808Tix.** (dismissible).
+5. **Resend confirmation email** is available on the pending screen; **Use a different email** / **Back to sign in** return to the auth form.
+
+If confirmation fails (expired link), the login screen shows a clear error — not a blank page.
+
+### Known limitations
 - **No password reset UI** in the app yet (use Supabase dashboard or add later).
 - **No social login** (by design for MVP).
 - **No organizations / teams** — one profile = one organizer.

@@ -4,6 +4,7 @@
  */
 import {
   MIN_PASSWORD_LENGTH,
+  validateResendConfirmationEmail,
   validateSignInForm,
   validateSignUpForm,
 } from '../src/lib/organizer-auth-form';
@@ -73,6 +74,13 @@ assert(
     }),
   ).length === 0,
   'valid signup passes',
+);
+
+assert(validateResendConfirmationEmail('') === 'Email is required.', 'resend requires email');
+
+assert(
+  validateResendConfirmationEmail('organizer@venue.com') === null,
+  'valid resend email passes',
 );
 
 if (failures > 0) {

@@ -45,6 +45,7 @@ export const supabase = createClient<Database>(url, anonKey, {
     storage: getSupabaseAuthStorage(),
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Web: capture email-confirmation tokens from URL hash/query on load (client only).
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });

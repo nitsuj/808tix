@@ -9,8 +9,9 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { Profile } from '@/lib/database.types';
+import { completeAuthCallbackFromUrl, readAuthCallbackSnapshot } from '@/lib/auth-callback-url';
 import { resolveAuthEmailRedirectUrl } from '@/lib/auth-redirect-url';
+import type { Profile } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 
 type SignInResult = {
@@ -22,19 +23,29 @@ type SignUpResult = {
   needsEmailConfirmation: boolean;
 };
 
+type ResendResult = {
+  error: AuthError | null;
+};
+
 type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
   isProfileLoading: boolean;
+  isAuthCallbackProcessing: boolean;
   isAuthenticated: boolean;
   profileMissing: boolean;
+  accountJustConfirmed: boolean;
+  authCallbackError: string | null;
   signInWithEmail: (email: string, password: string) => Promise<SignInResult>;
   signUpWithEmail: (email: string, password: string) => Promise<SignUpResult>;
+  resendSignUpConfirmation: (email: string) => Promise<ResendResult>;
   ensureOrganizerProfile: () => Promise<Profile | null>;
   reloadProfile: () => Promise<Profile | null>;
   signOut: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  dismissAccountJustConfirmed: () => void;
+  clearAuthCallbackError: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -94,6 +105,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProfileLoading, setIsProfileLoading] = useState(false);
+  const [isAuthCallbackProcessing, setIsAuthCallbackProcessing] = useState(false);
+  const [accountJustConfirmed, setAccountJustConfirmed] = useState(false);
+  const [authCallbackError, setAuthCallbackError] = useState<string | null>(null);
 
   const loadProfileForSession = useCallback(async (nextSession: Session | null) => {
     const userId = nextSession?.user.id;
@@ -113,25 +127,67 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let isMounted = true;
 
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+    async function bootstrap() {
+      const callbackSnapshot = readAuthCallbackSnapshot();
+      let callbackError: string | null = null;
+
+      if (callbackSnapshot) {
+        setIsAuthCallbackProcessing(true);
+
+        const callbackResult = await completeAuthCallbackFromUrl();
+
+        if (!isMounted) {
+          return;
+        }
+
+        setIsAuthCallbackProcessing(false);
+        callbackError = callbackResult.errorMessage;
+
+        if (
+          callbackResult.sessionEstablished &&
+          callbackResult.intent?.isSignupConfirmation
+        ) {
+          setAccountJustConfirmed(true);
+        }
+      }
+
+      const {
+        data: { session: initialSession },
+      } = await supabase.auth.getSession();
+
       if (!isMounted) {
         return;
+      }
+
+      if (callbackError && !initialSession) {
+        setAuthCallbackError(callbackError);
       }
 
       setSession(initialSession);
       setIsLoading(false);
       void loadProfileForSession(initialSession);
-    });
+    }
+
+    void bootstrap();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!isMounted) {
         return;
       }
 
       setSession(nextSession);
       setIsLoading(false);
+
+      if (event === 'SIGNED_IN' && nextSession) {
+        const snapshot = readAuthCallbackSnapshot();
+
+        if (snapshot?.intent.isSignupConfirmation) {
+          setAccountJustConfirmed(true);
+        }
+      }
+
       void loadProfileForSession(nextSession);
     });
 
@@ -176,6 +232,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [session?.user.id]);
 
   const signInWithEmail = useCallback(async (email: string, password: string) => {
+    setAuthCallbackError(null);
+
     const { error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -206,9 +264,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextProfile = await loadProfileWithRetry(data.session.user.id);
       setProfile(nextProfile);
       setIsProfileLoading(false);
+      setAccountJustConfirmed(true);
     }
 
     return { error: null, needsEmailConfirmation };
+  }, []);
+
+  const resendSignUpConfirmation = useCallback(async (email: string) => {
+    const emailRedirectTo = resolveAuthEmailRedirectUrl();
+
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email.trim(),
+      options: {
+        emailRedirectTo,
+      },
+    });
+
+    return { error };
   }, []);
 
   const signOut = useCallback(async () => {
@@ -217,6 +290,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) {
       throw error;
     }
+
+    setAccountJustConfirmed(false);
+    setAuthCallbackError(null);
   }, []);
 
   const refreshSession = useCallback(async () => {
@@ -227,6 +303,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const dismissAccountJustConfirmed = useCallback(() => {
+    setAccountJustConfirmed(false);
+  }, []);
+
+  const clearAuthCallbackError = useCallback(() => {
+    setAuthCallbackError(null);
+  }, []);
+
   const profileMissing = session !== null && !isProfileLoading && profile === null;
 
   const value = useMemo<AuthContextValue>(
@@ -235,27 +319,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isLoading,
       isProfileLoading,
+      isAuthCallbackProcessing,
       isAuthenticated: session !== null,
       profileMissing,
+      accountJustConfirmed,
+      authCallbackError,
       signInWithEmail,
       signUpWithEmail,
+      resendSignUpConfirmation,
       ensureOrganizerProfile,
       reloadProfile,
       signOut,
       refreshSession,
+      dismissAccountJustConfirmed,
+      clearAuthCallbackError,
     }),
     [
       session,
       profile,
       isLoading,
       isProfileLoading,
+      isAuthCallbackProcessing,
       profileMissing,
+      accountJustConfirmed,
+      authCallbackError,
       signInWithEmail,
       signUpWithEmail,
+      resendSignUpConfirmation,
       ensureOrganizerProfile,
       reloadProfile,
       signOut,
       refreshSession,
+      dismissAccountJustConfirmed,
+      clearAuthCallbackError,
     ],
   );
 
