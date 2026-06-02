@@ -48,6 +48,10 @@ export function getSupabaseTargetInfo(): SupabaseTargetInfo {
 }
 
 export function formatAuthSignInError(error: AuthError | Error, target: SupabaseTargetInfo): string {
+  return formatAuthError(error, target);
+}
+
+export function formatAuthError(error: AuthError | Error, target: SupabaseTargetInfo): string {
   const message = error.message ?? 'Sign in failed.';
 
   if (!target.isConfigured) {
@@ -71,6 +75,18 @@ export function formatAuthSignInError(error: AuthError | Error, target: Supabase
 
   if (lower.includes('invalid login credentials') || lower.includes('invalid email or password')) {
     return 'Email or password is incorrect for this Supabase project.';
+  }
+
+  if (lower.includes('user already registered')) {
+    return 'An account with this email already exists. Sign in instead.';
+  }
+
+  if (lower.includes('password should be at least')) {
+    return 'Password does not meet Supabase requirements. Use at least 8 characters.';
+  }
+
+  if (lower.includes('signup is disabled')) {
+    return 'Account creation is disabled for this Supabase project. Contact support.';
   }
 
   return message;

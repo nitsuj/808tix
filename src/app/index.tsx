@@ -17,9 +17,15 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { GlassCard } from '@/components/ui/glass-card';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
-import { MaxContentWidth, Spacing } from '@/constants/theme';
+import { MaxContentWidth } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
-import { formatAuthSignInError, getSupabaseTargetInfo } from '@/lib/supabase-target';
+import {
+  MIN_PASSWORD_LENGTH,
+  validateSignInForm,
+  validateSignUpForm,
+  type OrganizerAuthFieldErrors,
+} from '@/lib/organizer-auth-form';
+import { formatAuthError, getSupabaseTargetInfo } from '@/lib/supabase-target';
 import {
   chrome,
   fan,
@@ -30,6 +36,8 @@ import {
   text,
   typeScale,
 } from '@/theme';
+
+type AuthMode = 'sign_in' | 'create_account';
 
 export default function IndexScreen() {
   const {
@@ -75,37 +83,89 @@ export default function IndexScreen() {
     );
   }
 
-  return <LoginForm onSignIn={signInWithEmail} />;
+  return <OrganizerAuthScreen onSignIn={signInWithEmail} />;
 }
 
-type LoginFormProps = {
+type OrganizerAuthScreenProps = {
   onSignIn: (email: string, password: string) => Promise<{ error: { message: string } | null }>;
 };
 
-function LoginForm({ onSignIn }: LoginFormProps) {
+function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
+  const { signUpWithEmail } = useAuth();
+  const [mode, setMode] = useState<AuthMode>('sign_in');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<OrganizerAuthFieldErrors>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const supabaseTarget = useMemo(() => getSupabaseTargetInfo(), []);
 
+  function switchMode(nextMode: AuthMode) {
+    setMode(nextMode);
+    setFieldErrors({});
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setConfirmPassword('');
+  }
+
   async function handleSignIn() {
-    if (!email.trim() || !password) {
-      setErrorMessage('Enter your email and password.');
+    const errors = validateSignInForm({ email, password });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
       return;
     }
 
     setIsSubmitting(true);
+    setFieldErrors({});
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     const { error } = await onSignIn(email, password);
 
     if (error) {
-      setErrorMessage(formatAuthSignInError(error, supabaseTarget));
+      setErrorMessage(formatAuthError(error, supabaseTarget));
     }
 
     setIsSubmitting(false);
   }
+
+  async function handleCreateAccount() {
+    const errors = validateSignUpForm({ email, password, confirmPassword });
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setFieldErrors({});
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const { error, needsEmailConfirmation } = await signUpWithEmail(email, password);
+
+    if (error) {
+      setErrorMessage(formatAuthError(error, supabaseTarget));
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (needsEmailConfirmation) {
+      setSuccessMessage(
+        'Account created. Check your email to confirm your address, then sign in here.',
+      );
+      setMode('sign_in');
+      setPassword('');
+      setConfirmPassword('');
+    }
+
+    setIsSubmitting(false);
+  }
+
+  const isSignIn = mode === 'sign_in';
 
   return (
     <View style={styles.bootScreen}>
@@ -118,6 +178,23 @@ function LoginForm({ onSignIn }: LoginFormProps) {
             <Text style={styles.wordmark}>808Tix</Text>
             <Text style={styles.tagline}>Independent events, verified at the door.</Text>
             <Text style={styles.eyebrow}>Organizer access</Text>
+          </View>
+
+          <View style={styles.modeRow}>
+            <Pressable
+              onPress={() => switchMode('sign_in')}
+              style={[styles.modeChip, isSignIn && styles.modeChipActive]}>
+              <Text style={[styles.modeChipText, isSignIn && styles.modeChipTextActive]}>
+                Sign In
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => switchMode('create_account')}
+              style={[styles.modeChip, !isSignIn && styles.modeChipActive]}>
+              <Text style={[styles.modeChipText, !isSignIn && styles.modeChipTextActive]}>
+                Create Account
+              </Text>
+            </Pressable>
           </View>
 
           <GlassCard style={styles.formCard}>
@@ -137,24 +214,58 @@ function LoginForm({ onSignIn }: LoginFormProps) {
               value={email}
               onChangeText={setEmail}
             />
+            {fieldErrors.email ? (
+              <ThemedText style={styles.errorText}>{fieldErrors.email}</ThemedText>
+            ) : null}
 
             <ThemedText type="smallBold" style={styles.label}>
               Password
             </ThemedText>
             <TextInput
               autoCapitalize="none"
-              autoComplete="password"
+              autoComplete={isSignIn ? 'password' : 'new-password'}
               editable={!isSubmitting}
-              placeholder="Password"
+              placeholder={isSignIn ? 'Password' : `At least ${MIN_PASSWORD_LENGTH} characters`}
               placeholderTextColor={chrome.input.placeholder}
               secureTextEntry
               style={styles.input}
-              textContentType="password"
+              textContentType={isSignIn ? 'password' : 'newPassword'}
               value={password}
               onChangeText={setPassword}
             />
+            {fieldErrors.password ? (
+              <ThemedText style={styles.errorText}>{fieldErrors.password}</ThemedText>
+            ) : null}
+
+            {!isSignIn ? (
+              <>
+                <ThemedText type="smallBold" style={styles.label}>
+                  Confirm Password
+                </ThemedText>
+                <TextInput
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  editable={!isSubmitting}
+                  placeholder="Re-enter password"
+                  placeholderTextColor={chrome.input.placeholder}
+                  secureTextEntry
+                  style={styles.input}
+                  textContentType="newPassword"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                />
+                {fieldErrors.confirmPassword ? (
+                  <ThemedText style={styles.errorText}>{fieldErrors.confirmPassword}</ThemedText>
+                ) : null}
+              </>
+            ) : null}
 
             {errorMessage ? <ThemedText style={styles.errorText}>{errorMessage}</ThemedText> : null}
+            {successMessage ? (
+              <ThemedText themeColor="textSecondary" style={styles.successText}>
+                {successMessage}
+              </ThemedText>
+            ) : null}
 
             <Pressable
               disabled={isSubmitting}
@@ -163,11 +274,13 @@ function LoginForm({ onSignIn }: LoginFormProps) {
                 pressed && styles.primaryButtonPressed,
                 isSubmitting && styles.primaryButtonDisabled,
               ]}
-              onPress={handleSignIn}>
+              onPress={isSignIn ? handleSignIn : handleCreateAccount}>
               {isSubmitting ? (
                 <ActivityIndicator color={organizer.textOn} />
               ) : (
-                <Text style={styles.primaryButtonText}>Sign in</Text>
+                <Text style={styles.primaryButtonText}>
+                  {isSignIn ? 'Sign In' : 'Create Account'}
+                </Text>
               )}
             </Pressable>
           </GlassCard>
@@ -211,8 +324,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'transparent',
     flex: 1,
-    justifyContent: 'center',
     gap: spacing.two,
+    justifyContent: 'center',
   },
   loadingText: {
     marginTop: spacing.two,
@@ -241,6 +354,31 @@ const styles = StyleSheet.create({
     marginTop: spacing.one,
     textTransform: 'uppercase',
   },
+  modeRow: {
+    flexDirection: 'row',
+    gap: spacing.two,
+  },
+  modeChip: {
+    borderColor: chrome.glass.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    flex: 1,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.two,
+  },
+  modeChipActive: {
+    borderColor: fan.primary,
+    backgroundColor: 'rgba(162, 91, 255, 0.12)',
+  },
+  modeChipText: {
+    color: text.secondary,
+    fontSize: 14,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  modeChipTextActive: {
+    color: fan.badgeText,
+  },
   formCard: {
     gap: spacing.two,
   },
@@ -261,7 +399,10 @@ const styles = StyleSheet.create({
     color: semantic.errorSoft,
     fontSize: 14,
     lineHeight: 20,
-    marginTop: spacing.one,
+  },
+  successText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   primaryButton: {
     alignItems: 'center',

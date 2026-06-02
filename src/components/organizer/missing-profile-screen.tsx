@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, Spacing } from '@/constants/theme';
+import { useAuth } from '@/contexts/auth-context';
 
 type MissingProfileScreenProps = {
   email?: string | null;
@@ -12,8 +13,26 @@ type MissingProfileScreenProps = {
 };
 
 export function MissingProfileScreen({ email, onSignOut }: MissingProfileScreenProps) {
+  const { ensureOrganizerProfile } = useAuth();
+  const [isEnsuring, setIsEnsuring] = useState(false);
+  const [ensureError, setEnsureError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  async function handleEnsureProfile() {
+    setIsEnsuring(true);
+    setEnsureError(null);
+
+    const profile = await ensureOrganizerProfile();
+
+    if (!profile) {
+      setEnsureError(
+        'Could not create your organizer profile. Try again or sign out and use Create Account.',
+      );
+    }
+
+    setIsEnsuring(false);
+  }
 
   async function handleSignOut() {
     setIsSigningOut(true);
@@ -32,32 +51,47 @@ export function MissingProfileScreen({ email, onSignOut }: MissingProfileScreenP
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <ThemedText type="subtitle" style={styles.title}>
-          Organizer profile missing
+          Organizer profile not ready
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.body}>
-          You are signed in{email ? ` as ${email}` : ''}, but there is no matching organizer profile
-          in the database. Event creation and other organizer actions are blocked until a profile
-          exists.
+          You are signed in{email ? ` as ${email}` : ''}, but your organizer profile is not set up
+          yet. Event creation and scanning require a profile before you can continue.
         </ThemedText>
         <ThemedText themeColor="textSecondary" style={styles.body}>
-          After a local Supabase reset, recreate your user in the Supabase dashboard or run a profile
-          backfill for your account, then sign in again.
+          Tap set up profile to finish account setup. If this keeps failing, sign out and use Create
+          Account on the login screen.
         </ThemedText>
 
+        {ensureError ? <ThemedText style={styles.errorText}>{ensureError}</ThemedText> : null}
         {signOutError ? <ThemedText style={styles.errorText}>{signOutError}</ThemedText> : null}
+
+        <Pressable
+          disabled={isEnsuring}
+          onPress={handleEnsureProfile}
+          style={({ pressed }) => [
+            styles.primaryButton,
+            pressed && styles.pressed,
+            isEnsuring && styles.disabled,
+          ]}>
+          {isEnsuring ? (
+            <ActivityIndicator color="#000" />
+          ) : (
+            <ThemedText style={styles.primaryButtonText}>Set up organizer profile</ThemedText>
+          )}
+        </Pressable>
 
         <Pressable
           disabled={isSigningOut}
           onPress={handleSignOut}
           style={({ pressed }) => [
-            styles.primaryButton,
+            styles.secondaryButton,
             pressed && styles.pressed,
             isSigningOut && styles.disabled,
           ]}>
           {isSigningOut ? (
-            <ActivityIndicator color="#000" />
+            <ActivityIndicator color={OrganizerAccent} />
           ) : (
-            <ThemedText style={styles.primaryButtonText}>Sign out</ThemedText>
+            <ThemedText style={styles.secondaryButtonText}>Sign out</ThemedText>
           )}
         </Pressable>
       </SafeAreaView>
@@ -98,6 +132,18 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#000',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButton: {
+    alignItems: 'center',
+    borderColor: OrganizerAccent,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    paddingVertical: Spacing.three,
+  },
+  secondaryButtonText: {
+    color: OrganizerAccent,
     fontSize: 16,
     fontWeight: '700',
   },

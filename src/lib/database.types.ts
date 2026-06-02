@@ -131,6 +131,10 @@ export type Database = {
           remaining_count: number;
         };
       };
+      ensure_organizer_profile: {
+        Args: Record<string, never>;
+        Returns: Profile;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
