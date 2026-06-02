@@ -27,6 +27,7 @@ If any step fails, **do not** report the task as complete until fixed.
 | `src/lib/pass-link.ts` / `pass-link.core.ts` | `check:links` |
 | `src/lib/issue-pass-form.ts` | `check:issue-pass` |
 | Deploy to Vercel | Full `check:preflight` + manual smoke below |
+| Native EAS / device builds | `check:native-phase0` + manual smoke in [`NATIVE_PHASE_0.md`](./NATIVE_PHASE_0.md) |
 
 ## Individual scripts
 
