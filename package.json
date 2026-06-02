@@ -5,6 +5,7 @@
   "dependencies": {
     "@expo/ui": "~56.0.14",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-community/datetimepicker": "9.1.0",
     "@supabase/supabase-js": "^2.106.2",
     "expo": "~56.0.6",
     "expo-camera": "~56.0.7",
@@ -60,7 +61,9 @@
     "check:organizer-auth": "tsx scripts/check-organizer-auth-form.ts",
     "check:auth-redirect": "tsx scripts/check-auth-redirect-url.ts",
     "check:auth-callback": "tsx scripts/check-auth-callback-url.ts",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback"
+    "check:create-event": "tsx scripts/check-create-event-screen.ts",
+    "check:event-date": "tsx scripts/check-event-date.ts",
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:create-event && npm run check:event-date"
   },
   "private": true
 }

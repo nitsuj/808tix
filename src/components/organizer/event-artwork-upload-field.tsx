@@ -23,6 +23,8 @@ type EventArtworkUploadFieldProps = {
   pendingSelection: PendingArtworkSelection | null;
   onSelectionChange: (selection: PendingArtworkSelection | null) => void;
   disabled?: boolean;
+  /** When `background`, preview is omitted (screen uses full-bleed artwork like Event Detail). */
+  previewMode?: 'card' | 'background';
 };
 
 export function EventArtworkUploadField({
@@ -31,11 +33,13 @@ export function EventArtworkUploadField({
   pendingSelection,
   onSelectionChange,
   disabled = false,
+  previewMode = 'card',
 }: EventArtworkUploadFieldProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const previewUri = pendingSelection?.localUri ?? existingImageUrl ?? null;
   const hasArtwork = Boolean(previewUri);
   const actionLabel = hasArtwork ? 'Replace artwork' : 'Choose artwork';
+  const showCardPreview = previewMode === 'card';
 
   async function handlePickImage() {
     if (disabled) {
@@ -85,14 +89,16 @@ export function EventArtworkUploadField({
         {EVENT_ARTWORK_REQUIREMENTS_LABEL}
       </ThemedText>
 
-      <View style={styles.previewWrap}>
-        <EventArtwork
-          height={artworkUpload.previewHeight}
-          imageUrl={previewUri}
-          name={eventName}
-          rounded
-        />
-      </View>
+      {showCardPreview ? (
+        <View style={styles.previewWrap}>
+          <EventArtwork
+            height={artworkUpload.previewHeight}
+            imageUrl={previewUri}
+            name={eventName}
+            rounded
+          />
+        </View>
+      ) : null}
 
       {validationError ? (
         <ThemedText style={styles.errorText}>{validationError}</ThemedText>
@@ -104,6 +110,7 @@ export function EventArtworkUploadField({
         onPress={handlePickImage}
         style={({ pressed }) => [
           styles.actionButton,
+          !showCardPreview && styles.actionButtonOnPanel,
           pressed && !disabled && styles.pressed,
           disabled && styles.disabled,
         ]}>
@@ -144,6 +151,10 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
     borderWidth: 1,
     paddingVertical: spacing.two + 2,
+  },
+  actionButtonOnPanel: {
+    backgroundColor: 'transparent',
+    borderColor: artworkUpload.actionBorder,
   },
   actionText: {
     color: artworkUpload.actionText,

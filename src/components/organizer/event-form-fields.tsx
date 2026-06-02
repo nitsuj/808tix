@@ -56,6 +56,11 @@ export const eventFormStyles = StyleSheet.create({
     gap: spacing.three,
     padding: spacing.four,
   },
+  /** Form fields inside Event Detail–style floating panels (no nested card). */
+  formPanel: {
+    gap: spacing.three,
+    width: '100%',
+  },
   input: {
     backgroundColor: formField.inputBackground,
     borderColor: formField.inputBorder,

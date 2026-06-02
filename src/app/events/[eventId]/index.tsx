@@ -59,9 +59,15 @@ const LAYOUT = {
 const webViewportMinHeight =
   Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
+const ARTWORK_UPLOAD_FAILED_MESSAGE =
+  'Your event was created, but artwork could not be uploaded. Open Edit Event to try again.';
+
 export default function EventDetailScreen() {
   const router = useRouter();
-  const { eventId } = useLocalSearchParams<{ eventId: string }>();
+  const { eventId, artworkUploadFailed } = useLocalSearchParams<{
+    eventId: string;
+    artworkUploadFailed?: string;
+  }>();
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, checkedInCount, remainingCount, isLoading, error, refetch } =
     useEventDetail(eventId);
@@ -112,8 +118,13 @@ export default function EventDetailScreen() {
     );
   }
 
+  const showArtworkUploadWarning = artworkUploadFailed === '1';
+
   return (
     <EventDetailContent
+      artworkUploadWarning={
+        showArtworkUploadWarning ? ARTWORK_UPLOAD_FAILED_MESSAGE : undefined
+      }
       checkedInCount={checkedInCount}
       event={event}
       issuedCount={issuedCount}
@@ -137,6 +148,7 @@ type EventDetailContentProps = {
   issuedCount: number;
   checkedInCount: number;
   remainingCount: number;
+  artworkUploadWarning?: string;
   onGoToDashboard: () => void;
   router: ReturnType<typeof useRouter>;
 };
@@ -146,6 +158,7 @@ function EventDetailContent({
   issuedCount,
   checkedInCount,
   remainingCount,
+  artworkUploadWarning,
   onGoToDashboard,
   router,
 }: EventDetailContentProps) {
@@ -191,6 +204,11 @@ function EventDetailContent({
             </View>
 
             <View style={styles.commandPanel}>
+              {artworkUploadWarning ? (
+                <View style={styles.warningBanner}>
+                  <Text style={styles.warningBannerText}>{artworkUploadWarning}</Text>
+                </View>
+              ) : null}
               <View style={styles.metaBlock}>
                 {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
                 <Text style={styles.eventTitle}>{event.name}</Text>
@@ -378,6 +396,22 @@ const styles = StyleSheet.create({
     shadowOpacity: shadows.walletCard.shadowOpacity,
     shadowRadius: shadows.walletCard.shadowRadius,
     width: '100%',
+  },
+  warningBanner: {
+    backgroundColor: 'rgba(255, 196, 64, 0.12)',
+    borderColor: 'rgba(255, 196, 64, 0.45)',
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    marginBottom: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  warningBannerText: {
+    color: text.primary,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+    textAlign: 'center',
   },
   metaBlock: {
     alignItems: 'center',
