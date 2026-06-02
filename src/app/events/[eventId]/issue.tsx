@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -8,7 +8,7 @@ import {
   ScrollView,
   Share,
   StyleSheet,
-  useWindowDimensions,
+  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,16 +16,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
-import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
-import { chrome, fan, organizer, organizerScreen, semantic, shadows, surface } from '@/theme';
+import { Radii, Spacing } from '@/constants/theme';
+import {
+  chrome,
+  fan,
+  organizerScreen,
+  palette,
+  passScreen,
+  semantic,
+  shadows,
+  text,
+} from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatIssuedCapacity } from '@/lib/event-display';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
-import type { Pass } from '@/lib/database.types';
+import type { Event, Pass } from '@/lib/database.types';
 import { issuePass } from '@/lib/issue-pass';
 import {
   combineGuestName,
@@ -36,6 +45,27 @@ import {
 import { canIssuePassesForEvent, PUBLISH_BEFORE_ISSUE_MESSAGE } from '@/lib/event-status';
 import { buildPassLinkUrl } from '@/lib/pass-link';
 import { sendPassSms } from '@/lib/send-pass-sms';
+
+const MOBILE_VIEWPORT_WIDTH = 390;
+
+const LAYOUT = {
+  horizontalPadding: 24,
+  contentTopInset: 12,
+  panelTopInset: 56,
+  panelBottomInset: 32,
+  formToActions: 20,
+  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
+  title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
+  subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
+} as const;
+
+const webViewportMinHeight =
+  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
+
+type IssuePassEventContext = Pick<
+  Event,
+  'name' | 'image_url' | 'capacity' | 'event_date' | 'start_time' | 'venue_name'
+>;
 
 export default function IssuePassScreen() {
   const router = useRouter();
@@ -58,9 +88,11 @@ export default function IssuePassScreen() {
 
   if (authGate.state === 'loading' || isLoading) {
     return (
-      <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={fan.primary} />
-      </ThemedView>
+      <MobileViewport>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={fan.primary} />
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -75,11 +107,13 @@ export default function IssuePassScreen() {
 
   if (error || !event || !eventId) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
-        </SafeAreaView>
-      </ThemedView>
+      <MobileViewport>
+        <View style={styles.screen}>
+          <SafeAreaView style={styles.errorSafeArea}>
+            <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
+          </SafeAreaView>
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -87,24 +121,24 @@ export default function IssuePassScreen() {
 
   if (!canIssuePassesForEvent(activeEvent.status)) {
     return (
-      <ThemedView style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
-          <Pressable onPress={() => router.replace(`/events/${eventId}` as Href)} style={styles.backLink}>
-            <ThemedText style={styles.backLinkText}>← Event</ThemedText>
-          </Pressable>
-          <View style={styles.blockedState}>
-            <ThemedText style={styles.blockedTitle}>Event is still a draft</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.blockedBody}>
-              {PUBLISH_BEFORE_ISSUE_MESSAGE}
-            </ThemedText>
-            <Pressable
-              onPress={() => router.replace(`/events/${eventId}` as Href)}
-              style={({ pressed }) => [styles.blockedCta, pressed && styles.pressed]}>
-              <ThemedText style={styles.blockedCtaText}>Back to Event</ThemedText>
+      <MobileViewport>
+        <View style={styles.screen}>
+          <SafeAreaView style={styles.errorSafeArea}>
+            <Pressable onPress={() => router.replace(`/events/${eventId}` as Href)} style={styles.backHit}>
+              <Text style={styles.backText}>← Event</Text>
             </Pressable>
-          </View>
-        </SafeAreaView>
-      </ThemedView>
+            <View style={styles.blockedState}>
+              <Text style={styles.blockedTitle}>Event is still a draft</Text>
+              <Text style={styles.blockedBody}>{PUBLISH_BEFORE_ISSUE_MESSAGE}</Text>
+              <Pressable
+                onPress={() => router.replace(`/events/${eventId}` as Href)}
+                style={({ pressed }) => [styles.actionButton, styles.actionPrimary, pressed && styles.pressed]}>
+                <Text style={styles.actionPrimaryText}>Back to Event</Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -253,17 +287,68 @@ export default function IssuePassScreen() {
 
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <ThemedView style={styles.summaryRow}>
+    <View style={styles.summaryRow}>
       <ThemedText themeColor="textSecondary" type="small">
         {label}
       </ThemedText>
       <ThemedText style={styles.summaryValue}>{value}</ThemedText>
-    </ThemedView>
+    </View>
+  );
+}
+
+function MobileViewport({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>{children}</View>
+    </View>
+  );
+}
+
+function EventContextMeta({ event }: { event: IssuePassEventContext }) {
+  const dateLine = useMemo(() => {
+    const formatted = formatEventDateTimeLong(event.event_date, event.start_time);
+    return formatted ? formatted.toUpperCase() : null;
+  }, [event.event_date, event.start_time]);
+
+  const venueLine = (event.venue_name?.trim() || 'VENUE TBD').toUpperCase();
+
+  return (
+    <View style={styles.metaBlock}>
+      {dateLine ? <Text style={styles.dateLine}>{dateLine}</Text> : null}
+      <Text style={styles.eventTitle}>{event.name}</Text>
+      <Text style={styles.venueLine}>{venueLine}</Text>
+    </View>
+  );
+}
+
+function EventArtworkBackdrop({
+  event,
+  windowHeight,
+}: {
+  event: IssuePassEventContext;
+  windowHeight: number;
+}) {
+  const artworkUri = resolveOrganizerArtworkUrl(event.image_url);
+
+  if (artworkUri) {
+    return <ArtworkEnvironment artworkUri={artworkUri} isUploaded />;
+  }
+
+  return (
+    <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
+      <EventArtwork
+        height={windowHeight}
+        imageUrl={null}
+        name={event.name}
+        rounded={false}
+        style={StyleSheet.absoluteFill}
+      />
+    </View>
   );
 }
 
 type IssuePassFormViewProps = {
-  activeEvent: { name: string; image_url: string | null; capacity: number };
+  activeEvent: IssuePassEventContext;
   atCapacity: boolean;
   issuedCount: number;
   guestFirstName: string;
@@ -303,131 +388,119 @@ function IssuePassFormView({
   onGuestPhoneChange,
   onSubmit,
 }: IssuePassFormViewProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const artworkUri = resolveOrganizerArtworkUrl(activeEvent.image_url);
-  const hasUploadedArtwork = Boolean(artworkUri);
-  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.12));
-
   return (
-    <View style={styles.artworkScreen}>
-      {hasUploadedArtwork ? (
-        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
-      ) : (
-        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
-          <EventArtwork
-            height={windowHeight}
-            imageUrl={null}
-            name={activeEvent.name}
-            rounded={false}
-            style={StyleSheet.absoluteFill}
-          />
+    <MobileViewport>
+      <View style={styles.screen}>
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <EventArtworkBackdrop event={activeEvent} windowHeight={900} />
         </View>
-      )}
 
-      <SafeAreaView edges={['top', 'bottom']} style={styles.artworkContentLayer}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}>
-          <ScrollView
-            contentContainerStyle={[styles.artworkScrollContent, { paddingTop: cardTopInset }]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <Pressable onPress={onGoToEventDetail} style={styles.artworkBackButton}>
-              <ThemedText style={styles.backText}>Cancel</ThemedText>
-            </Pressable>
-
-            <ThemedView style={styles.floatingCard}>
-              <ThemedText style={styles.cardTitle}>Issue Pass</ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.cardSubtitle}>
-                {activeEvent.name}
-              </ThemedText>
-
-              <View style={styles.capacityBadge}>
-                <ThemedText style={styles.capacityBadgeText}>
-                  {formatIssuedCapacity(issuedCount, activeEvent.capacity)}
-                </ThemedText>
+          <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              <View style={styles.topBar}>
+                <Pressable onPress={onGoToEventDetail} style={styles.backHit}>
+                  <Text style={styles.backText}>← Event</Text>
+                </Pressable>
+                <View style={styles.topBarSpacer} />
               </View>
 
-              {atCapacity ? (
-                <ThemedText style={styles.errorText}>
-                  At capacity — raise max passes on the event to issue more.
-                </ThemedText>
-              ) : null}
+              <View style={styles.commandPanel}>
+                <EventContextMeta event={activeEvent} />
+                <Text style={styles.screenEyebrow}>ISSUE PASS</Text>
 
-              <ThemedView style={eventFormStyles.form}>
-                <EventFormField
-                  autoCapitalize="words"
-                  error={fieldErrors.guestFirstName}
-                  label="First Name"
-                  placeholder="Alex"
-                  value={guestFirstName}
-                  onChangeText={onGuestFirstNameChange}
-                />
-                <EventFormField
-                  autoCapitalize="words"
-                  error={fieldErrors.guestLastName}
-                  label="Last Name"
-                  placeholder="Rivera"
-                  value={guestLastName}
-                  onChangeText={onGuestLastNameChange}
-                />
-                <EventFormField
-                  error={fieldErrors.passType}
-                  label="Pass Type"
-                  placeholder={DEFAULT_PASS_TYPE}
-                  value={passType}
-                  onChangeText={onPassTypeChange}
-                />
-                <ThemedText themeColor="textSecondary" style={styles.contactSectionHint}>
-                  Delivery contact — phone or email required.
-                </ThemedText>
-                <EventFormField
-                  error={fieldErrors.guestPhone}
-                  hint="Preferred for Send SMS after issue"
-                  keyboardType="phone-pad"
-                  label="Guest Phone"
-                  placeholder="808-555-0100"
-                  value={guestPhone}
-                  onChangeText={onGuestPhoneChange}
-                />
-                <EventFormField
-                  error={fieldErrors.guestEmail}
-                  hint="Share pass link by email if no phone"
-                  keyboardType="default"
-                  label="Guest Email"
-                  placeholder="alex@example.com"
-                  value={guestEmail}
-                  onChangeText={onGuestEmailChange}
-                />
-              </ThemedView>
+                <View style={styles.capacityBadge}>
+                  <Text style={styles.capacityBadgeText}>
+                    {formatIssuedCapacity(issuedCount, activeEvent.capacity)}
+                  </Text>
+                </View>
 
-              {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
+                {atCapacity ? (
+                  <ThemedText style={styles.errorText}>
+                    At capacity — raise max passes on the event to issue more.
+                  </ThemedText>
+                ) : null}
 
-              <Pressable
-                disabled={isSubmitting || atCapacity}
-                onPress={onSubmit}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  styles.cardPrimaryButton,
-                  pressed && styles.pressed,
-                  (isSubmitting || atCapacity) && styles.disabled,
-                ]}>
-                {isSubmitting ? (
-                  <ActivityIndicator color={chrome.white} />
-                ) : (
-                  <ThemedText style={styles.primaryButtonText}>Issue Pass</ThemedText>
-                )}
-              </Pressable>
-            </ThemedView>
-          </ScrollView>
+                <View style={eventFormStyles.formPanel}>
+                  <EventFormField
+                    autoCapitalize="words"
+                    error={fieldErrors.guestFirstName}
+                    label="First Name"
+                    placeholder="Alex"
+                    value={guestFirstName}
+                    onChangeText={onGuestFirstNameChange}
+                  />
+                  <EventFormField
+                    autoCapitalize="words"
+                    error={fieldErrors.guestLastName}
+                    label="Last Name"
+                    placeholder="Rivera"
+                    value={guestLastName}
+                    onChangeText={onGuestLastNameChange}
+                  />
+                  <EventFormField
+                    error={fieldErrors.passType}
+                    label="Pass Type"
+                    placeholder={DEFAULT_PASS_TYPE}
+                    value={passType}
+                    onChangeText={onPassTypeChange}
+                  />
+                  <ThemedText themeColor="textSecondary" style={styles.contactSectionHint}>
+                    Delivery contact — phone or email required.
+                  </ThemedText>
+                  <EventFormField
+                    error={fieldErrors.guestPhone}
+                    hint="Preferred for Send SMS after issue"
+                    keyboardType="phone-pad"
+                    label="Guest Phone"
+                    placeholder="808-555-0100"
+                    value={guestPhone}
+                    onChangeText={onGuestPhoneChange}
+                  />
+                  <EventFormField
+                    error={fieldErrors.guestEmail}
+                    hint="Share pass link by email if no phone"
+                    keyboardType="default"
+                    label="Guest Email"
+                    placeholder="alex@example.com"
+                    value={guestEmail}
+                    onChangeText={onGuestEmailChange}
+                  />
+                </View>
+
+                {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
+
+                <Pressable
+                  disabled={isSubmitting || atCapacity}
+                  onPress={onSubmit}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionPrimary,
+                    pressed && styles.pressed,
+                    (isSubmitting || atCapacity) && styles.disabled,
+                  ]}>
+                  {isSubmitting ? (
+                    <ActivityIndicator color={chrome.white} />
+                  ) : (
+                    <Text style={styles.actionPrimaryText}>Issue Pass</Text>
+                  )}
+                </Pressable>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
         </KeyboardAvoidingView>
-      </SafeAreaView>
-    </View>
+      </View>
+    </MobileViewport>
   );
 }
 
 type IssuePassSuccessViewProps = {
-  activeEvent: { name: string; image_url: string | null };
+  activeEvent: IssuePassEventContext;
   createdPass: Pass;
   passUrl: string;
   canSendSms: boolean;
@@ -455,285 +528,248 @@ function IssuePassSuccessView({
   onSharePass,
   onIssueAnother,
 }: IssuePassSuccessViewProps) {
-  const { height: windowHeight } = useWindowDimensions();
-  const artworkUri = resolveOrganizerArtworkUrl(activeEvent.image_url);
-  const hasUploadedArtwork = Boolean(artworkUri);
-  const cardTopInset = Math.max(56, Math.round(windowHeight * 0.14));
-
   return (
-    <View style={styles.artworkScreen}>
-      {hasUploadedArtwork ? (
-        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />
-      ) : (
-        <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
-          <EventArtwork
-            height={windowHeight}
-            imageUrl={null}
-            name={activeEvent.name}
-            rounded={false}
-            style={StyleSheet.absoluteFill}
-          />
+    <MobileViewport>
+      <View style={styles.screen}>
+        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+          <EventArtworkBackdrop event={activeEvent} windowHeight={900} />
         </View>
-      )}
 
-      <SafeAreaView edges={['top', 'bottom']} style={styles.artworkContentLayer}>
-        <ScrollView
-          contentContainerStyle={[styles.artworkScrollContent, { paddingTop: cardTopInset }]}
-          showsVerticalScrollIndicator={false}>
-          <Pressable onPress={onGoToEventDetail} style={styles.artworkBackButton}>
-            <ThemedText style={styles.backText}>Back to Event</ThemedText>
-          </Pressable>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.topBar}>
+              <Pressable onPress={onGoToEventDetail} style={styles.backHit}>
+                <Text style={styles.backText}>← Event</Text>
+              </Pressable>
+              <View style={styles.topBarSpacer} />
+            </View>
 
-          <ThemedView style={styles.floatingCard}>
-            <ThemedText style={styles.cardTitle}>Pass issued</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.cardSubtitle}>
-              {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
-            </ThemedText>
-
-            <ThemedView style={styles.summaryBlock}>
-              <SummaryRow label="Guest" value={createdPass.guest_name} />
-              <SummaryRow label="Pass type" value={createdPass.pass_type} />
-              {createdPass.guest_email ? (
-                <SummaryRow label="Email" value={createdPass.guest_email} />
-              ) : null}
-              {createdPass.guest_phone ? (
-                <SummaryRow label="Phone" value={createdPass.guest_phone} />
-              ) : null}
-              <SummaryRow label="Status" value={createdPass.status} />
-            </ThemedView>
-
-            <ThemedText selectable themeColor="textSecondary" numberOfLines={2} style={styles.passLinkText}>
-              {passUrl}
-            </ThemedText>
-
-            {smsMessage ? (
-              <ThemedText themeColor="textSecondary" style={styles.statusHint}>
-                {smsMessage}
+            <View style={styles.commandPanel}>
+              <EventContextMeta event={activeEvent} />
+              <Text style={styles.screenEyebrow}>PASS ISSUED</Text>
+              <ThemedText themeColor="textSecondary" style={styles.successHint}>
+                {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
               </ThemedText>
-            ) : null}
-            {smsError ? <ThemedText style={styles.errorText}>{smsError}</ThemedText> : null}
 
-            {canSendSms ? (
-              <Pressable
-                disabled={isSendingSms}
-                onPress={onSendSms}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  styles.cardPrimaryButton,
-                  pressed && !isSendingSms && styles.pressed,
-                  isSendingSms && styles.disabled,
-                ]}>
-                {isSendingSms ? (
-                  <ActivityIndicator color={chrome.white} />
-                ) : (
-                  <ThemedText style={styles.primaryButtonText}>Send SMS</ThemedText>
-                )}
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={onSharePass}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  styles.cardPrimaryButton,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText style={styles.primaryButtonText}>Share Pass</ThemedText>
-              </Pressable>
-            )}
+              <View style={styles.summaryBlock}>
+                <SummaryRow label="Guest" value={createdPass.guest_name} />
+                <SummaryRow label="Pass type" value={createdPass.pass_type} />
+                {createdPass.guest_email ? (
+                  <SummaryRow label="Email" value={createdPass.guest_email} />
+                ) : null}
+                {createdPass.guest_phone ? (
+                  <SummaryRow label="Phone" value={createdPass.guest_phone} />
+                ) : null}
+                <SummaryRow label="Status" value={createdPass.status} />
+              </View>
 
-            {canSendSms ? (
-              <Pressable
-                onPress={onSharePass}
-                style={({ pressed }) => [
-                  styles.secondaryButton,
-                  styles.cardSecondaryButton,
-                  pressed && styles.pressed,
-                ]}>
-                <ThemedText style={styles.secondaryButtonText}>Share Pass</ThemedText>
-              </Pressable>
-            ) : null}
-
-            <Pressable
-              disabled={atCapacity}
-              onPress={onIssueAnother}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                styles.cardSecondaryButton,
-                pressed && styles.pressed,
-                atCapacity && styles.disabled,
-              ]}>
-              <ThemedText style={styles.secondaryButtonText}>Issue Another Pass</ThemedText>
-            </Pressable>
-
-            {atCapacity ? (
-              <ThemedText themeColor="textSecondary" type="small">
-                Event is now at capacity.
+              <ThemedText selectable themeColor="textSecondary" numberOfLines={2} style={styles.passLinkText}>
+                {passUrl}
               </ThemedText>
-            ) : null}
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+
+              {smsMessage ? (
+                <ThemedText themeColor="textSecondary" style={styles.statusHint}>
+                  {smsMessage}
+                </ThemedText>
+              ) : null}
+              {smsError ? <ThemedText style={styles.errorText}>{smsError}</ThemedText> : null}
+
+              {canSendSms ? (
+                <Pressable
+                  disabled={isSendingSms}
+                  onPress={onSendSms}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionPrimary,
+                    pressed && !isSendingSms && styles.pressed,
+                    isSendingSms && styles.disabled,
+                  ]}>
+                  {isSendingSms ? (
+                    <ActivityIndicator color={chrome.white} />
+                  ) : (
+                    <Text style={styles.actionPrimaryText}>Send SMS</Text>
+                  )}
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={onSharePass}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionPrimary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.actionPrimaryText}>Share Pass</Text>
+                </Pressable>
+              )}
+
+              {canSendSms ? (
+                <Pressable
+                  onPress={onSharePass}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionSecondary,
+                    pressed && styles.pressed,
+                  ]}>
+                  <Text style={styles.actionSecondaryText}>Share Pass</Text>
+                </Pressable>
+              ) : null}
+
+              <Pressable
+                disabled={atCapacity}
+                onPress={onIssueAnother}
+                style={({ pressed }) => [
+                  styles.actionButton,
+                  styles.actionSecondary,
+                  pressed && styles.pressed,
+                  atCapacity && styles.disabled,
+                ]}>
+                <Text style={styles.actionSecondaryText}>Issue Another Pass</Text>
+              </Pressable>
+
+              {atCapacity ? (
+                <ThemedText themeColor="textSecondary" type="small">
+                  Event is now at capacity.
+                </ThemedText>
+              ) : null}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </MobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: surface.background,
+  viewportOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
+  },
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    width: '100%',
+    ...webViewportMinHeight,
+  },
+  screen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    overflow: 'hidden',
+    position: 'relative',
   },
   keyboardView: {
     flex: 1,
   },
-  safeArea: {
+  foreground: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
+    zIndex: 1,
   },
-  backLink: {
-    marginBottom: Spacing.four,
-    paddingVertical: Spacing.one,
-  },
-  backLinkText: {
-    color: fan.badgeText,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  blockedState: {
-    flex: 1,
-    gap: Spacing.three,
-    justifyContent: 'center',
-    paddingBottom: Spacing.six,
-  },
-  blockedTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  blockedBody: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  blockedCta: {
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: fan.primary,
-    borderRadius: Radii.button,
-    marginTop: Spacing.two,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.three,
-  },
-  blockedCtaText: {
-    color: chrome.white,
-    fontSize: 16,
-    fontWeight: '800',
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: LAYOUT.panelBottomInset,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    paddingTop: LAYOUT.contentTopInset,
   },
   centered: {
-    flex: 1,
     alignItems: 'center',
+    backgroundColor: palette.pureBlack,
+    flex: 1,
     justifyContent: 'center',
+  },
+  errorSafeArea: {
+    flex: 1,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    paddingTop: LAYOUT.contentTopInset,
+  },
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.two,
+  },
+  topBarSpacer: {
+    width: 48,
+  },
+  backHit: {
+    paddingVertical: Spacing.one,
   },
   backText: {
     color: fan.badgeText,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  summaryRow: {
-    gap: Spacing.half,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  passLinkText: {
-    fontFamily: 'monospace',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  statusHint: {
-    fontSize: 13,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: fan.primary,
-    borderRadius: Radii.button,
-    paddingVertical: Spacing.three,
-  },
-  primaryButtonText: {
-    color: chrome.white,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.button,
-    borderWidth: 1,
-    paddingVertical: Spacing.three,
-  },
-  secondaryButtonText: {
-    color: fan.badgeText,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: 0.85,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  errorText: {
-    color: semantic.errorSoft,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  artworkScreen: {
-    backgroundColor: surface.background,
-    flex: 1,
-    position: 'relative',
+    fontSize: 15,
+    fontWeight: '700',
   },
   fallbackArtLayer: {
     ...StyleSheet.absoluteFill,
     overflow: 'hidden',
   },
-  artworkContentLayer: {
-    flex: 1,
-    zIndex: 1,
-  },
-  artworkScrollContent: {
+  commandPanel: {
     alignSelf: 'center',
-    flexGrow: 1,
-    maxWidth: MaxContentWidth,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.three,
-    width: '100%',
-  },
-  artworkBackButton: {
-    marginBottom: Spacing.two,
-    paddingHorizontal: Spacing.one,
-    paddingVertical: Spacing.one,
-  },
-  floatingCard: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.card,
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
     borderWidth: 1,
     gap: Spacing.three,
-    padding: Spacing.four,
+    marginTop: LAYOUT.panelTopInset,
+    maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
+    paddingBottom: passScreen.credential.paddingBottom,
+    paddingHorizontal: passScreen.credential.paddingHorizontal,
+    paddingTop: passScreen.credential.paddingTop,
     shadowColor: shadows.walletCard.shadowColor,
     shadowOffset: shadows.walletCard.shadowOffset,
     shadowOpacity: shadows.walletCard.shadowOpacity,
     shadowRadius: shadows.walletCard.shadowRadius,
+    width: '100%',
   },
-  cardTitle: {
-    fontSize: 28,
+  metaBlock: {
+    alignItems: 'center',
+    gap: 0,
+    marginBottom: Spacing.one,
+  },
+  dateLine: {
+    color: fan.badgeText,
+    fontSize: LAYOUT.date.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.date.letterSpacing,
+    lineHeight: LAYOUT.date.lineHeight,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  eventTitle: {
+    color: text.primary,
+    fontSize: LAYOUT.title.fontSize,
     fontWeight: '800',
-    lineHeight: 34,
+    letterSpacing: LAYOUT.title.letterSpacing,
+    lineHeight: LAYOUT.title.lineHeight,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  cardSubtitle: {
-    fontSize: 15,
-    lineHeight: 22,
+  venueLine: {
+    color: text.secondary,
+    fontSize: LAYOUT.subtitle.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.subtitle.letterSpacing,
+    lineHeight: LAYOUT.subtitle.lineHeight,
+    textAlign: 'center',
+  },
+  screenEyebrow: {
+    alignSelf: 'center',
+    borderColor: fan.muted,
+    borderRadius: 999,
+    borderWidth: 1,
+    color: fan.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    textAlign: 'center',
   },
   capacityBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: 'center',
     backgroundColor: organizerScreen.liveBadge.backgroundColor,
     borderColor: fan.muted,
     borderRadius: Radii.input,
@@ -747,19 +783,90 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.4,
   },
+  blockedState: {
+    flex: 1,
+    gap: Spacing.three,
+    justifyContent: 'center',
+    paddingBottom: Spacing.six,
+  },
+  blockedTitle: {
+    color: text.primary,
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  blockedBody: {
+    color: text.secondary,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  summaryRow: {
+    gap: Spacing.half,
+  },
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   summaryBlock: {
     gap: Spacing.two,
   },
-  cardPrimaryButton: {
-    marginHorizontal: 0,
+  successHint: {
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
-  cardSecondaryButton: {
-    marginHorizontal: 0,
+  passLinkText: {
+    fontFamily: 'monospace',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  statusHint: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   contactSectionHint: {
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 18,
     marginTop: Spacing.half,
+  },
+  errorText: {
+    color: semantic.errorSoft,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  actionButton: {
+    alignItems: 'center',
+    borderRadius: Radii.button,
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  actionPrimary: {
+    backgroundColor: fan.primary,
+    marginTop: LAYOUT.formToActions,
+  },
+  actionSecondary: {
+    borderColor: chrome.glass.border,
+    borderWidth: 1,
+  },
+  actionPrimaryText: {
+    color: chrome.white,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  actionSecondaryText: {
+    color: fan.badgeText,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.88,
+  },
+  disabled: {
+    opacity: 0.6,
   },
 });

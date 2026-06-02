@@ -2,9 +2,11 @@ import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -13,10 +15,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventPassListRow } from '@/components/organizer/event-pass-list-row';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { Radii, Spacing } from '@/constants/theme';
-import { chrome, fan, organizer, semantic, surface, text } from '@/theme';
+import {
+  chrome,
+  fan,
+  palette,
+  passScreen,
+  semantic,
+  shadows,
+  text,
+} from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import {
   DEFAULT_EVENT_PASS_SORT,
@@ -35,6 +47,19 @@ import {
 import type { Pass } from '@/lib/database.types';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
+
+const LAYOUT = {
+  horizontalPadding: 24,
+  contentTopInset: 12,
+  panelTopInset: 48,
+  panelBottomInset: 32,
+  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
+  title: { fontSize: 22, lineHeight: 28, letterSpacing: 0.4 },
+  subtitle: { fontSize: 13, lineHeight: 18, letterSpacing: 0.3 },
+} as const;
+
+const webViewportMinHeight =
+  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 export default function EventPassesScreen() {
   const router = useRouter();
@@ -94,9 +119,11 @@ export default function EventPassesScreen() {
 
   if (authGate.state === 'loading' || isEventLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={fan.primary} />
-      </View>
+      <MobileViewport>
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={fan.primary} />
+        </View>
+      </MobileViewport>
     );
   }
 
@@ -111,17 +138,21 @@ export default function EventPassesScreen() {
 
   if (eventError || !event || !eventId) {
     return (
-      <View style={styles.centered}>
-        <ThemedText style={styles.errorText}>{eventError ?? 'Event not found.'}</ThemedText>
-      </View>
+      <MobileViewport>
+        <View style={styles.centered}>
+          <ThemedText style={styles.errorText}>{eventError ?? 'Event not found.'}</ThemedText>
+        </View>
+      </MobileViewport>
     );
   }
 
   return (
     <EventPassesContent
+      artworkUrl={resolveOrganizerArtworkUrl(event.image_url)}
       eventName={event.name}
       eventDate={event.event_date}
       eventStartTime={event.start_time}
+      venueName={event.venue_name}
       filter={filter}
       isLoading={isPassesLoading}
       listError={passesError}
@@ -135,6 +166,8 @@ type EventPassesContentProps = {
   eventName: string;
   eventDate: string | null;
   eventStartTime: string | null;
+  venueName: string | null;
+  artworkUrl: string | null;
   filter: EventPassFilter;
   passes: Pass[];
   isLoading: boolean;
@@ -142,10 +175,20 @@ type EventPassesContentProps = {
   onGoToEventDetail: () => void;
 };
 
+function MobileViewport({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>{children}</View>
+    </View>
+  );
+}
+
 function EventPassesContent({
   eventName,
   eventDate,
   eventStartTime,
+  venueName,
+  artworkUrl,
   filter,
   passes,
   isLoading,
@@ -160,8 +203,13 @@ function EventPassesContent({
     [filter, sort],
   );
 
-  const title = getEventPassListTitle(filter);
-  const eventDateLine = formatEventDateTimeLong(eventDate, eventStartTime);
+  const listTitle = getEventPassListTitle(filter);
+  const eventDateLine = useMemo(() => {
+    const formatted = formatEventDateTimeLong(eventDate, eventStartTime);
+    return formatted ? formatted.toUpperCase() : null;
+  }, [eventDate, eventStartTime]);
+  const venueLine = (venueName?.trim() || 'VENUE TBD').toUpperCase();
+
   const visiblePasses = useMemo(
     () => prepareEventPassList(passes, searchQuery, activeSort),
     [passes, searchQuery, activeSort],
@@ -174,160 +222,234 @@ function EventPassesContent({
       : `${passes.length} pass${passes.length === 1 ? '' : 'es'}`;
 
   return (
-    <View style={styles.container}>
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
-          <Pressable onPress={onGoToEventDetail} style={styles.backButton}>
-            <ThemedText style={styles.backText}>← Event</ThemedText>
-          </Pressable>
+    <MobileViewport>
+      <View style={styles.screen}>
+        <OrganizerAmbientBackground eventName={eventName} imageUrl={artworkUrl} />
 
-          <View style={styles.headerBlock}>
-            <ThemedText style={styles.title}>{title}</ThemedText>
-            <ThemedText numberOfLines={2} themeColor="textSecondary" style={styles.subtitle}>
-              {eventName}
-            </ThemedText>
-            {eventDateLine ? (
-              <ThemedText numberOfLines={1} themeColor="textSecondary" style={styles.dateLine}>
-                {eventDateLine}
-              </ThemedText>
-            ) : null}
-            <ThemedText themeColor="textSecondary" style={styles.countLine}>
-              {countLabel}
-            </ThemedText>
-          </View>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.topBar}>
+              <Pressable onPress={onGoToEventDetail} style={styles.backHit}>
+                <Text style={styles.backText}>← Event</Text>
+              </Pressable>
+              <View style={styles.topBarSpacer} />
+            </View>
 
-          <View style={styles.toolbar}>
-            <TextInput
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              placeholder="Search name, email, phone, type, status…"
-              placeholderTextColor={chrome.input.placeholder}
-              style={styles.searchInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-
-            <ScrollView
-              horizontal
-              contentContainerStyle={styles.sortRow}
-              showsHorizontalScrollIndicator={false}>
-              {sortOptions.map((option) => {
-                const isActive = activeSort.key === option.key;
-                const arrow = isActive ? (activeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
-
-                return (
-                  <Pressable
-                    key={option.key}
-                    onPress={() => setSort((current) => toggleEventPassSort(current, option.key))}
-                    style={({ pressed }) => [
-                      styles.sortChip,
-                      isActive && styles.sortChipActive,
-                      pressed && styles.pressed,
-                    ]}>
-                    <ThemedText style={[styles.sortChipText, isActive && styles.sortChipTextActive]}>
-                      {option.label}
-                      {arrow}
-                    </ThemedText>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-
-          {listError ? <ThemedText style={styles.errorText}>{listError}</ThemedText> : null}
-
-          <View style={styles.listShell}>
-            {isLoading ? (
-              <View style={styles.loadingBlock}>
-                <ActivityIndicator color={organizer.accent} size="large" />
+            <View style={styles.commandPanel}>
+              <View style={styles.metaBlock}>
+                {eventDateLine ? <Text style={styles.dateLine}>{eventDateLine}</Text> : null}
+                <Text numberOfLines={2} style={styles.eventTitle}>
+                  {eventName}
+                </Text>
+                <Text style={styles.venueLine}>{venueLine}</Text>
+                <Text style={styles.listEyebrow}>{listTitle.toUpperCase()}</Text>
+                <Text style={styles.countLine}>{countLabel}</Text>
               </View>
-            ) : visiblePasses.length === 0 ? (
-              <View style={styles.emptyBlock}>
-                <ThemedText themeColor="textSecondary" style={styles.emptyText}>
-                  {passes.length === 0
-                    ? filter === 'checked_in'
-                      ? 'No guests checked in yet.'
-                      : 'No passes issued yet. Issue a pass from the event screen.'
-                    : 'No passes match your search.'}
-                </ThemedText>
+
+              <View style={styles.toolbar}>
+                <Text style={styles.toolbarLabel}>Search</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  clearButtonMode="while-editing"
+                  placeholder="Name, email, phone, type, status…"
+                  placeholderTextColor={chrome.input.placeholder}
+                  style={styles.searchInput}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+
+                <Text style={styles.toolbarLabel}>Sort</Text>
+                <ScrollView
+                  horizontal
+                  contentContainerStyle={styles.sortRow}
+                  showsHorizontalScrollIndicator={false}>
+                  {sortOptions.map((option) => {
+                    const isActive = activeSort.key === option.key;
+                    const arrow = isActive ? (activeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+
+                    return (
+                      <Pressable
+                        key={option.key}
+                        onPress={() => setSort((current) => toggleEventPassSort(current, option.key))}
+                        style={({ pressed }) => [
+                          styles.sortChip,
+                          isActive && styles.sortChipActive,
+                          pressed && styles.pressed,
+                        ]}>
+                        <Text style={[styles.sortChipText, isActive && styles.sortChipTextActive]}>
+                          {option.label}
+                          {arrow}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
               </View>
-            ) : (
-              visiblePasses.map((pass, index) => (
-                <View key={pass.id}>
-                  {index === 0 ? null : <View style={styles.rowDivider} />}
-                  <EventPassListRow eventName={eventName} pass={pass} />
+            </View>
+
+            {listError ? <ThemedText style={styles.errorText}>{listError}</ThemedText> : null}
+
+            <View style={styles.listShell}>
+              {isLoading ? (
+                <View style={styles.loadingBlock}>
+                  <ActivityIndicator color={fan.primary} size="large" />
                 </View>
-              ))
-            )}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </View>
+              ) : visiblePasses.length === 0 ? (
+                <View style={styles.emptyBlock}>
+                  <ThemedText themeColor="textSecondary" style={styles.emptyText}>
+                    {passes.length === 0
+                      ? filter === 'checked_in'
+                        ? 'No guests checked in yet.'
+                        : 'No passes issued yet. Issue a pass from the event screen.'
+                      : 'No passes match your search.'}
+                  </ThemedText>
+                </View>
+              ) : (
+                visiblePasses.map((pass, index) => (
+                  <View key={pass.id}>
+                    {index === 0 ? null : <View style={styles.rowDivider} />}
+                    <EventPassListRow eventName={eventName} pass={pass} />
+                  </View>
+                ))
+              )}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </MobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: surface.background,
+  viewportOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
   },
-  safeArea: {
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
     flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    width: '100%',
+    ...webViewportMinHeight,
+  },
+  screen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  foreground: {
+    flex: 1,
+    zIndex: 1,
   },
   scrollContent: {
-    alignSelf: 'center',
     flexGrow: 1,
-    gap: Spacing.three,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
-    width: '100%',
+    paddingBottom: LAYOUT.panelBottomInset,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    paddingTop: LAYOUT.contentTopInset,
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: surface.background,
+    backgroundColor: palette.pureBlack,
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
+    paddingHorizontal: LAYOUT.horizontalPadding,
   },
-  backButton: {
-    alignSelf: 'flex-start',
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.two,
+  },
+  topBarSpacer: {
+    width: 48,
+  },
+  backHit: {
     paddingVertical: Spacing.one,
   },
   backText: {
     color: fan.badgeText,
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  headerBlock: {
-    gap: Spacing.one,
+  commandPanel: {
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
+    borderWidth: 1,
+    gap: Spacing.three,
+    marginTop: LAYOUT.panelTopInset,
+    paddingBottom: passScreen.credential.paddingBottom,
+    paddingHorizontal: passScreen.credential.paddingHorizontal,
+    paddingTop: passScreen.credential.paddingTop,
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '800',
-    lineHeight: 30,
-  },
-  subtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '600',
+  metaBlock: {
+    alignItems: 'center',
+    gap: 4,
   },
   dateLine: {
-    fontSize: 12,
-    lineHeight: 18,
+    color: fan.badgeText,
+    fontSize: LAYOUT.date.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.date.letterSpacing,
+    lineHeight: LAYOUT.date.lineHeight,
+    textAlign: 'center',
+  },
+  eventTitle: {
+    color: text.primary,
+    fontSize: LAYOUT.title.fontSize,
+    fontWeight: '800',
+    letterSpacing: LAYOUT.title.letterSpacing,
+    lineHeight: LAYOUT.title.lineHeight,
+    textAlign: 'center',
+  },
+  venueLine: {
+    color: text.secondary,
+    fontSize: LAYOUT.subtitle.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.subtitle.letterSpacing,
+    lineHeight: LAYOUT.subtitle.lineHeight,
+    textAlign: 'center',
+  },
+  listEyebrow: {
+    borderColor: fan.muted,
+    borderRadius: 999,
+    borderWidth: 1,
+    color: fan.primary,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    textAlign: 'center',
   },
   countLine: {
+    color: text.secondary,
     fontSize: 12,
     fontWeight: '600',
-    marginTop: Spacing.one,
+    marginTop: Spacing.half,
+    textAlign: 'center',
   },
   toolbar: {
     gap: Spacing.two,
+    width: '100%',
+  },
+  toolbarLabel: {
+    color: fan.badgeText,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   searchInput: {
     backgroundColor: chrome.input.background,
@@ -352,23 +474,28 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one + 2,
   },
   sortChipActive: {
-    borderColor: organizer.accent,
+    backgroundColor: 'rgba(162, 91, 255, 0.14)',
+    borderColor: fan.primary,
   },
   sortChipText: {
-    color: fan.badgeText,
+    color: text.secondary,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   sortChipTextActive: {
-    color: organizer.accent,
+    color: fan.badgeText,
   },
   listShell: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.card,
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
     borderWidth: 1,
-    marginTop: Spacing.one,
+    marginTop: Spacing.three,
     overflow: 'hidden',
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
   },
   rowDivider: {
     backgroundColor: chrome.glass.border,
@@ -390,6 +517,8 @@ const styles = StyleSheet.create({
   errorText: {
     color: semantic.errorSoft,
     fontSize: 14,
+    marginTop: Spacing.two,
+    textAlign: 'center',
   },
   pressed: {
     opacity: 0.88,

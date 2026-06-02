@@ -11,7 +11,7 @@ import {
 
 import { ThemedText } from '@/components/themed-text';
 import { Spacing } from '@/constants/theme';
-import { chrome, fan, organizer, semantic } from '@/theme';
+import { chrome, fan, semantic } from '@/theme';
 import type { Pass, PassStatus } from '@/lib/database.types';
 import { formatPassTimestamp } from '@/lib/pass-datetime';
 import { formatPassStatusLabel } from '@/lib/pass-display';
@@ -136,21 +136,23 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
       <View style={styles.actionsRow}>
         <Pressable
           onPress={handleViewGuestPass}
-          style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
-          <ThemedText style={styles.actionLinkText}>View Guest Pass</ThemedText>
+          style={({ pressed }) => [styles.actionPrimary, pressed && styles.pressed]}>
+          <ThemedText style={styles.actionPrimaryText}>View Guest Pass</ThemedText>
         </Pressable>
 
         {hasMultipleSendActions ? (
           <Pressable
             onPress={() => setActionsOpen((open) => !open)}
-            style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
-            <ThemedText style={styles.actionLinkText}>{actionsOpen ? 'Hide' : 'Resend'}</ThemedText>
+            style={({ pressed }) => [styles.actionSecondary, pressed && styles.pressed]}>
+            <ThemedText style={styles.actionSecondaryText}>
+              {actionsOpen ? 'Hide options' : 'Resend'}
+            </ThemedText>
           </Pressable>
         ) : (
           <Pressable
             onPress={handleSharePass}
-            style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
-            <ThemedText style={styles.actionLinkText}>Send Pass</ThemedText>
+            style={({ pressed }) => [styles.actionSecondary, pressed && styles.pressed]}>
+            <ThemedText style={styles.actionSecondaryText}>Send Pass</ThemedText>
           </Pressable>
         )}
       </View>
@@ -159,8 +161,8 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
         <View style={styles.actionsPanel}>
           <Pressable
             onPress={handleSharePass}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.actionButtonText}>Share Pass</ThemedText>
+            style={({ pressed }) => [styles.actionChip, pressed && styles.pressed]}>
+            <ThemedText style={styles.actionChipText}>Share Pass</ThemedText>
           </Pressable>
 
           {hasPhone ? (
@@ -168,14 +170,15 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
               disabled={isSendingSms}
               onPress={handleResendSms}
               style={({ pressed }) => [
-                styles.actionButton,
+                styles.actionChip,
+                styles.actionChipAccent,
                 pressed && !isSendingSms && styles.pressed,
                 isSendingSms && styles.disabled,
               ]}>
               {isSendingSms ? (
-                <ActivityIndicator color={organizer.accent} size="small" />
+                <ActivityIndicator color={fan.primary} size="small" />
               ) : (
-                <ThemedText style={styles.actionButtonText}>Resend SMS</ThemedText>
+                <ThemedText style={styles.actionChipAccentText}>Resend SMS</ThemedText>
               )}
             </Pressable>
           ) : null}
@@ -203,12 +206,9 @@ function StatusBadge({ status }: { status: PassStatus }) {
 
 const styles = StyleSheet.create({
   row: {
-    backgroundColor: chrome.glass.fill,
-    borderBottomColor: chrome.glass.border,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    gap: Spacing.one,
+    gap: Spacing.one + 2,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two + 2,
+    paddingVertical: Spacing.three,
   },
   mainLine: {
     alignItems: 'flex-start',
@@ -222,13 +222,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   guestName: {
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 20,
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 21,
   },
   contactLine: {
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 17,
   },
   statusBadge: {
     borderRadius: 999,
@@ -271,26 +271,41 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   actionsRow: {
+    alignItems: 'center',
+    borderTopColor: chrome.glass.border,
+    borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.three,
-    marginTop: Spacing.half,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
+    paddingTop: Spacing.two,
   },
-  actionLink: {
+  actionPrimary: {
     paddingVertical: 2,
   },
-  actionLinkText: {
-    color: organizer.accent,
-    fontSize: 13,
+  actionPrimaryText: {
+    color: fan.primary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  actionSecondary: {
+    borderColor: chrome.glass.border,
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  actionSecondaryText: {
+    color: fan.badgeText,
+    fontSize: 12,
     fontWeight: '700',
   },
   actionsPanel: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
-    marginTop: Spacing.half,
   },
-  actionButton: {
+  actionChip: {
     borderColor: chrome.glass.border,
     borderRadius: 6,
     borderWidth: 1,
@@ -298,10 +313,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one + 2,
   },
-  actionButtonText: {
+  actionChipAccent: {
+    borderColor: 'rgba(162, 91, 255, 0.45)',
+    backgroundColor: 'rgba(162, 91, 255, 0.1)',
+  },
+  actionChipText: {
     color: fan.badgeText,
     fontSize: 12,
     fontWeight: '700',
+    textAlign: 'center',
+  },
+  actionChipAccentText: {
+    color: fan.primary,
+    fontSize: 12,
+    fontWeight: '800',
     textAlign: 'center',
   },
   pressed: {
