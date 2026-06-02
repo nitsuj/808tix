@@ -13,6 +13,7 @@ export type EventFormFieldProps = {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   onChangeText: (value: string) => void;
   onBlur?: () => void;
+  onEndEditing?: () => void;
 };
 
 export function EventFormField({
@@ -25,6 +26,7 @@ export function EventFormField({
   autoCapitalize = 'sentences',
   onChangeText,
   onBlur,
+  onEndEditing,
 }: EventFormFieldProps) {
   return (
     <View style={eventFormStyles.field}>
@@ -44,6 +46,7 @@ export function EventFormField({
         value={value}
         onBlur={onBlur}
         onChangeText={onChangeText}
+        onEndEditing={onEndEditing}
       />
       {error ? <ThemedText style={eventFormStyles.errorText}>{error}</ThemedText> : null}
     </View>

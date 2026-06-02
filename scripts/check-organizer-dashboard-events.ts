@@ -1,12 +1,15 @@
 #!/usr/bin/env npx tsx
 /**
- * Command Center event list rules (src/lib/organizer-dashboard-events.ts).
+ * Command Center event visibility (src/lib/organizer-dashboard-events.ts).
  */
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import type { Event } from '../src/lib/database.types';
-import { isOrganizerDashboardEvent } from '../src/lib/organizer-dashboard-events';
+import {
+  filterOrganizerDashboardEvents,
+  isOrganizerDashboardEvent,
+} from '../src/lib/organizer-dashboard-events';
 
 let failures = 0;
 
@@ -27,32 +30,57 @@ function assert(condition: boolean, message: string) {
   pass(message);
 }
 
-const base = {
-  id: 'e1',
-  organizer_id: 'o1',
-  slug: 'test',
-  name: 'Test',
-  venue_name: 'Venue',
-  event_date: '2020-01-01',
-  start_time: '19:00:00',
-  capacity: 100,
-  image_url: null,
-  created_at: '',
-  updated_at: '',
-} satisfies Event;
+function event(overrides: Partial<Event> & Pick<Event, 'status' | 'event_date'>): Event {
+  return {
+    id: 'e1',
+    organizer_id: 'o1',
+    slug: 'test',
+    name: 'Test',
+    venue_name: 'Venue',
+    start_time: '19:00:00',
+    capacity: 100,
+    image_url: null,
+    created_at: '',
+    updated_at: '',
+    ...overrides,
+  };
+}
 
-assert(isOrganizerDashboardEvent({ ...base, status: 'draft' }), 'draft event shown');
-assert(isOrganizerDashboardEvent({ ...base, status: 'published' }), 'published event shown');
-assert(!isOrganizerDashboardEvent({ ...base, status: 'completed' }), 'completed hidden');
-assert(!isOrganizerDashboardEvent({ ...base, status: 'cancelled' }), 'cancelled hidden');
+const pastDraft = event({ status: 'draft', event_date: '2020-01-01' });
+const futureDraft = event({ status: 'draft', event_date: '2099-12-31', id: 'e2' });
+const completed = event({ status: 'completed', event_date: '2099-12-31', id: 'e3' });
+const cancelled = event({ status: 'cancelled', event_date: '2099-12-31', id: 'e4' });
+const pastPublished = event({ status: 'published', event_date: '2019-06-01', id: 'e5' });
+
+assert(isOrganizerDashboardEvent(pastDraft), 'past draft event → visible');
+assert(isOrganizerDashboardEvent(futureDraft), 'future draft event → visible');
+assert(isOrganizerDashboardEvent(pastPublished), 'past published event → visible');
+assert(!isOrganizerDashboardEvent(completed), 'completed event → hidden');
+assert(!isOrganizerDashboardEvent(cancelled), 'cancelled event → hidden');
+
+const visible = filterOrganizerDashboardEvents([
+  pastDraft,
+  futureDraft,
+  completed,
+  cancelled,
+  pastPublished,
+]);
+
+assert(visible.length === 3, 'dashboard list includes past draft/published + future draft');
+assert(visible.some((row) => row.id === pastDraft.id), 'past draft in dashboard list');
+assert(!visible.some((row) => row.id === completed.id), 'completed not in dashboard list');
+
+const hookSource = readFileSync(join(process.cwd(), 'src/hooks/use-organizer-events.ts'), 'utf8');
+
+assert(hookSource.includes('useEffect'), 'organizer events hook loads on mount');
+assert(hookSource.includes('filterOrganizerDashboardEvents'), 'hook uses dashboard filter');
 
 const dashboardSource = readFileSync(
   join(process.cwd(), 'src/components/organizer/organizer-dashboard.tsx'),
   'utf8',
 );
 
-assert(dashboardSource.includes('dashboardEvents'), 'dashboard uses dashboardEvents list');
-assert(!dashboardSource.includes('upcomingEvents'), 'dashboard no longer filters by upcoming date only');
+assert(dashboardSource.includes('dashboardEvents'), 'dashboard renders dashboardEvents');
 
 if (failures > 0) {
   console.error(`\ncheck-organizer-dashboard-events: ${failures} failure(s)`);

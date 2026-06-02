@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -64,13 +64,20 @@ const ARTWORK_UPLOAD_FAILED_MESSAGE =
 
 export default function EventDetailScreen() {
   const router = useRouter();
-  const { eventId, artworkUploadFailed } = useLocalSearchParams<{
+  const { eventId, artworkUploadFailed, refreshStats } = useLocalSearchParams<{
     eventId: string;
     artworkUploadFailed?: string;
+    refreshStats?: string;
   }>();
   const authGate = useOrganizerAuthGate();
-  const { event, issuedCount, checkedInCount, remainingCount, isLoading, error } =
+  const { event, issuedCount, checkedInCount, remainingCount, isLoading, error, refetch } =
     useEventDetail(eventId);
+
+  useEffect(() => {
+    if (refreshStats) {
+      void refetch();
+    }
+  }, [refreshStats, refetch]);
 
   const goToDashboard = useCallback(() => {
     router.replace(DASHBOARD_ROUTE);

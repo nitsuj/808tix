@@ -18,6 +18,7 @@ import {
 } from '@/components/organizer/event-artwork-upload-field';
 import { EventDateFormField } from '@/components/organizer/event-date-form-field';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
+import { EventStartTimeField } from '@/components/organizer/event-start-time-field';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
@@ -26,13 +27,9 @@ import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { formatEventDateForDisplay } from '@/lib/event-date';
 import { persistEventArtworkUrl, uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
-import {
-  formatTimeInputForDisplay,
-  normalizeTimeInput,
-  parseMaxPassesInput,
-  validateCreateEventForm,
-  type CreateEventFieldErrors,
-} from '@/lib/event-form';
+import { parseMaxPassesInput, type CreateEventFieldErrors } from '@/lib/event-form';
+import { prepareEventFormForSubmit } from '@/lib/event-form-submit';
+import { isEventDateTodayOrFuture } from '@/lib/event-form';
 import { generateUniqueEventSlug } from '@/lib/event-slug';
 import { supabase } from '@/lib/supabase';
 import {
@@ -114,44 +111,40 @@ export default function CreateEventScreen() {
 
   const organizerId = authGate.organizerId;
 
-  function handleStartTimeBlur() {
-    setStartTime((current) => formatTimeInputForDisplay(current));
-  }
-
   async function handleCreateEvent() {
-    const formattedStartTime = formatTimeInputForDisplay(startTime);
-
-    if (formattedStartTime !== startTime) {
-      setStartTime(formattedStartTime);
-    }
-
-    const values = {
+    const prepared = prepareEventFormForSubmit({
       eventName,
       venueName,
       eventDate,
-      startTime: formattedStartTime,
+      startTime,
       maxPasses,
-    };
-    const errors = validateCreateEventForm(values);
+    });
 
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (prepared.values.startTime !== startTime) {
+      setStartTime(prepared.values.startTime);
+    }
+
+    if (!isEventDateTodayOrFuture(prepared.values.eventDate)) {
+      setFieldErrors({
+        ...prepared.errors,
+        eventDate: 'Event date must be today or in the future.',
+      });
       return;
     }
 
-    const capacity = parseMaxPassesInput(maxPasses);
+    if (Object.keys(prepared.errors).length > 0 || !prepared.normalizedStartTime) {
+      setFieldErrors(prepared.errors);
+      return;
+    }
+
+    const capacity = parseMaxPassesInput(prepared.values.maxPasses);
 
     if (capacity === null) {
       setFieldErrors({ maxPasses: 'Enter a whole number of at least 1.' });
       return;
     }
 
-    const normalizedStart = normalizeTimeInput(formattedStartTime);
-
-    if (!normalizedStart) {
-      setFieldErrors({ startTime: 'Use 24-hour format HH:MM (e.g. 21:00).' });
-      return;
-    }
+    const normalizedStart = prepared.normalizedStartTime;
 
     if (pendingArtwork) {
       const artworkValidationError = validateEventArtworkFile(
@@ -177,9 +170,9 @@ export default function CreateEventScreen() {
         .insert({
           organizer_id: organizerId,
           slug,
-          name: eventName.trim(),
-          venue_name: venueName.trim(),
-          event_date: eventDate.trim(),
+          name: prepared.values.eventName.trim(),
+          venue_name: prepared.values.venueName.trim(),
+          event_date: prepared.values.eventDate.trim(),
           start_time: normalizedStart,
           capacity,
           status: 'draft',
@@ -291,14 +284,13 @@ export default function CreateEventScreen() {
                     value={eventDate}
                     onChange={setEventDate}
                   />
-                  <EventFormField
+                  <EventStartTimeField
                     error={fieldErrors.startTime}
                     hint="24-hour HH:MM (e.g. 21:00 or 1900)"
                     label="Start Time"
                     placeholder="21:00"
                     value={startTime}
-                    onBlur={handleStartTimeBlur}
-                    onChangeText={setStartTime}
+                    onChange={setStartTime}
                   />
                   <EventFormField
                     error={fieldErrors.maxPasses}

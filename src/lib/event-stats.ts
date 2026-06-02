@@ -1,4 +1,7 @@
+import { countPassRowsForEventStats } from '@/lib/event-stats.core';
 import { supabase } from '@/lib/supabase';
+
+export { countPassRowsForEventStats, type PassStatusRow } from '@/lib/event-stats.core';
 
 export type EventStats = {
   issuedCount: number;
@@ -60,16 +63,7 @@ export async function fetchEventStatsFromPasses(
     return { ok: false, error: error.message };
   }
 
-  let issuedCount = 0;
-  let checkedInCount = 0;
-
-  for (const row of data ?? []) {
-    issuedCount += 1;
-
-    if (row.status === 'checked_in') {
-      checkedInCount += 1;
-    }
-  }
+  const { issuedCount, checkedInCount } = countPassRowsForEventStats(data ?? []);
 
   return {
     ok: true,

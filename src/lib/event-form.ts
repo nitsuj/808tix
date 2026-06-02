@@ -1,5 +1,6 @@
 import type { EventStatus } from '@/lib/database.types';
 import { getTodayYyyyMmDdLocal } from '@/lib/event-date';
+import { normalizeTimeDisplayFromInput } from '@/lib/event-time-input';
 
 export type { EventStatus };
 
@@ -25,17 +26,32 @@ export const EVENT_STATUS_OPTIONS: EventStatus[] = [
   'cancelled',
 ];
 
-export function isEventDateTodayOrFuture(eventDate: string): boolean {
+/** Local calendar compare — YYYY-MM-DD strings, no UTC drift. */
+export function compareYyyyMmDdLocal(left: string, right: string): number {
+  if (left === right) {
+    return 0;
+  }
+
+  return left < right ? -1 : 1;
+}
+
+export function isEventDateTodayOrFuture(
+  eventDate: string,
+  todayYmd: string = getTodayYyyyMmDdLocal(),
+): boolean {
   const trimmed = eventDate.trim();
 
   if (!isValidDateInput(trimmed)) {
     return false;
   }
 
-  return trimmed >= getTodayYyyyMmDdLocal();
+  return compareYyyyMmDdLocal(trimmed, todayYmd) >= 0;
 }
 
-export function validateCreateEventForm(values: CreateEventFormValues): CreateEventFieldErrors {
+export function validateCreateEventForm(
+  values: CreateEventFormValues,
+  todayYmd: string = getTodayYyyyMmDdLocal(),
+): CreateEventFieldErrors {
   const errors: CreateEventFieldErrors = {};
 
   if (!values.eventName.trim()) {
@@ -50,14 +66,16 @@ export function validateCreateEventForm(values: CreateEventFormValues): CreateEv
     errors.eventDate = 'Event date is required.';
   } else if (!isValidDateInput(values.eventDate)) {
     errors.eventDate = 'Use format YYYY-MM-DD.';
-  } else if (!isEventDateTodayOrFuture(values.eventDate)) {
+  } else if (!isEventDateTodayOrFuture(values.eventDate, todayYmd)) {
     errors.eventDate = 'Event date must be today or in the future.';
   }
 
-  if (!values.startTime.trim()) {
+  const trimmedTime = values.startTime.trim();
+
+  if (!trimmedTime) {
     errors.startTime = 'Start time is required.';
-  } else if (!normalizeTimeInput(values.startTime)) {
-    errors.startTime = 'Use 24-hour format HH:MM (e.g. 21:00 or 1900).';
+  } else if (!normalizeTimeDisplayFromInput(trimmedTime)) {
+    errors.startTime = 'Enter a valid time between 00:00 and 23:59.';
   }
 
   if (!values.maxPasses.trim()) {
@@ -76,9 +94,10 @@ export type EditEventFieldErrors = CreateEventFieldErrors;
 export function validateEditEventForm(
   values: EditEventFormValues,
   issuedCount: number,
+  todayYmd?: string,
 ): EditEventFieldErrors {
   const errors: EditEventFieldErrors = {
-    ...validateCreateEventForm(values),
+    ...validateCreateEventForm(values, todayYmd),
   };
 
   const capacity = parseMaxPassesInput(values.maxPasses);
@@ -116,60 +135,23 @@ export function isValidDateInput(input: string): boolean {
     return false;
   }
 
-  const parsed = new Date(`${trimmed}T12:00:00`);
+  const [year, month, day] = trimmed.split('-').map((part) => Number(part));
+  const parsed = new Date(year, month - 1, day, 12, 0, 0, 0);
 
-  return !Number.isNaN(parsed.getTime());
-}
-
-function parseCompactTimeDigits(trimmed: string): { hours: number; minutes: number } | null {
-  if (!/^\d{3,4}$/.test(trimmed)) {
-    return null;
-  }
-
-  const padded = trimmed.padStart(4, '0');
-  const hours = Number(padded.slice(0, 2));
-  const minutes = Number(padded.slice(2, 4));
-
-  if (hours > 23 || minutes > 59) {
-    return null;
-  }
-
-  return { hours, minutes };
+  return (
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day
+  );
 }
 
 /** Returns Postgres-compatible time string HH:MM:SS or null if invalid. */
 export function normalizeTimeInput(input: string): string | null {
-  const trimmed = input.trim();
+  const display = normalizeTimeDisplayFromInput(input);
 
-  const colonMatch = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-
-  if (colonMatch) {
-    const hours = Number(colonMatch[1]);
-    const minutes = Number(colonMatch[2]);
-
-    if (hours > 23 || minutes > 59) {
-      return null;
-    }
-
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00`;
-  }
-
-  const compact = parseCompactTimeDigits(trimmed);
-
-  if (!compact) {
+  if (!display) {
     return null;
   }
 
-  return `${String(compact.hours).padStart(2, '0')}:${String(compact.minutes).padStart(2, '0')}:00`;
-}
-
-/** Normalize compact times for display in HH:MM (e.g. 1900 → 19:00). */
-export function formatTimeInputForDisplay(input: string): string {
-  const normalized = normalizeTimeInput(input);
-
-  if (!normalized) {
-    return input.trim();
-  }
-
-  return normalized.slice(0, 5);
+  return `${display}:00`;
 }

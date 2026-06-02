@@ -85,7 +85,7 @@ export default function IssuePassScreen() {
   const activeEvent = event;
 
   const goToEventDetail = () => {
-    router.replace(`/events/${eventId}` as Href);
+    router.replace(`/events/${eventId}?refreshStats=1` as Href);
   };
 
   const passUrl = createdPass ? buildPassLinkUrl(createdPass.secure_token) : null;

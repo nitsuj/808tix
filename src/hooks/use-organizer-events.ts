@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { Event } from '@/lib/database.types';
-import { isOrganizerDashboardEvent } from '@/lib/organizer-dashboard-events';
+import { filterOrganizerDashboardEvents } from '@/lib/organizer-dashboard-events';
 import { supabase } from '@/lib/supabase';
 
 export function useOrganizerEvents(organizerId: string | undefined) {
@@ -38,7 +38,16 @@ export function useOrganizerEvents(organizerId: string | undefined) {
     setIsLoading(false);
   }, [organizerId]);
 
-  const dashboardEvents = useMemo(() => events.filter(isOrganizerDashboardEvent), [events]);
+  useEffect(() => {
+    // Initial load on mount; refetch also runs from Command Center useFocusEffect.
+    const frame = requestAnimationFrame(() => {
+      void loadEvents();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [loadEvents]);
+
+  const dashboardEvents = useMemo(() => filterOrganizerDashboardEvents(events), [events]);
 
   return {
     events,

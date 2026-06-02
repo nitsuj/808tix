@@ -16,6 +16,7 @@ import {
   type PendingArtworkSelection,
 } from '@/components/organizer/event-artwork-upload-field';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
+import { EventStartTimeField } from '@/components/organizer/event-start-time-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
@@ -24,12 +25,12 @@ import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatTimeForInput } from '@/lib/event-display';
 import {
-  formatTimeInputForDisplay,
-  normalizeTimeInput,
+  isEventDateTodayOrFuture,
   parseMaxPassesInput,
   validateEditEventForm,
   type EditEventFieldErrors,
 } from '@/lib/event-form';
+import { prepareEventFormForSubmit } from '@/lib/event-form-submit';
 import type { Event } from '@/lib/database.types';
 import { uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
@@ -100,44 +101,41 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pendingArtwork, setPendingArtwork] = useState<PendingArtworkSelection | null>(null);
 
-  function handleStartTimeBlur() {
-    setStartTime((current) => formatTimeInputForDisplay(current));
-  }
-
   async function handleSave() {
-    const formattedStartTime = formatTimeInputForDisplay(startTime);
-
-    if (formattedStartTime !== startTime) {
-      setStartTime(formattedStartTime);
-    }
-
-    const values = {
+    const prepared = prepareEventFormForSubmit({
       eventName,
       venueName,
       eventDate,
-      startTime: formattedStartTime,
+      startTime,
       maxPasses,
-    };
-    const errors = validateEditEventForm(values, issuedCount);
+    });
 
-    if (Object.keys(errors).length > 0) {
-      setFieldErrors(errors);
+    if (prepared.values.startTime !== startTime) {
+      setStartTime(prepared.values.startTime);
+    }
+
+    if (!isEventDateTodayOrFuture(prepared.values.eventDate)) {
+      setFieldErrors({
+        ...prepared.errors,
+        eventDate: 'Event date must be today or in the future.',
+      });
       return;
     }
 
-    const capacity = parseMaxPassesInput(maxPasses);
+    const editErrors = validateEditEventForm(prepared.values, issuedCount);
+
+    if (Object.keys(editErrors).length > 0 || !prepared.normalizedStartTime) {
+      setFieldErrors(editErrors);
+      return;
+    }
+
+    const capacity = parseMaxPassesInput(prepared.values.maxPasses);
 
     if (capacity === null) {
       setFieldErrors({ maxPasses: 'Enter a whole number of at least 1.' });
       return;
     }
-
-    const normalizedStart = normalizeTimeInput(formattedStartTime);
-
-    if (!normalizedStart) {
-      setFieldErrors({ startTime: 'Use 24-hour format HH:MM (e.g. 21:00).' });
-      return;
-    }
+    const normalizedStart = prepared.normalizedStartTime;
 
     setFieldErrors({});
     setSubmitError(null);
@@ -176,9 +174,9 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
     const { error: updateError } = await supabase
       .from('events')
       .update({
-        name: eventName.trim(),
-        venue_name: venueName.trim(),
-        event_date: eventDate.trim(),
+        name: prepared.values.eventName.trim(),
+        venue_name: prepared.values.venueName.trim(),
+        event_date: prepared.values.eventDate.trim(),
         start_time: normalizedStart,
         capacity,
         ...(pendingArtwork ? { image_url: imageUrl } : {}),
@@ -255,14 +253,13 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                 value={eventDate}
                 onChangeText={setEventDate}
               />
-              <EventFormField
+              <EventStartTimeField
                 error={fieldErrors.startTime}
                 hint="24-hour HH:MM (e.g. 21:00 or 1900)"
                 label="Start Time"
                 placeholder="21:00"
                 value={startTime}
-                onBlur={handleStartTimeBlur}
-                onChangeText={setStartTime}
+                onChange={setStartTime}
               />
               <EventFormField
                 error={fieldErrors.maxPasses}
