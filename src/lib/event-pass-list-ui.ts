@@ -1,7 +1,8 @@
 import type { Pass } from '@/lib/database.types';
+import type { EventPassFilter } from '@/lib/event-passes';
 import { formatPassStatusLabel } from '@/lib/pass-display';
 
-export type EventPassSortKey = 'name' | 'email' | 'phone' | 'status' | 'issued' | 'checked_in';
+export type EventPassSortKey = 'name' | 'email' | 'phone' | 'checked_in';
 
 export type EventPassSort = {
   key: EventPassSortKey;
@@ -13,14 +14,19 @@ export const DEFAULT_EVENT_PASS_SORT: EventPassSort = {
   direction: 'asc',
 };
 
-export const EVENT_PASS_SORT_OPTIONS: { key: EventPassSortKey; label: string }[] = [
+const BASE_SORT_OPTIONS: { key: EventPassSortKey; label: string }[] = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Phone' },
-  { key: 'status', label: 'Status' },
-  { key: 'issued', label: 'Issued' },
-  { key: 'checked_in', label: 'Checked in' },
 ];
+
+export function getEventPassSortOptions(filter: EventPassFilter): { key: EventPassSortKey; label: string }[] {
+  if (filter === 'checked_in') {
+    return [...BASE_SORT_OPTIONS, { key: 'checked_in', label: 'Checked in' }];
+  }
+
+  return BASE_SORT_OPTIONS;
+}
 
 function digitsOnly(value: string): string {
   return value.replace(/\D/g, '');
@@ -127,12 +133,6 @@ function comparePasses(a: Pass, b: Pass, sort: EventPassSort): number {
     case 'phone':
       result = compareNullableStrings(a.guest_phone, b.guest_phone);
       break;
-    case 'status':
-      result = compareStrings(formatPassStatusLabel(a.status), formatPassStatusLabel(b.status));
-      break;
-    case 'issued':
-      result = compareTimestamps(a.created_at, b.created_at);
-      break;
     case 'checked_in':
       result = compareTimestamps(a.checked_in_at, b.checked_in_at);
       break;
@@ -160,4 +160,8 @@ export function toggleEventPassSort(current: EventPassSort, key: EventPassSortKe
 
 export function prepareEventPassList(passes: Pass[], rawQuery: string, sort: EventPassSort): Pass[] {
   return sortEventPasses(filterEventPasses(passes, rawQuery), sort);
+}
+
+export function isEventPassSortKeyAllowed(filter: EventPassFilter, key: EventPassSortKey): boolean {
+  return getEventPassSortOptions(filter).some((option) => option.key === key);
 }

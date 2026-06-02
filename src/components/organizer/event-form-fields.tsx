@@ -10,6 +10,7 @@ export type EventFormFieldProps = {
   hint?: string;
   error?: string;
   keyboardType?: 'default' | 'number-pad' | 'phone-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   onChangeText: (value: string) => void;
 };
 
@@ -20,6 +21,7 @@ export function EventFormField({
   hint,
   error,
   keyboardType = 'default',
+  autoCapitalize = 'sentences',
   onChangeText,
 }: EventFormFieldProps) {
   return (
@@ -31,6 +33,7 @@ export function EventFormField({
         </ThemedText>
       ) : null}
       <TextInput
+        autoCapitalize={autoCapitalize}
         editable
         keyboardType={keyboardType}
         placeholder={placeholder}

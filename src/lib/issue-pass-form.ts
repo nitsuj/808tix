@@ -6,7 +6,8 @@ export const CONTACT_REQUIRED_MESSAGE =
   'Add a phone number or email before issuing this pass.';
 
 export type IssuePassFormValues = {
-  guestName: string;
+  guestFirstName: string;
+  guestLastName: string;
   passType: string;
   guestEmail: string;
   guestPhone: string;
@@ -16,11 +17,20 @@ export type IssuePassFieldErrors = Partial<Record<keyof IssuePassFormValues, str
 
 const EMAIL_FORMAT = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** Stored in passes.guest_name until first_name / last_name columns exist. */
+export function combineGuestName(firstName: string, lastName: string): string {
+  return `${firstName.trim()} ${lastName.trim()}`.trim();
+}
+
 export function validateIssuePassForm(values: IssuePassFormValues): IssuePassFieldErrors {
   const errors: IssuePassFieldErrors = {};
 
-  if (!values.guestName.trim()) {
-    errors.guestName = 'Guest name is required.';
+  if (!values.guestFirstName.trim()) {
+    errors.guestFirstName = 'First name is required.';
+  }
+
+  if (!values.guestLastName.trim()) {
+    errors.guestLastName = 'Last name is required.';
   }
 
   if (!values.passType.trim()) {

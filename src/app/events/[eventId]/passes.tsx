@@ -19,7 +19,8 @@ import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import {
   DEFAULT_EVENT_PASS_SORT,
-  EVENT_PASS_SORT_OPTIONS,
+  getEventPassSortOptions,
+  isEventPassSortKeyAllowed,
   prepareEventPassList,
   toggleEventPassSort,
   type EventPassSort,
@@ -144,11 +145,16 @@ function EventPassesContent({
 }: EventPassesContentProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sort, setSort] = useState<EventPassSort>(DEFAULT_EVENT_PASS_SORT);
+  const sortOptions = useMemo(() => getEventPassSortOptions(filter), [filter]);
+  const activeSort = useMemo(
+    () => (isEventPassSortKeyAllowed(filter, sort.key) ? sort : DEFAULT_EVENT_PASS_SORT),
+    [filter, sort],
+  );
 
   const title = getEventPassListTitle(filter);
   const visiblePasses = useMemo(
-    () => prepareEventPassList(passes, searchQuery, sort),
-    [passes, searchQuery, sort],
+    () => prepareEventPassList(passes, searchQuery, activeSort),
+    [passes, searchQuery, activeSort],
   );
 
   const countLabel = isLoading
@@ -194,9 +200,9 @@ function EventPassesContent({
               horizontal
               contentContainerStyle={styles.sortRow}
               showsHorizontalScrollIndicator={false}>
-              {EVENT_PASS_SORT_OPTIONS.map((option) => {
-                const isActive = sort.key === option.key;
-                const arrow = isActive ? (sort.direction === 'asc' ? ' ↑' : ' ↓') : '';
+              {sortOptions.map((option) => {
+                const isActive = activeSort.key === option.key;
+                const arrow = isActive ? (activeSort.direction === 'asc' ? ' ↑' : ' ↓') : '';
 
                 return (
                   <Pressable

@@ -28,6 +28,7 @@ import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import type { Pass } from '@/lib/database.types';
 import { issuePass } from '@/lib/issue-pass';
 import {
+  combineGuestName,
   DEFAULT_PASS_TYPE,
   validateIssuePassForm,
   type IssuePassFieldErrors,
@@ -41,7 +42,8 @@ export default function IssuePassScreen() {
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
 
-  const [guestName, setGuestName] = useState('');
+  const [guestFirstName, setGuestFirstName] = useState('');
+  const [guestLastName, setGuestLastName] = useState('');
   const [passType, setPassType] = useState(DEFAULT_PASS_TYPE);
   const [guestEmail, setGuestEmail] = useState('');
   const [guestPhone, setGuestPhone] = useState('');
@@ -90,7 +92,7 @@ export default function IssuePassScreen() {
   const atCapacity = issuedCount >= activeEvent.capacity;
 
   async function handleIssuePass() {
-    const values = { guestName, passType, guestEmail, guestPhone };
+    const values = { guestFirstName, guestLastName, passType, guestEmail, guestPhone };
     const errors = validateIssuePassForm(values);
 
     if (Object.keys(errors).length > 0) {
@@ -106,7 +108,7 @@ export default function IssuePassScreen() {
 
     const result = await issuePass({
       eventId,
-      guestName,
+      guestName: combineGuestName(guestFirstName, guestLastName),
       passType,
       guestEmail: guestEmail || undefined,
       guestPhone: guestPhone || undefined,
@@ -127,7 +129,8 @@ export default function IssuePassScreen() {
 
   function resetForAnother() {
     setCreatedPass(null);
-    setGuestName('');
+    setGuestFirstName('');
+    setGuestLastName('');
     setPassType(DEFAULT_PASS_TYPE);
     setGuestEmail('');
     setGuestPhone('');
@@ -206,7 +209,8 @@ export default function IssuePassScreen() {
       atCapacity={atCapacity}
       fieldErrors={fieldErrors}
       guestEmail={guestEmail}
-      guestName={guestName}
+      guestFirstName={guestFirstName}
+      guestLastName={guestLastName}
       guestPhone={guestPhone}
       isSubmitting={isSubmitting}
       issuedCount={issuedCount}
@@ -214,7 +218,8 @@ export default function IssuePassScreen() {
       submitError={submitError}
       onGoToEventDetail={goToEventDetail}
       onGuestEmailChange={setGuestEmail}
-      onGuestNameChange={setGuestName}
+      onGuestFirstNameChange={setGuestFirstName}
+      onGuestLastNameChange={setGuestLastName}
       onGuestPhoneChange={setGuestPhone}
       onPassTypeChange={setPassType}
       onSubmit={handleIssuePass}
@@ -237,7 +242,8 @@ type IssuePassFormViewProps = {
   activeEvent: { name: string; image_url: string | null; capacity: number };
   atCapacity: boolean;
   issuedCount: number;
-  guestName: string;
+  guestFirstName: string;
+  guestLastName: string;
   passType: string;
   guestEmail: string;
   guestPhone: string;
@@ -245,7 +251,8 @@ type IssuePassFormViewProps = {
   submitError: string | null;
   isSubmitting: boolean;
   onGoToEventDetail: () => void;
-  onGuestNameChange: (value: string) => void;
+  onGuestFirstNameChange: (value: string) => void;
+  onGuestLastNameChange: (value: string) => void;
   onPassTypeChange: (value: string) => void;
   onGuestEmailChange: (value: string) => void;
   onGuestPhoneChange: (value: string) => void;
@@ -256,7 +263,8 @@ function IssuePassFormView({
   activeEvent,
   atCapacity,
   issuedCount,
-  guestName,
+  guestFirstName,
+  guestLastName,
   passType,
   guestEmail,
   guestPhone,
@@ -264,7 +272,8 @@ function IssuePassFormView({
   submitError,
   isSubmitting,
   onGoToEventDetail,
-  onGuestNameChange,
+  onGuestFirstNameChange,
+  onGuestLastNameChange,
   onPassTypeChange,
   onGuestEmailChange,
   onGuestPhoneChange,
@@ -323,11 +332,20 @@ function IssuePassFormView({
 
               <ThemedView style={eventFormStyles.form}>
                 <EventFormField
-                  error={fieldErrors.guestName}
-                  label="Guest Name"
-                  placeholder="Alex Rivera"
-                  value={guestName}
-                  onChangeText={onGuestNameChange}
+                  autoCapitalize="words"
+                  error={fieldErrors.guestFirstName}
+                  label="First Name"
+                  placeholder="Alex"
+                  value={guestFirstName}
+                  onChangeText={onGuestFirstNameChange}
+                />
+                <EventFormField
+                  autoCapitalize="words"
+                  error={fieldErrors.guestLastName}
+                  label="Last Name"
+                  placeholder="Rivera"
+                  value={guestLastName}
+                  onChangeText={onGuestLastNameChange}
                 />
                 <EventFormField
                   error={fieldErrors.passType}

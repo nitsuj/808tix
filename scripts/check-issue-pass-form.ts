@@ -3,6 +3,7 @@
  * Issue Pass contact validation tests (src/lib/issue-pass-form.ts).
  */
 import {
+  combineGuestName,
   CONTACT_REQUIRED_MESSAGE,
   validateIssuePassForm,
   type IssuePassFormValues,
@@ -28,11 +29,25 @@ function assert(condition: boolean, message: string) {
 }
 
 const base: IssuePassFormValues = {
-  guestName: 'Alex Rivera',
+  guestFirstName: 'Alex',
+  guestLastName: 'Rivera',
   passType: 'General Admission',
   guestEmail: '',
   guestPhone: '',
 };
+
+assert(combineGuestName('Alex', 'Rivera') === 'Alex Rivera', 'combineGuestName joins first and last');
+
+assert(
+  validateIssuePassForm({ ...base, guestFirstName: '', guestLastName: '' }).guestFirstName ===
+    'First name is required.',
+  'missing first name → blocked',
+);
+
+assert(
+  validateIssuePassForm({ ...base, guestLastName: '' }).guestLastName === 'Last name is required.',
+  'missing last name → blocked',
+);
 
 assert(
   validateIssuePassForm({ ...base, guestEmail: '', guestPhone: '' }).guestPhone ===
@@ -44,14 +59,14 @@ assert(
   Object.keys(
     validateIssuePassForm({ ...base, guestEmail: '', guestPhone: '808-555-0100' }),
   ).length === 0,
-  'valid phone only → pass issued (validation passes)',
+  'valid first + last + phone → validation passes',
 );
 
 assert(
   Object.keys(
     validateIssuePassForm({ ...base, guestEmail: 'alex@example.com', guestPhone: '' }),
   ).length === 0,
-  'valid email only → pass issued (validation passes)',
+  'valid first + last + email → validation passes',
 );
 
 assert(
