@@ -62,11 +62,14 @@
     "check:auth-redirect": "tsx scripts/check-auth-redirect-url.ts",
     "check:auth-callback": "tsx scripts/check-auth-callback-url.ts",
     "check:create-event": "tsx scripts/check-create-event-screen.ts",
+    "check:edit-event": "tsx scripts/check-edit-event-screen.ts",
     "check:event-date": "tsx scripts/check-event-date.ts",
+    "check:event-datetime-display": "tsx scripts/check-event-datetime-display.ts",
+    "check:event-slug-uniqueness": "tsx scripts/check-event-slug-uniqueness.ts",
     "check:event-form": "tsx scripts/check-event-form.ts",
     "check:event-stats": "tsx scripts/check-event-stats.ts",
     "check:organizer-dashboard": "tsx scripts/check-organizer-dashboard-events.ts",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:create-event && npm run check:event-date && npm run check:event-form && npm run check:event-stats && npm run check:organizer-dashboard"
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:create-event && npm run check:edit-event && npm run check:event-date && npm run check:event-datetime-display && npm run check:event-slug-uniqueness && npm run check:event-form && npm run check:event-stats && npm run check:organizer-dashboard"
   },
   "private": true
 }

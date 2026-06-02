@@ -1,4 +1,5 @@
 import { isValidDateInput } from '@/lib/event-form';
+import { formatEventDateLong } from '@/lib/event-datetime-display';
 
 /** Format a local calendar date as YYYY-MM-DD (Postgres date). */
 export function formatDateToYyyyMmDd(date: Date): string {
@@ -26,16 +27,5 @@ export function parseYyyyMmDdToLocalDate(value: string): Date | null {
 }
 
 export function formatEventDateForDisplay(value: string): string {
-  const parsed = parseYyyyMmDdToLocalDate(value);
-
-  if (!parsed) {
-    return value;
-  }
-
-  return parsed.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatEventDateLong(value) ?? value;
 }

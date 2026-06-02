@@ -47,7 +47,7 @@ Use **dark mode as default** for MVP screens.
 
 ### Fan / pass (guest-facing)
 
-Purple/pink accent family. **Do not use on organizer or scanner screens.**
+Purple/pink accent family. **Used for primary actions across guest and organizer flows** in this MVP.
 
 | Token | Hex | Usage |
 |-------|-----|--------|
@@ -57,11 +57,11 @@ Purple/pink accent family. **Do not use on organizer or scanner screens.**
 
 ### Organizer / operations
 
-Neon green accent family. **Organizer dashboard, create event, issue passes, settings.**
+Neon green accent family. **Used for selective organizer UI states** (e.g. success-adjacent cues, borders/pills) while primary CTAs in organizer flows use the purple/pink family (`fan.primary`).
 
 | Token | Hex | Usage |
 |-------|-----|--------|
-| `organizerAccent` | `#39FF14` | Primary buttons, section labels, success-adjacent ops UI |
+| `organizerAccent` | `#39FF14` | Selective UI accents (status pills, success-adjacent cues, borders) |
 | `organizerAccentTextOn` | `#000000` | Label text on filled green buttons |
 
 Code constant today: `OrganizerAccent` in `theme.ts`.
@@ -89,12 +89,12 @@ High contrast, full-bleed states. Text **large**, **centered**, **minimal**.
 | Area | Accent | Typical screens |
 |------|--------|-----------------|
 | **Fan** | Purple / pink | Pass view, public pass link, guest-facing event snippet |
-| **Organizer** | Neon green | Login (organizer), dashboard, create event, issue passes |
+| **Organizer** | Purple / pink (primary) + neon green (selective) | Login (organizer), dashboard, create event, issue passes |
 | **Scanner** | Neon green + result colors | Camera scan, full-screen result |
 
 **Rules**
 
-1. Never mix fan purple/pink primary buttons on organizer flows.
+1. Primary organizer CTAs use purple/pink (`fan.primary`); neon green is for selective UI accents.
 2. Never use organizer green as the primary accent on guest pass screens.
 3. Scanner may use green for VALID only; use semantic table for other outcomes.
 4. Shared neutrals (background, text, cards) are allowed on all surfaces.

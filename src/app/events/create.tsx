@@ -24,7 +24,7 @@ import { ThemedText } from '@/components/themed-text';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
-import { formatEventDateForDisplay } from '@/lib/event-date';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { persistEventArtworkUrl, uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
 import { parseMaxPassesInput, type CreateEventFieldErrors } from '@/lib/event-form';
@@ -81,10 +81,8 @@ export default function CreateEventScreen() {
       return 'SET DATE & TIME';
     }
 
-    const datePart = formatEventDateForDisplay(eventDate).toUpperCase();
-    const timePart = startTime.trim();
-
-    return timePart ? `${datePart} · ${timePart}` : datePart;
+    const formatted = formatEventDateTimeLong(eventDate, startTime.trim() || null);
+    return formatted ? formatted.toUpperCase() : eventDate;
   }, [eventDate, startTime]);
 
   const previewVenue = venueName.trim().toUpperCase() || 'VENUE TBD';
@@ -163,7 +161,7 @@ export default function CreateEventScreen() {
     setIsSubmitting(true);
 
     try {
-      const slug = await generateUniqueEventSlug(eventName);
+      const slug = await generateUniqueEventSlug(eventName, organizerId);
 
       const { data: createdEvent, error: insertError } = await supabase
         .from('events')

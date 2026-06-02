@@ -81,6 +81,17 @@ const dashboardSource = readFileSync(
 );
 
 assert(dashboardSource.includes('dashboardEvents'), 'dashboard renders dashboardEvents');
+assert(
+  dashboardSource.includes('formatEventDateTimeLong'),
+  'dashboard uses canonical event date formatter',
+);
+
+const emptyStateIndex = dashboardSource.indexOf('No events yet');
+const createButtonIndex = dashboardSource.indexOf('+ Create Event');
+assert(
+  emptyStateIndex > -1 && createButtonIndex > -1 && emptyStateIndex < createButtonIndex,
+  'no-events empty state appears before Create Event CTA',
+);
 
 if (failures > 0) {
   console.error(`\ncheck-organizer-dashboard-events: ${failures} failure(s)`);

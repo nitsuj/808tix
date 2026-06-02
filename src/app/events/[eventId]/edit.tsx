@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -7,6 +7,8 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,15 +17,27 @@ import {
   EventArtworkUploadField,
   type PendingArtworkSelection,
 } from '@/components/organizer/event-artwork-upload-field';
+import { EventDateFormField } from '@/components/organizer/event-date-form-field';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { EventStartTimeField } from '@/components/organizer/event-start-time-field';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { MaxContentWidth, OrganizerAccent, OrganizerAccentTextOn, Radii, Spacing, Surface } from '@/constants/theme';
-import { organizer, semantic } from '@/theme';
+import { Radii, Spacing } from '@/constants/theme';
+import {
+  chrome,
+  fan,
+  organizer,
+  palette,
+  passScreen,
+  semantic,
+  shadows,
+  text,
+} from '@/theme';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
-import { formatTimeForInput } from '@/lib/event-display';
+import { formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import {
   isEventDateTodayOrFuture,
   parseMaxPassesInput,
@@ -45,7 +59,7 @@ export default function EditEventScreen() {
   if (authGate.state === 'loading' || isLoading) {
     return (
       <ThemedView style={styles.centered}>
-        <ActivityIndicator size="large" color={OrganizerAccent} />
+        <ActivityIndicator size="large" color={fan.primary} />
       </ThemedView>
     );
   }
@@ -200,161 +214,308 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
     goToEventDetail();
   }
 
+  const previewTitle = eventName.trim() || 'Edit event';
+  const previewVenue = venueName.trim().toUpperCase() || 'VENUE TBD';
+  const backgroundArtworkUri = pendingArtwork?.localUri ?? event.image_url ?? null;
+
+  const previewDateLine = useMemo(() => {
+    if (!eventDate.trim()) {
+      return 'SET DATE & TIME';
+    }
+
+    const formatted = formatEventDateTimeLong(eventDate, startTime.trim() || null);
+    return formatted ? formatted.toUpperCase() : eventDate;
+  }, [eventDate, startTime]);
+
+  const statusPill = formatEventStatus(event.status).toUpperCase();
+
   return (
-    <ThemedView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
-        <SafeAreaView style={styles.safeArea}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}>
-            <Pressable
-              disabled={isSubmitting}
-              onPress={goToEventDetail}
-              style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}>
-              <ThemedText style={styles.backText}>Cancel</ThemedText>
-            </Pressable>
+    <MobileViewport>
+      <View style={styles.screen}>
+        <OrganizerAmbientBackground eventName={previewTitle} imageUrl={backgroundArtworkUri} />
 
-            <ThemedText style={styles.title}>Edit Event</ThemedText>
-            <ThemedText themeColor="textSecondary" style={styles.subtitle}>
-              {issuedCount} pass{issuedCount === 1 ? '' : 'es'} issued · max cannot go below that
-            </ThemedText>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboardView}>
+          <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              <View style={styles.topBar}>
+                <Pressable
+                  disabled={isSubmitting}
+                  onPress={goToEventDetail}
+                  style={({ pressed }) => [styles.backHit, pressed && styles.pressed]}>
+                  <Text style={styles.backText}>← Event</Text>
+                </Pressable>
+                <View style={styles.topBarSpacer} />
+              </View>
 
-            <EventArtworkUploadField
-              disabled={isSubmitting}
-              eventName={eventName}
-              existingImageUrl={event.image_url}
-              pendingSelection={pendingArtwork}
-              onSelectionChange={setPendingArtwork}
-            />
+              <View style={styles.commandPanel}>
+                <View style={styles.metaBlock}>
+                  <Text style={styles.dateLine}>{previewDateLine}</Text>
+                  <Text style={styles.eventTitle}>{previewTitle}</Text>
+                  <Text style={styles.venueLine}>{previewVenue}</Text>
+                  <Text style={styles.statusPill}>{statusPill}</Text>
+                </View>
 
-            <ThemedView style={eventFormStyles.form}>
-              <EventFormField
-                error={fieldErrors.eventName}
-                label="Event Name"
-                placeholder="Summer Rooftop Session"
-                value={eventName}
-                onChangeText={setEventName}
-              />
-              <EventFormField
-                error={fieldErrors.venueName}
-                label="Venue Name"
-                placeholder="The Loft"
-                value={venueName}
-                onChangeText={setVenueName}
-              />
-              <EventFormField
-                error={fieldErrors.eventDate}
-                hint="YYYY-MM-DD"
-                label="Event Date"
-                placeholder="2026-06-10"
-                value={eventDate}
-                onChangeText={setEventDate}
-              />
-              <EventStartTimeField
-                error={fieldErrors.startTime}
-                hint="24-hour HH:MM (e.g. 21:00 or 1900)"
-                label="Start Time"
-                placeholder="21:00"
-                value={startTime}
-                onChange={setStartTime}
-              />
-              <EventFormField
-                error={fieldErrors.maxPasses}
-                hint={`Minimum ${issuedCount} (issued)`}
-                keyboardType="number-pad"
-                label="Max Passes"
-                placeholder="100"
-                value={maxPasses}
-                onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
-              />
-            </ThemedView>
+                <EventArtworkUploadField
+                  disabled={isSubmitting}
+                  eventName={previewTitle}
+                  existingImageUrl={event.image_url}
+                  pendingSelection={pendingArtwork}
+                  previewMode="background"
+                  onSelectionChange={setPendingArtwork}
+                />
 
-            {submitError ? <ThemedText style={styles.errorText}>{submitError}</ThemedText> : null}
+                <View style={eventFormStyles.formPanel}>
+                  <EventFormField
+                    error={fieldErrors.eventName}
+                    label="Event Name"
+                    placeholder="Summer Rooftop Session"
+                    value={eventName}
+                    onChangeText={setEventName}
+                  />
+                  <EventFormField
+                    error={fieldErrors.venueName}
+                    label="Venue"
+                    placeholder="The Loft"
+                    value={venueName}
+                    onChangeText={setVenueName}
+                  />
+                  <EventDateFormField
+                    disabled={isSubmitting}
+                    error={fieldErrors.eventDate}
+                    label="Date"
+                    value={eventDate}
+                    onChange={setEventDate}
+                  />
+                  <EventStartTimeField
+                    error={fieldErrors.startTime}
+                    hint="24-hour HH:MM (e.g. 21:00 or 1900)"
+                    label="Start Time"
+                    placeholder="21:00"
+                    value={startTime}
+                    onChange={setStartTime}
+                  />
+                  <EventFormField
+                    error={fieldErrors.maxPasses}
+                    hint={`Minimum ${issuedCount} (issued)`}
+                    keyboardType="number-pad"
+                    label="Max Passes"
+                    placeholder="100"
+                    value={maxPasses}
+                    onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
+                  />
+                </View>
 
-            <Pressable
-              disabled={isSubmitting}
-              onPress={handleSave}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                pressed && styles.pressed,
-                isSubmitting && styles.disabled,
-              ]}>
-              {isSubmitting ? (
-                <ActivityIndicator color={organizer.textOn} />
-              ) : (
-                <ThemedText style={styles.primaryButtonText}>Save Changes</ThemedText>
-              )}
-            </Pressable>
-          </ScrollView>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </ThemedView>
+                {submitError ? (
+                  <ThemedText style={styles.errorText}>{submitError}</ThemedText>
+                ) : null}
+
+                <Pressable
+                  disabled={isSubmitting}
+                  onPress={handleSave}
+                  style={({ pressed }) => [
+                    styles.actionButton,
+                    styles.actionPrimary,
+                    pressed && styles.pressed,
+                    isSubmitting && styles.disabled,
+                  ]}>
+                  {isSubmitting ? (
+                    <ActivityIndicator color={chrome.white} />
+                  ) : (
+                    <Text style={styles.actionPrimaryText}>Save Changes</Text>
+                  )}
+                </Pressable>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </View>
+    </MobileViewport>
+  );
+}
+
+const MOBILE_VIEWPORT_WIDTH = 390;
+
+const LAYOUT = {
+  horizontalPadding: 24,
+  contentTopInset: 12,
+  panelTopInset: 56,
+  panelBottomInset: 32,
+  formToActions: 20,
+  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
+  title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
+  subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
+} as const;
+
+const webViewportMinHeight =
+  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
+
+function MobileViewport({ children }: { children: React.ReactNode }) {
+  return (
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>{children}</View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: Surface.background,
+  viewportOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
   },
-  keyboardView: {
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    width: '100%',
+    ...webViewportMinHeight,
+  },
+  // Used by EditEventScreen error/loading fallback UI.
+  container: {
+    backgroundColor: palette.pureBlack,
     flex: 1,
   },
   safeArea: {
     flex: 1,
   },
+  screen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  foreground: {
+    flex: 1,
+    zIndex: 1,
+  },
   scrollContent: {
-    gap: Spacing.three,
-    paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.two,
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    alignSelf: 'center',
+    flexGrow: 1,
+    paddingBottom: LAYOUT.panelBottomInset,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    paddingTop: LAYOUT.contentTopInset,
   },
   centered: {
     flex: 1,
     alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     justifyContent: 'center',
   },
-  backButton: {
+  topBar: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Spacing.two,
+  },
+  topBarSpacer: {
+    width: 48,
+  },
+  backHit: {
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: OrganizerAccent,
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: '800',
-    lineHeight: 40,
-  },
-  subtitle: {
+    color: fan.badgeText,
     fontSize: 15,
-    marginBottom: Spacing.one,
-  },
-  primaryButton: {
-    alignItems: 'center',
-    backgroundColor: OrganizerAccent,
-    borderRadius: Radii.button,
-    paddingVertical: Spacing.three,
-  },
-  primaryButtonText: {
-    color: OrganizerAccentTextOn,
-    fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
   disabled: {
     opacity: 0.6,
   },
+  commandPanel: {
+    alignSelf: 'center',
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
+    borderWidth: 1,
+    gap: Spacing.three,
+    marginTop: LAYOUT.panelTopInset,
+    maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
+    paddingBottom: passScreen.credential.paddingBottom,
+    paddingHorizontal: passScreen.credential.paddingHorizontal,
+    paddingTop: passScreen.credential.paddingTop,
+    shadowColor: shadows.walletCard.shadowColor,
+    shadowOffset: shadows.walletCard.shadowOffset,
+    shadowOpacity: shadows.walletCard.shadowOpacity,
+    shadowRadius: shadows.walletCard.shadowRadius,
+    width: '100%',
+  },
+  metaBlock: {
+    alignItems: 'center',
+    gap: 0,
+    marginBottom: Spacing.one,
+  },
+  dateLine: {
+    color: fan.badgeText,
+    fontSize: LAYOUT.date.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.date.letterSpacing,
+    lineHeight: LAYOUT.date.lineHeight,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  eventTitle: {
+    color: text.primary,
+    fontSize: LAYOUT.title.fontSize,
+    fontWeight: '800',
+    letterSpacing: LAYOUT.title.letterSpacing,
+    lineHeight: LAYOUT.title.lineHeight,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  venueLine: {
+    color: text.secondary,
+    fontSize: LAYOUT.subtitle.fontSize,
+    fontWeight: '600',
+    letterSpacing: LAYOUT.subtitle.letterSpacing,
+    lineHeight: LAYOUT.subtitle.lineHeight,
+    textAlign: 'center',
+  },
+  statusPill: {
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 1,
+    color: organizer.accent,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    marginTop: Spacing.two,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 4,
+    textAlign: 'center',
+  },
   errorText: {
     color: semantic.errorSoft,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  actionButton: {
+    alignItems: 'center',
+    borderRadius: Radii.button,
+    justifyContent: 'center',
+    marginTop: LAYOUT.formToActions,
+    minHeight: 48,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  actionPrimary: {
+    backgroundColor: fan.primary,
+  },
+  actionPrimaryText: {
+    color: chrome.white,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });

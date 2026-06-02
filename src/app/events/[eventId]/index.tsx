@@ -28,7 +28,8 @@ import {
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
-import { formatEventDateLabel, formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import { formatEventStatus } from '@/lib/event-display';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
 import {
@@ -166,8 +167,7 @@ function EventDetailContent({
     resolveOrganizerArtworkUrl(event.image_url) ??
     resolvePassArtworkUri(event.image_url, event.name);
 
-  const dateLabel = formatEventDateLabel(event.event_date, event.start_time);
-  const startTimeLabel = formatTimeForInput(event.start_time) || '—';
+  const dateTimeLine = formatEventDateTimeLong(event.event_date, event.start_time)?.toUpperCase() ?? null;
   const checkInRate = formatCheckInRatePercent({
     issuedCount,
     checkedInCount,
@@ -175,10 +175,6 @@ function EventDetailContent({
     remainingCount,
   });
   const isLive = event.status === 'published';
-
-  const dateTimeLine = dateLabel
-    ? `${dateLabel.toUpperCase()}${startTimeLabel !== '—' ? ` · ${startTimeLabel}` : ''}`
-    : null;
 
   return (
     <MobileViewport>

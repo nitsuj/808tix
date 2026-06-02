@@ -37,6 +37,7 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
   const issuedAt = formatPassTimestamp(pass.created_at);
   const checkedInAt = formatPassTimestamp(pass.checked_in_at);
   const hasPhone = Boolean(pass.guest_phone?.trim());
+  const hasMultipleSendActions = hasPhone;
   const contactLine = [pass.guest_email?.trim() || null, pass.guest_phone?.trim() || null]
     .filter(Boolean)
     .join(' · ');
@@ -139,14 +140,22 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
           <ThemedText style={styles.actionLinkText}>View Guest Pass</ThemedText>
         </Pressable>
 
-        <Pressable
-          onPress={() => setActionsOpen((open) => !open)}
-          style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
-          <ThemedText style={styles.actionLinkText}>{actionsOpen ? 'Hide' : 'Actions'}</ThemedText>
-        </Pressable>
+        {hasMultipleSendActions ? (
+          <Pressable
+            onPress={() => setActionsOpen((open) => !open)}
+            style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
+            <ThemedText style={styles.actionLinkText}>{actionsOpen ? 'Hide' : 'Resend'}</ThemedText>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={handleSharePass}
+            style={({ pressed }) => [styles.actionLink, pressed && styles.pressed]}>
+            <ThemedText style={styles.actionLinkText}>Send Pass</ThemedText>
+          </Pressable>
+        )}
       </View>
 
-      {actionsOpen ? (
+      {actionsOpen && hasMultipleSendActions ? (
         <View style={styles.actionsPanel}>
           <Pressable
             onPress={handleSharePass}

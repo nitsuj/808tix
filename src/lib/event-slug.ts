@@ -12,7 +12,10 @@ export function slugifyEventName(name: string): string {
   return slug || 'event';
 }
 
-export async function generateUniqueEventSlug(eventName: string): Promise<string> {
+export async function generateUniqueEventSlug(
+  eventName: string,
+  organizerId: string,
+): Promise<string> {
   const baseSlug = slugifyEventName(eventName);
   let candidate = baseSlug;
   let suffix = 2;
@@ -21,6 +24,7 @@ export async function generateUniqueEventSlug(eventName: string): Promise<string
     const { data, error } = await supabase
       .from('events')
       .select('id')
+      .eq('organizer_id', organizerId)
       .eq('slug', candidate)
       .maybeSingle();
 

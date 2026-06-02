@@ -126,7 +126,6 @@ const styles = StyleSheet.create({
     color: textTokens.primary,
     fontSize: 16,
     fontWeight: '500',
-    outline: 'none',
     padding: spacing.three,
     width: '100%',
   },

@@ -16,6 +16,7 @@ import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
 import { getPassStatusBanner } from '@/lib/pass-display';
+import { formatEventDateTimeTicketUpper } from '@/lib/event-datetime-display';
 import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
 import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
@@ -47,32 +48,7 @@ function formatTicketDateTimeLine(
   eventDate: string | null,
   startTime: string | null,
 ): string | null {
-  if (!eventDate) {
-    return null;
-  }
-
-  const parsed = new Date(`${eventDate}T${startTime ?? '12:00:00'}`);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  const weekday = parsed.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-  const monthDay = parsed
-    .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-    .toUpperCase()
-    .replace('.', '');
-
-  if (!startTime) {
-    return `${weekday}, ${monthDay}`;
-  }
-
-  const time = parsed
-    .toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-    .toUpperCase()
-    .replace(/\s/g, '');
-
-  return `${weekday}, ${monthDay} • ${time}`;
+  return formatEventDateTimeTicketUpper(eventDate, startTime);
 }
 
 function formatPassTypeLabel(value: string): string {

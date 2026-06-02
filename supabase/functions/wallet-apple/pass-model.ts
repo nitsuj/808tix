@@ -69,9 +69,10 @@ function formatHeaderWhenLine(eventDate: string | null, startTime: string | null
     .toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
     .toUpperCase()
     .replace('.', '');
+  const year = parsed.getFullYear();
 
   if (!startTime) {
-    return `${weekday} · ${monthDay}`;
+    return `${weekday} · ${monthDay} · ${year}`;
   }
 
   const time = parsed
@@ -79,7 +80,7 @@ function formatHeaderWhenLine(eventDate: string | null, startTime: string | null
     .toUpperCase()
     .replace(/\s/g, '');
 
-  return `${weekday} · ${monthDay} · ${time}`;
+  return `${weekday} · ${monthDay} · ${year} · ${time}`;
 }
 
 function formatBackWhenLine(eventDate: string | null, startTime: string | null): string | null {

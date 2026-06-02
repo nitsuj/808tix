@@ -13,10 +13,11 @@ import { ThemedText } from '@/components/themed-text';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
-import { MaxContentWidth, Radii, Spacing, semantic } from '@/constants/theme';
+import { Radii, Spacing, semantic } from '@/constants/theme';
 import { chrome, fan, surface, text } from '@/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { supabase } from '@/lib/supabase';
 
 type EventPassStats = {
@@ -136,6 +137,10 @@ export function OrganizerDashboard({
     }
   }
 
+  const showNoEventsEmptyState = !isLoading && !error && events.length === 0;
+  const showOnlyFinishedEmptyState =
+    !isLoading && !error && dashboardEvents.length === 0 && events.length > 0;
+
   return (
     <View style={styles.container}>
       <OrganizerAmbientBackground />
@@ -177,6 +182,15 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
+          {showNoEventsEmptyState ? (
+            <View style={styles.stateCard}>
+              <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
+                Create your first event to start issuing passes.
+              </ThemedText>
+            </View>
+          ) : null}
+
           <Pressable
             onPress={() => router.push('/events/create' as Href)}
             style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}>
@@ -214,21 +228,12 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
-          {!isLoading && !error && dashboardEvents.length === 0 && events.length > 0 ? (
+          {showOnlyFinishedEmptyState ? (
             <View style={styles.stateCard}>
               <ThemedText style={styles.emptyTitle}>No active events</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
                 You have {events.length} completed or cancelled event
                 {events.length === 1 ? '' : 's'}. Create a new event to issue passes.
-              </ThemedText>
-            </View>
-          ) : null}
-
-          {!isLoading && !error && events.length === 0 ? (
-            <View style={styles.stateCard}>
-              <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
-                Create your first event to start issuing passes.
               </ThemedText>
             </View>
           ) : null}
@@ -258,7 +263,7 @@ function EventCard({
   stats: EventPassStats;
   onPress: () => void;
 }) {
-  const dateLabel = formatEventDate(event.event_date, event.start_time);
+  const dateLabel = formatEventDateTimeLong(event.event_date, event.start_time);
   const checkInRate = stats.issued > 0 ? Math.round((stats.checkedIn / stats.issued) * 100) : 0;
 
   return (
@@ -303,34 +308,9 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatEventDate(eventDate: string | null, startTime: string | null): string | null {
-  if (!eventDate) {
-    return null;
-  }
+// (removed) local date formatting helper — use canonical formatter instead
 
-  const parsed = new Date(`${eventDate}T${startTime ?? '00:00:00'}`);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return eventDate;
-  }
-
-  const datePart = parsed.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  });
-
-  if (!startTime) {
-    return datePart;
-  }
-
-  const timePart = parsed.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  return `${datePart} · ${timePart}`;
-}
+const MOBILE_VIEWPORT_WIDTH = 390;
 
 const styles = StyleSheet.create({
   container: {
@@ -343,7 +323,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignSelf: 'center',
     gap: Spacing.three,
-    maxWidth: MaxContentWidth,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
     paddingBottom: Spacing.six,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.three,
@@ -360,10 +340,10 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   screenTitle: {
-    fontSize: 36,
+    fontSize: 28,
     fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 40,
+    letterSpacing: 0.6,
+    lineHeight: 32,
   },
   organizerMeta: {
     fontSize: 13,
@@ -380,6 +360,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: fan.primary,
     borderRadius: Radii.button,
+    minHeight: 48,
     paddingVertical: Spacing.three,
   },
   createButtonText: {

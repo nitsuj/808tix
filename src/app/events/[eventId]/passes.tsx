@@ -13,10 +13,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventPassListRow } from '@/components/organizer/event-pass-list-row';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { MaxContentWidth, Radii, Spacing } from '@/constants/theme';
+import { Radii, Spacing } from '@/constants/theme';
 import { chrome, fan, organizer, semantic, surface, text } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import {
   DEFAULT_EVENT_PASS_SORT,
   getEventPassSortOptions,
@@ -32,6 +33,8 @@ import {
   type EventPassFilter,
 } from '@/lib/event-passes';
 import type { Pass } from '@/lib/database.types';
+
+const MOBILE_VIEWPORT_WIDTH = 390;
 
 export default function EventPassesScreen() {
   const router = useRouter();
@@ -117,6 +120,8 @@ export default function EventPassesScreen() {
   return (
     <EventPassesContent
       eventName={event.name}
+      eventDate={event.event_date}
+      eventStartTime={event.start_time}
       filter={filter}
       isLoading={isPassesLoading}
       listError={passesError}
@@ -128,6 +133,8 @@ export default function EventPassesScreen() {
 
 type EventPassesContentProps = {
   eventName: string;
+  eventDate: string | null;
+  eventStartTime: string | null;
   filter: EventPassFilter;
   passes: Pass[];
   isLoading: boolean;
@@ -137,6 +144,8 @@ type EventPassesContentProps = {
 
 function EventPassesContent({
   eventName,
+  eventDate,
+  eventStartTime,
   filter,
   passes,
   isLoading,
@@ -152,6 +161,7 @@ function EventPassesContent({
   );
 
   const title = getEventPassListTitle(filter);
+  const eventDateLine = formatEventDateTimeLong(eventDate, eventStartTime);
   const visiblePasses = useMemo(
     () => prepareEventPassList(passes, searchQuery, activeSort),
     [passes, searchQuery, activeSort],
@@ -179,6 +189,11 @@ function EventPassesContent({
             <ThemedText numberOfLines={2} themeColor="textSecondary" style={styles.subtitle}>
               {eventName}
             </ThemedText>
+            {eventDateLine ? (
+              <ThemedText numberOfLines={1} themeColor="textSecondary" style={styles.dateLine}>
+                {eventDateLine}
+              </ThemedText>
+            ) : null}
             <ThemedText themeColor="textSecondary" style={styles.countLine}>
               {countLabel}
             </ThemedText>
@@ -266,11 +281,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignSelf: 'center',
     flexGrow: 1,
-    gap: Spacing.two,
-    maxWidth: MaxContentWidth,
+    gap: Spacing.three,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
     paddingBottom: Spacing.six,
-    paddingHorizontal: Spacing.three,
-    paddingTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
     width: '100%',
   },
   centered: {
@@ -290,21 +305,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   headerBlock: {
-    gap: 2,
+    gap: Spacing.one,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: '800',
-    lineHeight: 28,
+    lineHeight: 30,
   },
   subtitle: {
     fontSize: 14,
     lineHeight: 20,
+    fontWeight: '600',
+  },
+  dateLine: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   countLine: {
     fontSize: 12,
     fontWeight: '600',
-    marginTop: Spacing.half,
+    marginTop: Spacing.one,
   },
   toolbar: {
     gap: Spacing.two,
@@ -347,6 +367,7 @@ const styles = StyleSheet.create({
     borderColor: chrome.glass.border,
     borderRadius: Radii.card,
     borderWidth: 1,
+    marginTop: Spacing.one,
     overflow: 'hidden',
   },
   rowDivider: {
