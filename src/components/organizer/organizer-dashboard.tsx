@@ -18,6 +18,13 @@ import { chrome, fan, surface, text } from '@/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
+import {
+  filterDashboardEventsByStatus,
+  getEventStatusPillLabel,
+  isEventDraft,
+  isEventLive,
+  type DashboardStatusFilter,
+} from '@/lib/event-status';
 import { supabase } from '@/lib/supabase';
 
 type EventPassStats = {
@@ -47,6 +54,7 @@ export function OrganizerDashboard({
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [statsByEvent, setStatsByEvent] = useState<Record<string, EventPassStats>>({});
+  const [statusFilter, setStatusFilter] = useState<DashboardStatusFilter>('all');
 
   useFocusEffect(
     useCallback(() => {
@@ -137,9 +145,16 @@ export function OrganizerDashboard({
     }
   }
 
+  const filteredDashboardEvents = useMemo(
+    () => filterDashboardEventsByStatus(dashboardEvents, statusFilter),
+    [dashboardEvents, statusFilter],
+  );
+
   const showNoEventsEmptyState = !isLoading && !error && events.length === 0;
   const showOnlyFinishedEmptyState =
     !isLoading && !error && dashboardEvents.length === 0 && events.length > 0;
+  const showFilterEmptyState =
+    !isLoading && !error && dashboardEvents.length > 0 && filteredDashboardEvents.length === 0;
 
   return (
     <View style={styles.container}>
@@ -212,6 +227,30 @@ export function OrganizerDashboard({
 
           <ThemedText style={styles.sectionTitle}>Your events</ThemedText>
 
+          {!isLoading && !error && dashboardEvents.length > 0 ? (
+            <View style={styles.filterRow}>
+              {(['all', 'live', 'draft'] as const).map((option) => {
+                const isActive = statusFilter === option;
+                const label = option === 'all' ? 'All' : option === 'live' ? 'Live' : 'Draft';
+
+                return (
+                  <Pressable
+                    key={option}
+                    onPress={() => setStatusFilter(option)}
+                    style={({ pressed }) => [
+                      styles.filterChip,
+                      isActive && styles.filterChipActive,
+                      pressed && styles.pressed,
+                    ]}>
+                    <ThemedText style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                      {label}
+                    </ThemedText>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+
           {isLoading ? (
             <View style={styles.stateCard}>
               <ActivityIndicator color={fan.primary} />
@@ -238,8 +277,17 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
+          {showFilterEmptyState ? (
+            <View style={styles.stateCard}>
+              <ThemedText style={styles.emptyTitle}>No {statusFilter} events</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
+                Try another filter or create a new event.
+              </ThemedText>
+            </View>
+          ) : null}
+
           {!isLoading && !error
-            ? dashboardEvents.map((event) => (
+            ? filteredDashboardEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
@@ -265,6 +313,9 @@ function EventCard({
 }) {
   const dateLabel = formatEventDateTimeLong(event.event_date, event.start_time);
   const checkInRate = stats.issued > 0 ? Math.round((stats.checkedIn / stats.issued) * 100) : 0;
+  const statusLabel = getEventStatusPillLabel(event.status);
+  const isLive = isEventLive(event.status);
+  const isDraft = isEventDraft(event.status);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.eventCard, pressed && styles.pressed]}>
@@ -272,7 +323,17 @@ function EventCard({
       <View style={styles.eventCardBody}>
         <View style={styles.eventCardTop}>
           <View style={styles.eventCardInfo}>
-            <ThemedText style={styles.eventName}>{event.name}</ThemedText>
+            <View style={styles.eventTitleRow}>
+              <ThemedText style={styles.eventName}>{event.name}</ThemedText>
+              <View
+                style={[
+                  styles.eventStatusBadge,
+                  isLive && styles.eventStatusBadgeLive,
+                  isDraft && styles.eventStatusBadgeDraft,
+                ]}>
+                <ThemedText style={styles.eventStatusBadgeText}>{statusLabel}</ThemedText>
+              </View>
+            </View>
             {event.venue_name ? (
               <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
                 {event.venue_name}
@@ -377,6 +438,31 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
     textTransform: 'uppercase',
   },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
+  filterChip: {
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.one + 2,
+  },
+  filterChipActive: {
+    borderColor: fan.primary,
+    backgroundColor: 'rgba(162, 91, 255, 0.14)',
+  },
+  filterChipText: {
+    color: text.secondary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  filterChipTextActive: {
+    color: fan.badgeText,
+  },
   stateCard: {
     alignItems: 'center',
     backgroundColor: chrome.glass.fill,
@@ -413,10 +499,36 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: Spacing.half,
   },
+  eventTitleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.two,
+  },
   eventName: {
+    flexShrink: 1,
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 24,
+  },
+  eventStatusBadge: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+  },
+  eventStatusBadgeLive: {
+    borderColor: 'rgba(57, 255, 20, 0.45)',
+    backgroundColor: 'rgba(57, 255, 20, 0.1)',
+  },
+  eventStatusBadgeDraft: {
+    borderColor: 'rgba(255, 196, 64, 0.45)',
+    backgroundColor: 'rgba(255, 196, 64, 0.1)',
+  },
+  eventStatusBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   eventMeta: {
     fontSize: 14,

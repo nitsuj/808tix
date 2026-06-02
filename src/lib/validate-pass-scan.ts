@@ -1,7 +1,8 @@
 import type { CheckInResult, ValidatePassResponse } from '@/lib/database.types';
+import { canScanPassesForEvent } from '@/lib/event-status';
 import { supabase } from '@/lib/supabase';
 
-export type ScanClientReason = 'not_808tix_pass';
+export type ScanClientReason = 'not_808tix_pass' | 'event_not_live';
 
 export type ScanValidationDisplay = ValidatePassResponse & {
   pass_type?: string;
@@ -13,6 +14,26 @@ export async function validatePassScan(
   secureToken: string,
   eventId: string,
 ): Promise<{ ok: true; data: ScanValidationDisplay } | { ok: false; error: string }> {
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('status')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  if (eventError) {
+    return { ok: false, error: eventError.message };
+  }
+
+  if (!event || !canScanPassesForEvent(event.status)) {
+    return {
+      ok: true,
+      data: {
+        result: 'invalid',
+        clientReason: 'event_not_live',
+      },
+    };
+  }
+
   const { data, error } = await supabase.rpc('validate_pass', {
     p_secure_token: secureToken,
     p_event_id: eventId,

@@ -58,6 +58,10 @@ export function getScannerResultSubtitle(result: ScanValidationDisplay): string 
     return 'Not an 808Tix pass';
   }
 
+  if (result.clientReason === 'event_not_live') {
+    return 'Event not live — publish before scanning';
+  }
+
   switch (result.result as CheckInResult) {
     case 'wrong_event':
       return 'Wrong event';

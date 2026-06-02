@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -28,8 +28,14 @@ import {
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
-import { formatEventStatus } from '@/lib/event-display';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
+import {
+  getEventStatusPillLabel,
+  isEventDraft,
+  isEventLive,
+  PUBLISH_BEFORE_SCAN_MESSAGE,
+} from '@/lib/event-status';
+import { publishEvent } from '@/lib/publish-event';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
 import {
@@ -130,6 +136,7 @@ export default function EventDetailScreen() {
       issuedCount={issuedCount}
       remainingCount={remainingCount}
       onGoToDashboard={goToDashboard}
+      onRefetch={refetch}
       router={router}
     />
   );
@@ -150,6 +157,7 @@ type EventDetailContentProps = {
   remainingCount: number;
   artworkUploadWarning?: string;
   onGoToDashboard: () => void;
+  onRefetch: () => Promise<void>;
   router: ReturnType<typeof useRouter>;
 };
 
@@ -160,8 +168,11 @@ function EventDetailContent({
   remainingCount,
   artworkUploadWarning,
   onGoToDashboard,
+  onRefetch,
   router,
 }: EventDetailContentProps) {
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const hasUploadedArtwork = Boolean(event.image_url?.trim());
   const artworkUri =
     resolveOrganizerArtworkUrl(event.image_url) ??
@@ -174,7 +185,26 @@ function EventDetailContent({
     capacity: event.capacity,
     remainingCount,
   });
-  const isLive = event.status === 'published';
+  const isLive = isEventLive(event.status);
+  const isDraft = isEventDraft(event.status);
+  const statusPillLabel = getEventStatusPillLabel(event.status);
+  const canOperatePasses = isLive;
+
+  async function handlePublishEvent() {
+    setIsPublishing(true);
+    setPublishError(null);
+
+    const outcome = await publishEvent(event.id);
+
+    setIsPublishing(false);
+
+    if (!outcome.ok) {
+      setPublishError(outcome.error);
+      return;
+    }
+
+    await onRefetch();
+  }
 
   return (
     <MobileViewport>
@@ -193,6 +223,10 @@ function EventDetailContent({
                 <View style={styles.liveBadge}>
                   <Text style={styles.liveBadgeText}>● LIVE</Text>
                 </View>
+              ) : isDraft ? (
+                <View style={styles.draftBadge}>
+                  <Text style={styles.draftBadgeText}>DRAFT</Text>
+                </View>
               ) : (
                 <View style={styles.topBarSpacer} />
               )}
@@ -210,20 +244,35 @@ function EventDetailContent({
                 {event.venue_name ? (
                   <Text style={styles.venueLine}>{event.venue_name.toUpperCase()}</Text>
                 ) : null}
-                <Text style={styles.statusPill}>{formatEventStatus(event.status).toUpperCase()}</Text>
+                <Text
+                  style={[styles.statusPill, isDraft && styles.statusPillDraft, isLive && styles.statusPillLive]}>
+                  {statusPillLabel}
+                </Text>
               </View>
+
+              {isDraft ? (
+                <Text style={styles.draftHint}>{PUBLISH_BEFORE_SCAN_MESSAGE}</Text>
+              ) : null}
 
               <View style={styles.statsPanel}>
                 <View style={styles.statsRow}>
                   <StatChip
                     label="Issued"
                     value={String(issuedCount)}
-                    onPress={() => navigateToEventPassList(router, event.id, 'issued')}
+                    onPress={
+                      canOperatePasses
+                        ? () => navigateToEventPassList(router, event.id, 'issued')
+                        : undefined
+                    }
                   />
                   <StatChip
                     label="Checked In"
                     value={String(checkedInCount)}
-                    onPress={() => navigateToEventPassList(router, event.id, 'checked_in')}
+                    onPress={
+                      canOperatePasses
+                        ? () => navigateToEventPassList(router, event.id, 'checked_in')
+                        : undefined
+                    }
                   />
                 </View>
                 <View style={styles.statsRow}>
@@ -236,36 +285,79 @@ function EventDetailContent({
                 <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
               </View>
 
+              {publishError ? <Text style={styles.publishErrorText}>{publishError}</Text> : null}
+
               <View style={styles.actionsBlock}>
-                <Pressable
-                  onPress={() => router.push(`/events/${event.id}/issue` as Href)}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.actionPrimary,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text style={styles.actionPrimaryText}>Issue Pass</Text>
-                </Pressable>
+                {isDraft ? (
+                  <>
+                    <Pressable
+                      disabled={isPublishing}
+                      onPress={handlePublishEvent}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        styles.actionPrimary,
+                        pressed && !isPublishing && styles.pressed,
+                        isPublishing && styles.actionDisabled,
+                      ]}>
+                      {isPublishing ? (
+                        <ActivityIndicator color={chrome.white} />
+                      ) : (
+                        <Text style={styles.actionPrimaryText}>Publish Event</Text>
+                      )}
+                    </Pressable>
 
-                <Pressable
-                  onPress={() => router.push(`/events/${event.id}/scan` as Href)}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.actionSecondary,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text style={styles.actionSecondaryText}>Scan Passes</Text>
-                </Pressable>
+                    <Pressable
+                      onPress={() => router.push(`/events/${event.id}/edit` as Href)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        styles.actionSecondary,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text style={styles.actionSecondaryText}>Edit Event</Text>
+                    </Pressable>
 
-                <Pressable
-                  onPress={() => router.push(`/events/${event.id}/edit` as Href)}
-                  style={({ pressed }) => [
-                    styles.actionButton,
-                    styles.actionSecondary,
-                    pressed && styles.pressed,
-                  ]}>
-                  <Text style={styles.actionSecondaryText}>Edit Event</Text>
-                </Pressable>
+                    <View style={styles.disabledActionsGroup}>
+                      <View style={[styles.actionButton, styles.actionDisabledButton]}>
+                        <Text style={styles.actionDisabledText}>Issue Pass</Text>
+                      </View>
+                      <View style={[styles.actionButton, styles.actionDisabledButton]}>
+                        <Text style={styles.actionDisabledText}>Scan Passes</Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={() => router.push(`/events/${event.id}/issue` as Href)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        styles.actionPrimary,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text style={styles.actionPrimaryText}>Issue Pass</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => router.push(`/events/${event.id}/scan` as Href)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        styles.actionSecondary,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text style={styles.actionSecondaryText}>Scan Passes</Text>
+                    </Pressable>
+
+                    <Pressable
+                      onPress={() => router.push(`/events/${event.id}/edit` as Href)}
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        styles.actionSecondary,
+                        pressed && styles.pressed,
+                      ]}>
+                      <Text style={styles.actionSecondaryText}>Edit Event</Text>
+                    </Pressable>
+                  </>
+                )}
               </View>
             </View>
           </ScrollView>
@@ -374,6 +466,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
   },
+  draftBadge: {
+    backgroundColor: 'rgba(255, 196, 64, 0.12)',
+    borderColor: 'rgba(255, 196, 64, 0.45)',
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one,
+  },
+  draftBadgeText: {
+    color: '#FFC440',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
   commandPanel: {
     alignSelf: 'center',
     backgroundColor: passScreen.credential.cardBackground,
@@ -451,6 +557,29 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     paddingHorizontal: Spacing.two,
     paddingVertical: 4,
+    textAlign: 'center',
+  },
+  statusPillDraft: {
+    borderColor: 'rgba(255, 196, 64, 0.55)',
+    color: '#FFC440',
+  },
+  statusPillLive: {
+    borderColor: organizer.accent,
+    color: organizer.accent,
+  },
+  draftHint: {
+    color: text.secondary,
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 18,
+    marginBottom: Spacing.two,
+    textAlign: 'center',
+  },
+  publishErrorText: {
+    color: semantic.errorSoft,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: Spacing.one,
     textAlign: 'center',
   },
   statsPanel: {
@@ -539,6 +668,24 @@ const styles = StyleSheet.create({
     color: text.primary,
     fontSize: 15,
     fontWeight: '700',
+  },
+  disabledActionsGroup: {
+    gap: LAYOUT.actionsGap,
+    marginTop: Spacing.one,
+  },
+  actionDisabledButton: {
+    backgroundColor: chrome.glass.highlight,
+    borderColor: chrome.glass.border,
+    borderWidth: 1,
+    opacity: 0.55,
+  },
+  actionDisabledText: {
+    color: text.muted,
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  actionDisabled: {
+    opacity: 0.6,
   },
   pressed: {
     opacity: 0.88,

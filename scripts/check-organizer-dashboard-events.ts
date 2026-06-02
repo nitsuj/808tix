@@ -85,6 +85,8 @@ assert(
   dashboardSource.includes('formatEventDateTimeLong'),
   'dashboard uses canonical event date formatter',
 );
+assert(dashboardSource.includes('filterDashboardEventsByStatus'), 'dashboard filters by draft/live');
+assert(dashboardSource.includes("'all', 'live', 'draft'"), 'dashboard has All/Live/Draft chips');
 
 const emptyStateIndex = dashboardSource.indexOf('No events yet');
 const createButtonIndex = dashboardSource.indexOf('+ Create Event');

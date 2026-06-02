@@ -33,6 +33,7 @@ import {
   validateIssuePassForm,
   type IssuePassFieldErrors,
 } from '@/lib/issue-pass-form';
+import { canIssuePassesForEvent, PUBLISH_BEFORE_ISSUE_MESSAGE } from '@/lib/event-status';
 import { buildPassLinkUrl } from '@/lib/pass-link';
 import { sendPassSms } from '@/lib/send-pass-sms';
 
@@ -83,6 +84,29 @@ export default function IssuePassScreen() {
   }
 
   const activeEvent = event;
+
+  if (!canIssuePassesForEvent(activeEvent.status)) {
+    return (
+      <ThemedView style={styles.container}>
+        <SafeAreaView style={styles.safeArea}>
+          <Pressable onPress={() => router.replace(`/events/${eventId}` as Href)} style={styles.backLink}>
+            <ThemedText style={styles.backLinkText}>← Event</ThemedText>
+          </Pressable>
+          <View style={styles.blockedState}>
+            <ThemedText style={styles.blockedTitle}>Event is still a draft</ThemedText>
+            <ThemedText themeColor="textSecondary" style={styles.blockedBody}>
+              {PUBLISH_BEFORE_ISSUE_MESSAGE}
+            </ThemedText>
+            <Pressable
+              onPress={() => router.replace(`/events/${eventId}` as Href)}
+              style={({ pressed }) => [styles.blockedCta, pressed && styles.pressed]}>
+              <ThemedText style={styles.blockedCtaText}>Back to Event</ThemedText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </ThemedView>
+    );
+  }
 
   const goToEventDetail = () => {
     router.replace(`/events/${eventId}?refreshStats=1` as Href);
@@ -563,6 +587,44 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    paddingHorizontal: Spacing.four,
+  },
+  backLink: {
+    marginBottom: Spacing.four,
+    paddingVertical: Spacing.one,
+  },
+  backLinkText: {
+    color: fan.badgeText,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  blockedState: {
+    flex: 1,
+    gap: Spacing.three,
+    justifyContent: 'center',
+    paddingBottom: Spacing.six,
+  },
+  blockedTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+  },
+  blockedBody: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  blockedCta: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    backgroundColor: fan.primary,
+    borderRadius: Radii.button,
+    marginTop: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
+  },
+  blockedCtaText: {
+    color: chrome.white,
+    fontSize: 16,
+    fontWeight: '800',
   },
   centered: {
     flex: 1,

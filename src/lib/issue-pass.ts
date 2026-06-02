@@ -1,4 +1,5 @@
 import type { Pass } from '@/lib/database.types';
+import { getIssuePassBlockedMessage } from '@/lib/event-status';
 import { supabase } from '@/lib/supabase';
 
 export type IssuePassInput = {
@@ -38,7 +39,7 @@ export async function issuePass(input: IssuePassInput): Promise<IssuePassResult>
 
   const { data: event, error: eventError } = await supabase
     .from('events')
-    .select('id, capacity')
+    .select('id, capacity, status')
     .eq('id', input.eventId)
     .maybeSingle();
 
@@ -48,6 +49,12 @@ export async function issuePass(input: IssuePassInput): Promise<IssuePassResult>
 
   if (!event) {
     return { ok: false, error: 'Event not found or you do not have access.' };
+  }
+
+  const issueBlockedMessage = getIssuePassBlockedMessage(event.status);
+
+  if (issueBlockedMessage) {
+    return { ok: false, error: issueBlockedMessage };
   }
 
   if (input.issuedCount >= event.capacity) {

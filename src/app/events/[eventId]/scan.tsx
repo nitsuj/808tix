@@ -1,6 +1,6 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
@@ -9,6 +9,7 @@ import { formatScannerCheckInFooter } from '@/lib/event-stats';
 import { fan, palette, scannerScreen, semantic } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { canScanPassesForEvent, PUBLISH_BEFORE_SCAN_MESSAGE } from '@/lib/event-status';
 import { parseScannedSecureToken } from '@/lib/scan-payload';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 import { validatePassScan } from '@/lib/validate-pass-scan';
@@ -120,6 +121,20 @@ export default function EventScannerScreen() {
     );
   }
 
+  if (!canScanPassesForEvent(event.status)) {
+    return (
+      <MobileViewport>
+        <View style={styles.centered}>
+          <Text style={styles.blockedTitle}>Event is still a draft</Text>
+          <Text style={styles.blockedBody}>{PUBLISH_BEFORE_SCAN_MESSAGE}</Text>
+          <Pressable onPress={handleCancel} style={({ pressed }) => [styles.blockedCta, pressed && styles.pressed]}>
+            <Text style={styles.blockedCtaText}>Back to Event</Text>
+          </Pressable>
+        </View>
+      </MobileViewport>
+    );
+  }
+
   if (phase === 'result' && scanResult) {
     return (
       <ScanResultView
@@ -187,5 +202,33 @@ const styles = StyleSheet.create({
     color: semantic.errorSoft,
     fontSize: 16,
     textAlign: 'center',
+  },
+  blockedTitle: {
+    color: palette.white,
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  blockedBody: {
+    color: scannerScreen.overlay.textSecondary,
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  blockedCta: {
+    backgroundColor: fan.primary,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  blockedCtaText: {
+    color: palette.white,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  pressed: {
+    opacity: 0.85,
   },
 });
