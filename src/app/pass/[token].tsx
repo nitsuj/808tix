@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToAppleWallet } from '@/components/pass/add-to-apple-wallet';
+import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { PassQrCode } from '@/components/pass/pass-qr-code';
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
@@ -210,6 +211,10 @@ function TicketDetailView({ pass }: { pass: PublicPassView }) {
                 <AddToAppleWallet disabled={!isEntryValid} secureToken={pass.secure_token} />
               </View>
             </View>
+
+            <View style={styles.legalFooter}>
+              <LegalFooterLinks centered variant="fan" />
+            </View>
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -373,6 +378,11 @@ const styles = StyleSheet.create({
     lineHeight: LAYOUT.status.lineHeight,
     marginTop: LAYOUT.status.marginTop,
     textAlign: 'center',
+  },
+  legalFooter: {
+    alignItems: 'center',
+    marginTop: spacing.four,
+    paddingBottom: spacing.two,
   },
   loadingRoot: {
     alignItems: 'center',

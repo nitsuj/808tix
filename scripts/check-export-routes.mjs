@@ -11,6 +11,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = join(__dirname, '..', 'dist');
 
 const REQUIRED_FILES = [
+  'privacy.html',
+  'terms.html',
   'pass/[token].html',
   'events/[eventId].html',
   'events/[eventId]/scan.html',

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
 import { ThemedText } from '@/components/themed-text';
@@ -286,6 +287,7 @@ function OrganizerAuthScreen({ onSignIn }: OrganizerAuthScreenProps) {
           </GlassCard>
 
           <View style={styles.envFooter}>
+            <LegalFooterLinks centered variant="organizer" />
             <Text style={styles.envLabel}>
               Auth: {supabaseTarget.label} · {supabaseTarget.host}
             </Text>
@@ -423,7 +425,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   envFooter: {
-    gap: spacing.one,
+    alignItems: 'center',
+    gap: spacing.two,
   },
   envLabel: {
     color: text.muted,
