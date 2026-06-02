@@ -3,10 +3,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
-import { artwork, organizer, radius, scannerScreen, spacing } from '@/theme';
+import { Radii } from '@/constants/theme';
+import { artwork, chrome, fan, organizer, palette, radius, scannerScreen, spacing, text } from '@/theme';
+
+const MOBILE_VIEWPORT_WIDTH = 390;
 
 type EventScannerCameraProps = {
   eventName: string;
+  eventDateLine?: string | null;
+  venueLine?: string | null;
   imageUrl?: string | null;
   isProcessing: boolean;
   onBarcodeScanned: (rawData: string) => void;
@@ -56,7 +61,16 @@ function paletteForName(name: string) {
 }
 
 function getScannerFrameSize(): number {
-  return Math.min(Math.round(window.innerWidth * 0.72), 320);
+  const layoutWidth = Math.min(window.innerWidth, MOBILE_VIEWPORT_WIDTH);
+  return Math.min(Math.round(layoutWidth * 0.72), 300);
+}
+
+function applyViewportColumnStyles(element: HTMLElement) {
+  element.style.left = '50%';
+  element.style.right = 'auto';
+  element.style.transform = 'translateX(-50%)';
+  element.style.width = '100%';
+  element.style.maxWidth = `${MOBILE_VIEWPORT_WIDTH}px`;
 }
 
 function applyFixedLayerStyles(element: HTMLElement) {
@@ -157,17 +171,23 @@ function createScannerStack(): ScannerStack {
   root.style.zIndex = STACK_Z_INDEX;
   root.style.pointerEvents = 'none';
   root.style.overflow = 'hidden';
+  root.style.display = 'flex';
+  root.style.justifyContent = 'center';
+  root.style.backgroundColor = palette.pureBlack;
 
   const artworkSlot = document.createElement('div');
   applyFixedLayerStyles(artworkSlot);
+  applyViewportColumnStyles(artworkSlot);
   artworkSlot.style.zIndex = '1';
 
   const scrimSlot = document.createElement('div');
   applyFixedLayerStyles(scrimSlot);
+  applyViewportColumnStyles(scrimSlot);
   scrimSlot.style.zIndex = '2';
 
   const uiSlot = document.createElement('div');
   applyFixedLayerStyles(uiSlot);
+  applyViewportColumnStyles(uiSlot);
   uiSlot.style.zIndex = '4';
   uiSlot.style.display = 'flex';
   uiSlot.style.flexDirection = 'column';
@@ -335,6 +355,8 @@ function mountScannerUiLayer(
   stack: ScannerStack,
   options: {
     eventName: string;
+    eventDateLine?: string | null;
+    venueLine?: string | null;
     footerLabel?: string;
     hint: string;
     isLoading: boolean;
@@ -357,14 +379,14 @@ function mountScannerUiLayer(
 
   const cancelButton = document.createElement('button');
   cancelButton.type = 'button';
-  cancelButton.textContent = 'Cancel';
+  cancelButton.textContent = '← Event';
   cancelButton.style.pointerEvents = 'auto';
   cancelButton.style.background = 'transparent';
   cancelButton.style.border = 'none';
-  cancelButton.style.color = organizer.accent;
+  cancelButton.style.color = fan.badgeText;
   cancelButton.style.cursor = 'pointer';
-  cancelButton.style.fontSize = '16px';
-  cancelButton.style.fontWeight = '600';
+  cancelButton.style.fontSize = '15px';
+  cancelButton.style.fontWeight = '700';
   cancelButton.style.padding = `${spacing.one}px 0`;
   cancelButton.style.minWidth = '56px';
   cancelButton.style.textShadow = OVERLAY_TEXT_SHADOW;
@@ -383,25 +405,57 @@ function mountScannerUiLayer(
   eventHeader.style.gap = `${spacing.half}px`;
   eventHeader.style.padding = `0 ${spacing.two}px`;
 
-  const scanningLabel = document.createElement('div');
-  scanningLabel.textContent = 'SCANNING';
-  scanningLabel.style.color = organizer.accent;
-  scanningLabel.style.fontSize = '11px';
-  scanningLabel.style.fontWeight = '800';
-  scanningLabel.style.letterSpacing = '2.4px';
-  scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
-
   const eventName = document.createElement('div');
   eventName.textContent = options.eventName;
   eventName.style.color = scannerScreen.overlay.text;
-  eventName.style.fontSize = '17px';
-  eventName.style.fontWeight = '700';
-  eventName.style.lineHeight = '22px';
+  eventName.style.fontSize = '18px';
+  eventName.style.fontWeight = '800';
+  eventName.style.lineHeight = '24px';
   eventName.style.textAlign = 'center';
   eventName.style.textShadow = OVERLAY_TEXT_SHADOW;
 
-  eventHeader.appendChild(scanningLabel);
   eventHeader.appendChild(eventName);
+
+  if (options.eventDateLine) {
+    const eventDate = document.createElement('div');
+    eventDate.textContent = options.eventDateLine;
+    eventDate.style.color = fan.badgeText;
+    eventDate.style.fontSize = '11px';
+    eventDate.style.fontWeight = '600';
+    eventDate.style.letterSpacing = '1px';
+    eventDate.style.lineHeight = '14px';
+    eventDate.style.textAlign = 'center';
+    eventDate.style.textShadow = OVERLAY_TEXT_SHADOW;
+    eventHeader.appendChild(eventDate);
+  }
+
+  if (options.venueLine) {
+    const venue = document.createElement('div');
+    venue.textContent = options.venueLine;
+    venue.style.color = TEXT_SECONDARY;
+    venue.style.fontSize = '12px';
+    venue.style.fontWeight = '600';
+    venue.style.letterSpacing = '0.4px';
+    venue.style.lineHeight = '16px';
+    venue.style.textAlign = 'center';
+    venue.style.textShadow = OVERLAY_TEXT_SHADOW;
+    eventHeader.appendChild(venue);
+  }
+
+  const scanningLabel = document.createElement('div');
+  scanningLabel.textContent = 'SCANNING';
+  scanningLabel.style.alignSelf = 'center';
+  scanningLabel.style.border = `1px solid ${organizer.accent}`;
+  scanningLabel.style.borderRadius = '999px';
+  scanningLabel.style.color = organizer.accent;
+  scanningLabel.style.fontSize = '10px';
+  scanningLabel.style.fontWeight = '800';
+  scanningLabel.style.letterSpacing = '1.2px';
+  scanningLabel.style.marginTop = `${spacing.one}px`;
+  scanningLabel.style.padding = '4px 10px';
+  scanningLabel.style.textShadow = OVERLAY_TEXT_SHADOW;
+
+  eventHeader.appendChild(scanningLabel);
 
   const topSpacer = document.createElement('div');
   topSpacer.style.minWidth = '56px';
@@ -477,6 +531,8 @@ function mountScannerUiLayer(
 
 export function EventScannerCamera({
   eventName,
+  eventDateLine,
+  venueLine,
   imageUrl,
   isProcessing,
   onBarcodeScanned,
@@ -531,6 +587,8 @@ export function EventScannerCamera({
     const hint = isProcessing ? 'Validating…' : 'Point at the guest pass QR code';
     const cleanupUi = mountScannerUiLayer(stack, {
       eventName,
+      eventDateLine,
+      venueLine,
       footerLabel: overlayFooterLabel,
       hint,
       isLoading: status === 'loading',
@@ -553,7 +611,7 @@ export function EventScannerCamera({
       window.removeEventListener('resize', handleResize);
       cleanupUi();
     };
-  }, [eventName, imageUrl, isProcessing, overlayFooterLabel, status]);
+  }, [eventDateLine, eventName, imageUrl, isProcessing, overlayFooterLabel, status, venueLine]);
 
   useEffect(() => {
     return () => {
@@ -767,37 +825,41 @@ export function EventScannerCamera({
 
   if (status === 'permission') {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionTitle}>Camera access needed</Text>
-        <Text style={styles.permissionBody}>
-          Allow camera access to scan pass QR codes for {eventName}. HTTPS is required on mobile
-          browsers.
-        </Text>
-        <Pressable
-          onPress={handleRequestPermission}
-          style={({ pressed }) => [styles.permissionButton, pressed && styles.pressed]}>
-          <Text style={styles.permissionButtonText}>Allow Camera</Text>
-        </Pressable>
-        <Pressable onPress={onCancel} style={styles.cancelLink}>
-          <Text style={styles.cancelLinkText}>Cancel</Text>
-        </Pressable>
+      <View style={styles.permissionOuter}>
+        <View style={styles.permissionPanel}>
+          <Text style={styles.permissionTitle}>Camera access needed</Text>
+          <Text style={styles.permissionBody}>
+            Allow camera access to scan pass QR codes for {eventName}. HTTPS is required on mobile
+            browsers.
+          </Text>
+          <Pressable
+            onPress={handleRequestPermission}
+            style={({ pressed }) => [styles.permissionButton, pressed && styles.pressed]}>
+            <Text style={styles.permissionButtonText}>Allow Camera</Text>
+          </Pressable>
+          <Pressable onPress={onCancel} style={styles.cancelLink}>
+            <Text style={styles.cancelLinkText}>← Event</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
 
   if (status === 'error') {
     return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionTitle}>Camera unavailable</Text>
-        <Text style={styles.permissionBody}>{errorMessage ?? 'Unable to access the camera.'}</Text>
-        <Pressable
-          onPress={handleRequestPermission}
-          style={({ pressed }) => [styles.permissionButton, pressed && styles.pressed]}>
-          <Text style={styles.permissionButtonText}>Try Again</Text>
-        </Pressable>
-        <Pressable onPress={onCancel} style={styles.cancelLink}>
-          <Text style={styles.cancelLinkText}>Cancel</Text>
-        </Pressable>
+      <View style={styles.permissionOuter}>
+        <View style={styles.permissionPanel}>
+          <Text style={styles.permissionTitle}>Camera unavailable</Text>
+          <Text style={styles.permissionBody}>{errorMessage ?? 'Unable to access the camera.'}</Text>
+          <Pressable
+            onPress={handleRequestPermission}
+            style={({ pressed }) => [styles.permissionButton, pressed && styles.pressed]}>
+            <Text style={styles.permissionButtonText}>Try Again</Text>
+          </Pressable>
+          <Pressable onPress={onCancel} style={styles.cancelLink}>
+            <Text style={styles.cancelLinkText}>← Event</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -815,52 +877,62 @@ const styles = StyleSheet.create({
     top: 0,
     width: 1,
   },
-  permissionContainer: {
-    backgroundColor: scannerScreen.overlay.background,
+  permissionOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     bottom: 0,
-    flex: 1,
-    gap: spacing.three,
-    height: '100%',
     justifyContent: 'center',
     left: 0,
     minHeight: '100dvh',
-    paddingHorizontal: spacing.five,
+    paddingHorizontal: spacing.four,
     position: 'fixed',
     right: 0,
     top: 0,
     width: '100%',
     zIndex: 10001,
   },
+  permissionPanel: {
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    gap: spacing.three,
+    maxWidth: MOBILE_VIEWPORT_WIDTH - spacing.four * 2,
+    padding: spacing.five,
+    width: '100%',
+  },
   permissionTitle: {
-    color: scannerScreen.overlay.text,
-    fontSize: 24,
-    fontWeight: '700',
+    color: text.primary,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   permissionBody: {
-    color: TEXT_SECONDARY,
-    fontSize: 16,
+    color: text.secondary,
+    fontSize: 15,
     lineHeight: 22,
+    textAlign: 'center',
   },
   permissionButton: {
     alignItems: 'center',
-    backgroundColor: organizer.accent,
-    borderRadius: spacing.two,
+    backgroundColor: fan.primary,
+    borderRadius: Radii.button,
     marginTop: spacing.two,
     paddingVertical: spacing.three,
   },
   permissionButtonText: {
-    color: scannerScreen.overlay.textOnAccent,
+    color: chrome.white,
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   cancelLink: {
     alignItems: 'center',
     paddingVertical: spacing.two,
   },
   cancelLinkText: {
-    color: organizer.accent,
-    fontSize: 16,
-    fontWeight: '600',
+    color: fan.badgeText,
+    fontSize: 15,
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.85,

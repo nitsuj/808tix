@@ -8,13 +8,21 @@ import {
   getScannerResultSubtitle,
   getScannerResultTitle,
 } from '@/constants/scanner-results';
+import { Radii } from '@/constants/theme';
 import { formatCheckedInAt } from '@/lib/check-in-display';
-import { organizer, palette, radius, scanner, scannerScreen, spacing, text } from '@/theme';
+import { fan, organizer, palette, radius, scanner, scannerScreen, spacing, text } from '@/theme';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
+
+const MOBILE_VIEWPORT_WIDTH = 390;
+
+const webViewportMinHeight =
+  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 type ScanResultViewProps = {
   result: ScanValidationDisplay;
   eventName: string;
+  eventDateLine?: string | null;
+  venueLine?: string | null;
   imageUrl?: string | null;
   checkInFooterLabel: string;
   onScanAnother: () => void;
@@ -37,6 +45,8 @@ function getResultOverlayColor(result: ScanValidationDisplay): string {
 export function ScanResultView({
   result,
   eventName,
+  eventDateLine,
+  venueLine,
   imageUrl,
   checkInFooterLabel,
   onScanAnother,
@@ -54,102 +64,134 @@ export function ScanResultView({
   const isDarkText = colors.text === text.primary || colors.text === '#000000';
 
   return (
-    <View style={styles.container}>
-      <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
-      <View style={[styles.resultOverlay, { backgroundColor: overlayColor }]} />
+    <View style={styles.viewportOuter}>
+      <View style={styles.viewportInner}>
+        <View style={styles.container}>
+          <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+          <View style={[styles.resultOverlay, { backgroundColor: overlayColor }]} />
 
-      <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-        <View style={styles.content}>
-          <View
-            style={[
-              styles.iconCircle,
-              isConfirmed && styles.iconCircleConfirmed,
-              isAlreadyCheckedIn && styles.iconCircleWarning,
-              isUnconfirmed && styles.iconCircleUnconfirmed,
-            ]}>
-            <Text
-              style={[
-                styles.iconGlyph,
-                isConfirmed && styles.iconGlyphOnConfirmed,
-                !isConfirmed && styles.iconGlyphOnDark,
-              ]}>
-              {isConfirmed ? '✓' : isAlreadyCheckedIn ? '!' : '✕'}
-            </Text>
-          </View>
-
-          <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-
-          {subtitle ? (
-            <Text style={[styles.subtitle, { color: colors.text }]}>{subtitle}</Text>
-          ) : null}
-
-          {showGuest ? (
-            <Text style={[styles.guestName, { color: colors.text }]}>{result.guest_name}</Text>
-          ) : null}
-
-          {result.pass_type ? (
-            <Text style={[styles.passType, { color: colors.text }]}>{result.pass_type}</Text>
-          ) : null}
-
-          {isAlreadyCheckedIn && checkedInAtLabel ? (
-            <Text style={[styles.checkedInAt, { color: colors.text }]}>
-              Checked in at {checkedInAtLabel}
-            </Text>
-          ) : null}
-
-          {isConfirmed ? (
-            <View style={styles.footerPill}>
-              <Text
-                style={[
-                  styles.footerText,
-                  isDarkText ? styles.footerTextDark : styles.footerTextLight,
-                ]}>
-                {checkInFooterLabel}
+          <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+            <View style={styles.eventContext}>
+              <Text numberOfLines={2} style={styles.eventContextName}>
+                {eventName}
               </Text>
+              {eventDateLine ? (
+                <Text numberOfLines={1} style={styles.eventContextDate}>
+                  {eventDateLine}
+                </Text>
+              ) : null}
+              {venueLine ? (
+                <Text numberOfLines={1} style={styles.eventContextVenue}>
+                  {venueLine}
+                </Text>
+              ) : null}
             </View>
-          ) : null}
-        </View>
 
-        <View style={styles.footerBlock}>
-          {!isConfirmed ? (
-            <View
-              style={[
-                styles.footerPill,
-                isAlreadyCheckedIn && styles.footerPillWarning,
-                isUnconfirmed && styles.footerPillMuted,
-              ]}>
-              <Text
+            <View style={styles.content}>
+              <View
                 style={[
-                  styles.footerText,
-                  isDarkText ? styles.footerTextDark : styles.footerTextLight,
+                  styles.iconCircle,
+                  isConfirmed && styles.iconCircleConfirmed,
+                  isAlreadyCheckedIn && styles.iconCircleWarning,
+                  isUnconfirmed && styles.iconCircleUnconfirmed,
                 ]}>
-                {checkInFooterLabel}
-              </Text>
-            </View>
-          ) : null}
+                <Text
+                  style={[
+                    styles.iconGlyph,
+                    isConfirmed && styles.iconGlyphOnConfirmed,
+                    !isConfirmed && styles.iconGlyphOnDark,
+                  ]}>
+                  {isConfirmed ? '✓' : isAlreadyCheckedIn ? '!' : '✕'}
+                </Text>
+              </View>
 
-          <Pressable
-            onPress={onScanAnother}
-            style={({ pressed }) => [
-              styles.scanAnotherButton,
-              pressed && styles.pressed,
-              isConfirmed ? styles.scanAnotherOnConfirmed : styles.scanAnotherOnDark,
-            ]}>
-            <Text
-              style={[
-                styles.scanAnotherText,
-                isConfirmed ? styles.scanAnotherTextOnConfirmed : styles.scanAnotherTextOnDark,
-              ]}>
-              Scan Another
-            </Text>
-          </Pressable>
+              <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+
+              {subtitle ? (
+                <Text style={[styles.subtitle, { color: colors.text }]}>{subtitle}</Text>
+              ) : null}
+
+              {showGuest ? (
+                <Text style={[styles.guestName, { color: colors.text }]}>{result.guest_name}</Text>
+              ) : null}
+
+              {result.pass_type ? (
+                <Text style={[styles.passType, { color: colors.text }]}>{result.pass_type}</Text>
+              ) : null}
+
+              {isAlreadyCheckedIn && checkedInAtLabel ? (
+                <Text style={[styles.checkedInAt, { color: colors.text }]}>
+                  Checked in at {checkedInAtLabel}
+                </Text>
+              ) : null}
+
+              {isConfirmed ? (
+                <View style={styles.footerPill}>
+                  <Text
+                    style={[
+                      styles.footerText,
+                      isDarkText ? styles.footerTextDark : styles.footerTextLight,
+                    ]}>
+                    {checkInFooterLabel}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={styles.footerBlock}>
+              {!isConfirmed ? (
+                <View
+                  style={[
+                    styles.footerPill,
+                    isAlreadyCheckedIn && styles.footerPillWarning,
+                    isUnconfirmed && styles.footerPillMuted,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.footerText,
+                      isDarkText ? styles.footerTextDark : styles.footerTextLight,
+                    ]}>
+                    {checkInFooterLabel}
+                  </Text>
+                </View>
+              ) : null}
+
+              <Pressable
+                onPress={onScanAnother}
+                style={({ pressed }) => [
+                  styles.scanAnotherButton,
+                  pressed && styles.pressed,
+                  isConfirmed ? styles.scanAnotherOnConfirmed : styles.scanAnotherOnDark,
+                ]}>
+                <Text
+                  style={[
+                    styles.scanAnotherText,
+                    isConfirmed ? styles.scanAnotherTextOnConfirmed : styles.scanAnotherTextOnDark,
+                  ]}>
+                  Scan Another
+                </Text>
+              </Pressable>
+            </View>
+          </SafeAreaView>
         </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  viewportOuter: {
+    alignItems: 'center',
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+  },
+  viewportInner: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    width: '100%',
+    ...webViewportMinHeight,
+  },
   container: {
     flex: 1,
     position: 'relative',
@@ -162,23 +204,58 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: spacing.four,
-    paddingVertical: spacing.four,
+    paddingVertical: spacing.three,
     zIndex: 2,
+  },
+  eventContext: {
+    alignItems: 'center',
+    gap: 4,
+    paddingTop: spacing.one,
+  },
+  eventContextName: {
+    color: text.primary,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  eventContextDate: {
+    color: fan.badgeText,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  eventContextVenue: {
+    color: scannerScreen.overlay.textSecondary,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   content: {
     alignItems: 'center',
     flex: 1,
-    gap: spacing.three,
+    gap: spacing.two,
     justifyContent: 'center',
     paddingHorizontal: spacing.two,
   },
   iconCircle: {
     alignItems: 'center',
     borderRadius: radius.badge,
-    height: 132,
+    height: 120,
     justifyContent: 'center',
     marginBottom: spacing.two,
-    width: 132,
+    width: 120,
   },
   iconCircleConfirmed: {
     backgroundColor: palette.pureBlack,
@@ -205,9 +282,9 @@ const styles = StyleSheet.create({
     borderWidth: 3,
   },
   iconGlyph: {
-    fontSize: 64,
+    fontSize: 56,
     fontWeight: '800',
-    lineHeight: 68,
+    lineHeight: 60,
   },
   iconGlyphOnConfirmed: {
     color: organizer.accent,
@@ -216,39 +293,44 @@ const styles = StyleSheet.create({
     color: text.primary,
   },
   title: {
-    fontSize: 40,
+    fontSize: 34,
     fontWeight: '800',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
+    lineHeight: 38,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 24,
+    lineHeight: 22,
     opacity: 0.95,
+    paddingHorizontal: spacing.two,
     textAlign: 'center',
   },
   guestName: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: '700',
+    lineHeight: 32,
     marginTop: spacing.one,
     textAlign: 'center',
   },
   passType: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     letterSpacing: 0.2,
     opacity: 0.9,
     textAlign: 'center',
   },
   checkedInAt: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    lineHeight: 20,
     opacity: 0.9,
     textAlign: 'center',
   },
   footerBlock: {
-    gap: spacing.three,
+    gap: spacing.two,
+    paddingBottom: spacing.one,
   },
   footerPill: {
     alignSelf: 'center',
@@ -256,6 +338,7 @@ const styles = StyleSheet.create({
     borderColor: organizer.accent,
     borderRadius: radius.input,
     borderWidth: 1,
+    maxWidth: '100%',
     paddingHorizontal: spacing.four,
     paddingVertical: spacing.two,
   },
@@ -279,9 +362,9 @@ const styles = StyleSheet.create({
   },
   scanAnotherButton: {
     alignItems: 'center',
-    borderRadius: radius.button,
+    borderRadius: Radii.button,
     borderWidth: 2,
-    marginBottom: spacing.two,
+    minHeight: 48,
     paddingVertical: spacing.three,
   },
   scanAnotherOnConfirmed: {
@@ -293,8 +376,8 @@ const styles = StyleSheet.create({
     borderColor: scanner.buttonOnDarkBorder,
   },
   scanAnotherText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
   },
   scanAnotherTextOnConfirmed: {
     color: text.primary,

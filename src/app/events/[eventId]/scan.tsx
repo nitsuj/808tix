@@ -1,12 +1,15 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
+import { Radii, Spacing } from '@/constants/theme';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatScannerCheckInFooter } from '@/lib/event-stats';
-import { fan, palette, scannerScreen, semantic } from '@/theme';
+import { chrome, fan, palette, scannerScreen, text } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { canScanPassesForEvent, PUBLISH_BEFORE_SCAN_MESSAGE } from '@/lib/event-status';
@@ -32,6 +35,15 @@ export default function EventScannerScreen() {
   const isProcessingRef = useRef(isProcessing);
 
   const checkInFooterLabel = formatScannerCheckInFooter(stats);
+
+  const eventDateLine = useMemo(() => {
+    const formatted = formatEventDateTimeLong(event?.event_date ?? null, event?.start_time ?? null);
+    return formatted ? formatted.toUpperCase() : null;
+  }, [event?.event_date, event?.start_time]);
+
+  const venueLine = event?.venue_name?.trim()
+    ? event.venue_name.trim().toUpperCase()
+    : null;
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;
@@ -113,25 +125,24 @@ export default function EventScannerScreen() {
 
   if (error || !event || !eventId) {
     return (
-      <MobileViewport>
-        <View style={styles.centered}>
-          <Text style={styles.errorText}>{error ?? 'Event not found.'}</Text>
-        </View>
-      </MobileViewport>
+      <ScannerStateShell onBack={handleCancel}>
+        <Text style={styles.stateTitle}>Could not load event</Text>
+        <Text style={styles.stateBody}>{error ?? 'Event not found.'}</Text>
+      </ScannerStateShell>
     );
   }
 
   if (!canScanPassesForEvent(event.status)) {
     return (
-      <MobileViewport>
-        <View style={styles.centered}>
-          <Text style={styles.blockedTitle}>Event is still a draft</Text>
-          <Text style={styles.blockedBody}>{PUBLISH_BEFORE_SCAN_MESSAGE}</Text>
-          <Pressable onPress={handleCancel} style={({ pressed }) => [styles.blockedCta, pressed && styles.pressed]}>
-            <Text style={styles.blockedCtaText}>Back to Event</Text>
-          </Pressable>
-        </View>
-      </MobileViewport>
+      <ScannerStateShell onBack={handleCancel}>
+        <Text style={styles.stateTitle}>Event is still a draft</Text>
+        <Text style={styles.stateBody}>{PUBLISH_BEFORE_SCAN_MESSAGE}</Text>
+        <Pressable
+          onPress={handleCancel}
+          style={({ pressed }) => [styles.stateCta, pressed && styles.pressed]}>
+          <Text style={styles.stateCtaText}>Back to Event</Text>
+        </Pressable>
+      </ScannerStateShell>
     );
   }
 
@@ -139,9 +150,11 @@ export default function EventScannerScreen() {
     return (
       <ScanResultView
         checkInFooterLabel={checkInFooterLabel}
+        eventDateLine={eventDateLine}
         eventName={event.name}
         imageUrl={event.image_url}
         result={scanResult}
+        venueLine={venueLine}
         onScanAnother={handleScanAnother}
       />
     );
@@ -151,13 +164,36 @@ export default function EventScannerScreen() {
     <MobileViewport>
       <View style={styles.scannerScreen}>
         <EventScannerCamera
+          eventDateLine={eventDateLine}
           eventName={event.name}
           imageUrl={event.image_url}
           isProcessing={isProcessing}
           overlayFooterLabel={checkInFooterLabel}
+          venueLine={venueLine}
           onBarcodeScanned={handleBarcodeScanned}
           onCancel={handleCancel}
         />
+      </View>
+    </MobileViewport>
+  );
+}
+
+function ScannerStateShell({
+  children,
+  onBack,
+}: {
+  children: React.ReactNode;
+  onBack: () => void;
+}) {
+  return (
+    <MobileViewport>
+      <View style={styles.stateScreen}>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.stateSafeArea}>
+          <Pressable onPress={onBack} style={styles.backHit}>
+            <Text style={styles.backText}>← Event</Text>
+          </Pressable>
+          <View style={styles.statePanel}>{children}</View>
+        </SafeAreaView>
       </View>
     </MobileViewport>
   );
@@ -196,39 +232,65 @@ const styles = StyleSheet.create({
     backgroundColor: scannerScreen.overlay.background,
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: Spacing.four,
   },
-  errorText: {
-    color: semantic.errorSoft,
-    fontSize: 16,
-    textAlign: 'center',
+  stateScreen: {
+    backgroundColor: palette.pureBlack,
+    flex: 1,
   },
-  blockedTitle: {
-    color: palette.white,
-    fontSize: 20,
+  stateSafeArea: {
+    flex: 1,
+    paddingHorizontal: Spacing.four,
+  },
+  backHit: {
+    paddingVertical: Spacing.one,
+  },
+  backText: {
+    color: fan.badgeText,
+    fontSize: 15,
     fontWeight: '700',
-    marginBottom: 12,
+  },
+  statePanel: {
+    alignItems: 'center',
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    flex: 1,
+    gap: Spacing.three,
+    justifyContent: 'center',
+    marginBottom: Spacing.six,
+    marginTop: Spacing.four,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.five,
+  },
+  stateTitle: {
+    color: text.primary,
+    fontSize: 22,
+    fontWeight: '800',
     textAlign: 'center',
   },
-  blockedBody: {
-    color: scannerScreen.overlay.textSecondary,
+  stateBody: {
+    color: text.secondary,
     fontSize: 15,
     lineHeight: 22,
-    marginBottom: 24,
     textAlign: 'center',
   },
-  blockedCta: {
+  stateCta: {
+    alignItems: 'center',
     backgroundColor: fan.primary,
-    borderRadius: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    borderRadius: Radii.button,
+    marginTop: Spacing.two,
+    minWidth: 160,
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.three,
   },
-  blockedCtaText: {
-    color: palette.white,
-    fontSize: 15,
-    fontWeight: '700',
+  stateCtaText: {
+    color: chrome.white,
+    fontSize: 16,
+    fontWeight: '800',
   },
   pressed: {
-    opacity: 0.85,
+    opacity: 0.88,
   },
 });

@@ -13,10 +13,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
-import { organizer, radius, scannerScreen, spacing } from '@/theme';
+import { Radii } from '@/constants/theme';
+import { chrome, fan, organizer, radius, scannerScreen, spacing, text } from '@/theme';
+
+const MOBILE_VIEWPORT_WIDTH = 390;
 
 type EventScannerCameraProps = {
   eventName: string;
+  eventDateLine?: string | null;
+  venueLine?: string | null;
   imageUrl?: string | null;
   isProcessing: boolean;
   onBarcodeScanned: (rawData: string) => void;
@@ -31,6 +36,8 @@ const webFrameGlowStyle =
 
 export function EventScannerCamera({
   eventName,
+  eventDateLine,
+  venueLine,
   imageUrl,
   isProcessing,
   onBarcodeScanned,
@@ -40,7 +47,8 @@ export function EventScannerCamera({
   const [permission, requestPermission] = useCameraPermissions();
   const lastScanAtRef = useRef(0);
   const { width: windowWidth } = useWindowDimensions();
-  const frameSize = Math.min(windowWidth - spacing.six * 2, 300);
+  const layoutWidth = Math.min(windowWidth, MOBILE_VIEWPORT_WIDTH);
+  const frameSize = Math.min(layoutWidth - spacing.six * 2, 300);
 
   const handleBarcodeScanned = useCallback(
     ({ data }: { data: string }) => {
@@ -104,14 +112,24 @@ export function EventScannerCamera({
       <SafeAreaView edges={['top', 'bottom']} style={styles.uiLayer}>
         <View style={styles.topBar}>
           <Pressable hitSlop={12} onPress={onCancel}>
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Text style={styles.cancelText}>← Event</Text>
           </Pressable>
 
           <View style={styles.headerCenter}>
-            <Text style={styles.scanningLabel}>SCANNING</Text>
             <Text numberOfLines={2} style={styles.eventName}>
               {eventName}
             </Text>
+            {eventDateLine ? (
+              <Text numberOfLines={1} style={styles.eventDateLine}>
+                {eventDateLine}
+              </Text>
+            ) : null}
+            {venueLine ? (
+              <Text numberOfLines={1} style={styles.venueLine}>
+                {venueLine}
+              </Text>
+            ) : null}
+            <Text style={styles.scanningLabel}>SCANNING</Text>
           </View>
 
           <View style={styles.topSpacer} />
@@ -196,18 +214,21 @@ const styles = StyleSheet.create({
     backgroundColor: scannerScreen.cameraScrim,
   },
   permissionSafeArea: {
+    alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.four,
     zIndex: 1,
   },
   permissionCard: {
-    backgroundColor: scannerScreen.footer.pillBackground,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-    borderRadius: radius.card,
+    backgroundColor: chrome.glass.fill,
+    borderColor: chrome.glass.border,
+    borderRadius: Radii.card,
     borderWidth: 1,
     gap: spacing.three,
+    maxWidth: MOBILE_VIEWPORT_WIDTH - spacing.four * 2,
     padding: spacing.five,
+    width: '100%',
   },
   uiLayer: {
     flex: 1,
@@ -231,16 +252,39 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.two,
   },
   scanningLabel: {
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 1,
     color: organizer.accent,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 2.4,
+    letterSpacing: 1.2,
+    marginTop: spacing.one,
+    overflow: 'hidden',
+    paddingHorizontal: spacing.two,
+    paddingVertical: 4,
+  },
+  eventDateLine: {
+    color: fan.badgeText,
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 1,
+    lineHeight: 14,
+    textAlign: 'center',
+  },
+  venueLine: {
+    color: scannerScreen.overlay.textSecondary,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    lineHeight: 16,
+    textAlign: 'center',
   },
   cancelText: {
-    color: organizer.accent,
-    fontSize: 16,
-    fontWeight: '600',
-    width: 56,
+    color: fan.badgeText,
+    fontSize: 15,
+    fontWeight: '700',
+    minWidth: 56,
     ...(Platform.OS === 'web'
       ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
       : null),
@@ -361,19 +405,21 @@ const styles = StyleSheet.create({
       : null),
   },
   permissionTitle: {
-    color: scannerScreen.overlay.text,
-    fontSize: 24,
-    fontWeight: '700',
+    color: text.primary,
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   permissionBody: {
-    color: scannerScreen.overlay.textSecondary,
-    fontSize: 16,
+    color: text.secondary,
+    fontSize: 15,
     lineHeight: 22,
+    textAlign: 'center',
   },
   permissionButton: {
     alignItems: 'center',
-    backgroundColor: organizer.accent,
-    borderRadius: radius.button,
+    backgroundColor: fan.primary,
+    borderRadius: Radii.button,
     marginTop: spacing.two,
     paddingVertical: spacing.three,
   },
@@ -387,9 +433,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.two,
   },
   cancelLinkText: {
-    color: organizer.accent,
-    fontSize: 16,
-    fontWeight: '600',
+    color: fan.badgeText,
+    fontSize: 15,
+    fontWeight: '700',
   },
   pressed: {
     opacity: 0.85,
