@@ -10,8 +10,14 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '..');
 
+/**
+ * Slug registered on expo.dev for extra.eas.projectId.
+ * EAS rejects builds when app.json slug differs from this value.
+ * https://expo.fyi/eas-project-id
+ */
+const EAS_PROJECT_SLUG = '808Tix';
+
 const VALID_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
-const VALID_SLUG_PATTERN = /^[a-z0-9]+([a-z0-9-]*[a-z0-9]+)?$/;
 
 let failures = 0;
 
@@ -33,8 +39,7 @@ function assert(condition, message) {
 }
 
 /**
- * Mirrors expo-dev-client/plugin/build/getDefaultScheme.js
- * Dev-client QR / Metro links use exp+{slug}, NOT app.json scheme.
+ * expo-dev-client/plugin/build/getDefaultScheme.js — dev-client scheme from slug only.
  */
 function getDevClientSchemeFromSlug(slug) {
   let scheme = slug.replace(/[^A-Za-z0-9+\-.]/g, '');
@@ -78,28 +83,30 @@ assert(
 
 const slug = app.expo?.slug;
 const scheme = app.expo?.scheme;
+const projectId = app.expo?.extra?.eas?.projectId;
 
 assert(typeof slug === 'string' && slug.length > 0, 'app.json defines slug');
 assert(typeof scheme === 'string' && scheme.length > 0, 'app.json defines URL scheme');
-assert(VALID_SLUG_PATTERN.test(slug), `slug "${slug}" is lowercase URL-friendly (a-z, 0-9, hyphens)`);
+assert(
+  slug === EAS_PROJECT_SLUG,
+  `slug "${slug}" matches EAS project slug "${EAS_PROJECT_SLUG}" (required for projectId ${projectId ?? 'unknown'})`,
+);
 assert(VALID_SCHEME_PATTERN.test(scheme), `scheme "${scheme}" matches Expo scheme pattern`);
 
+const devClientScheme = getDevClientSchemeFromSlug(slug);
 assert(
-  slug === scheme,
-  `slug and scheme align (${slug}) — Metro dev-client uses exp+slug, not scheme alone`,
+  devClientScheme === 'exp+808tix',
+  `dev-client scheme is ${devClientScheme} (Metro QR uses ${devClientScheme}://expo-development-client/...)`,
 );
 
-const devClientScheme = getDevClientSchemeFromSlug(slug);
-const expectedDevScheme = `exp+${slug}`;
-
 assert(
-  devClientScheme === expectedDevScheme,
-  `dev-client scheme is ${devClientScheme} (Metro QR must use ${devClientScheme}://expo-development-client/...)`,
+  scheme !== devClientScheme.replace(/^exp\+/, ''),
+  'custom scheme is separate from dev-client slug scheme (slug drives exp+808tix, scheme is for app deep links)',
 );
 
 assert(app.expo?.ios?.bundleIdentifier, 'app.json defines ios.bundleIdentifier');
 assert(app.expo?.android?.package, 'app.json defines android.package');
-assert(app.expo?.extra?.eas?.projectId, 'app.json links EAS projectId');
+assert(projectId, 'app.json links EAS projectId');
 
 const plugins = app.expo?.plugins ?? [];
 const pluginNames = plugins.map((entry) => (Array.isArray(entry) ? entry[0] : entry));
@@ -109,6 +116,7 @@ assert(pluginNames.some((name) => name === 'expo-camera'), 'expo-camera plugin c
 
 const docContent = readFileSync(docPath, 'utf8');
 assert(docContent.includes(devClientScheme), 'NATIVE_PHASE_0.md documents dev-client scheme');
+assert(docContent.includes(EAS_PROJECT_SLUG), 'NATIVE_PHASE_0.md documents EAS project slug');
 
 if (failures > 0) {
   console.error(`\ncheck-native-eas-readiness: ${failures} failure(s)`);

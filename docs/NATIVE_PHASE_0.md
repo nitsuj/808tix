@@ -31,7 +31,7 @@ Configured in [`eas.json`](../eas.json):
 ### Build commands
 
 ```bash
-# Dev client (connect to Metro — QR must use exp+tix808://)
+# Dev client (Metro QR uses exp+808tix:// — slug 808Tix)
 eas build --profile development --platform ios
 
 # Internal beta (TestFlight internal testing)
@@ -106,8 +106,9 @@ Sign **in** works on native today. Sign **up with email confirmation** currently
 
 ### A. App configuration (current)
 
-- [x] URL scheme: `tix808` (`app.json` — custom deep links)
-- [x] Expo slug: `tix808` (must match dev-client `exp+tix808://` Metro QR)
+- [x] URL scheme: `tix808` (`app.json` — custom deep links, Phase 1 auth)
+- [x] Expo slug: `808Tix` (**must match** EAS project slug for `projectId`; do not rename)
+- [x] Dev client scheme: `exp+808tix` (derived from slug at native build — **not** `tix808`)
 - [x] iOS bundle ID: `com.howzitjustin.808Tix`
 - [x] Android package: `com.howzitjustin.t808tix`
 - [x] AsyncStorage auth persistence (`supabase-auth-storage.ts`)
@@ -115,18 +116,23 @@ Sign **in** works on native today. Sign **up with email confirmation** currently
 
 ### Dev client linking (critical)
 
-Metro and the development-build QR code use **`exp+{slug}`**, not `scheme`:
+Metro and the development-build QR use **`exp+{sanitized-slug}`**, from `expo-dev-client`’s `getDefaultScheme()` (slug only — see plugin source). This is **not** the `scheme` field.
 
 ```text
-exp+tix808://expo-development-client/?url=<encoded-metro-or-tunnel-url>
+exp+808tix://expo-development-client/?url=<encoded-metro-or-tunnel-url>
 ```
 
-- `scheme` (`tix808://`) — app deep links (Phase 1 auth, etc.)
-- `slug` (`tix808`) — drives **`exp+tix808://`** baked into the native dev client at **EAS build time**
+| Field | Value | Purpose |
+|-------|-------|---------|
+| `slug` | `808Tix` | EAS / expo.dev project identity; drives `exp+808tix` |
+| `scheme` | `tix808` | App deep links (`tix808://`) |
+| `extra.eas.projectId` | fixed UUID | Links to expo.dev project **808Tix** |
 
-If you change `slug` or `scheme`, you **must** run a new `eas build --profile development` before QR / deep links work.
+**EAS rule:** `slug` in `app.json` must match the slug on the Expo project for `projectId`. Changing slug to `tix808` breaks `eas build` (config mismatch).
 
-**Wrong:** change only `scheme` and expect Metro to stop using `exp+808tix` — Metro reads **slug**, not scheme.
+**Do not** change `slug` to match `scheme`. Keep `scheme: tix808` for branding; keep `slug: 808Tix` for EAS.
+
+Changing `scheme` requires a new dev build for `tix808://` deep links. Metro will still emit `exp+808tix://` as long as slug stays `808Tix`.
 
 ### B. Supabase Dashboard → Authentication → URL Configuration
 
@@ -137,7 +143,7 @@ If you change `slug` or `scheme`, you **must** run a new `eas build --profile de
 | `https://808tix.vercel.app/**` | Web signup confirmation + guest (keep) |
 | `http://localhost:8081/**` | Expo web dev (keep) |
 | `tix808://**` | Native custom scheme (Phase 1 auth) |
-| `exp+tix808://**` | Expo dev client / Metro QR (required for development builds) |
+| `exp+808tix://**` | Expo dev client / Metro QR (required for development builds) |
 
 **Site URL:** keep `https://808tix.vercel.app` for web.
 
@@ -254,9 +260,9 @@ See prior native architecture plan for Phase 1+.
 | Item | Value |
 |------|-------|
 | EAS project ID | `46ba198a-4f64-4e9d-a800-f48b51d5f463` |
-| Expo slug | `tix808` |
+| Expo slug (EAS — do not change) | `808Tix` |
 | iOS bundle ID | `com.howzitjustin.808Tix` |
 | Android package | `com.howzitjustin.t808tix` |
 | URL scheme (deep links) | `tix808` |
-| Dev client scheme (Metro QR) | `exp+tix808` |
+| Dev client scheme (Metro QR) | `exp+808tix` |
 | Guest pass origin | `https://808tix.vercel.app` |
