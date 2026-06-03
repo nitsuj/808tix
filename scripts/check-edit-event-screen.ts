@@ -29,7 +29,8 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(source.includes('EventDateFormField'), 'Edit Event uses EventDateFormField');
-assert(source.includes('OrganizerAmbientBackground'), 'Edit Event uses ambient artwork background');
+assert(source.includes('EventScreenBackground'), 'Edit Event uses EventScreenBackground');
+assert(source.includes('imageUrl={event.image_url}'), 'Edit Event passes event.image_url to background');
 assert(source.includes('commandPanel'), 'Edit Event uses Event Detail-style command panel');
 assert(source.includes('previewMode="background"'), 'Edit Event uses background artwork upload preview mode');
 

@@ -2,6 +2,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
+import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import { chrome } from '@/theme';
 
 type OrganizerAmbientBackgroundProps = {
@@ -15,8 +16,8 @@ export function OrganizerAmbientBackground({
   imageUrl,
   style,
 }: OrganizerAmbientBackgroundProps) {
-  const hasArtwork = Boolean(imageUrl?.trim());
-  const artworkUri = imageUrl?.trim();
+  const artworkUri = resolveOrganizerArtworkUrl(imageUrl);
+  const hasArtwork = Boolean(artworkUri);
   const fallbackName = eventName ?? '808Tix';
 
   return (
@@ -31,7 +32,7 @@ export function OrganizerAmbientBackground({
           <View style={styles.ambientBottom} />
         </>
       )}
-      <View style={styles.scrim} />
+      <View style={[styles.scrim, hasArtwork && styles.scrimWithArtwork]} />
     </View>
   );
 }
@@ -55,5 +56,8 @@ const styles = StyleSheet.create({
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: chrome.screen.scrim,
+  },
+  scrimWithArtwork: {
+    backgroundColor: 'rgba(8, 8, 8, 0.38)',
   },
 });

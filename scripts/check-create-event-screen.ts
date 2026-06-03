@@ -33,7 +33,7 @@ assert(source.includes('persistEventArtworkUrl'), 'Create Event persists image_u
 assert(source.includes('EventDateFormField'), 'Create Event uses EventDateFormField date picker');
 
 assert(
-  source.includes('OrganizerAmbientBackground'),
+  source.includes('EventScreenBackground'),
   'Create Event uses full-bleed artwork background like Event Detail',
 );
 assert(source.includes('commandPanel'), 'Create Event uses Event Detail-style command panel');

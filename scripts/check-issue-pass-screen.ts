@@ -29,7 +29,7 @@ const source = readFileSync(join(process.cwd(), 'src/app/events/[eventId]/issue.
 assert(source.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'issue pass uses 390px mobile viewport');
 assert(source.includes('MobileViewport'), 'issue pass wraps content in MobileViewport');
 assert(source.includes('formatEventDateTimeLong'), 'issue pass shows canonical event date with year');
-assert(source.includes('ArtworkEnvironment'), 'issue pass uses artwork environment when available');
+assert(source.includes('EventScreenBackground'), 'issue pass uses shared event screen background');
 assert(source.includes('passScreen.credential'), 'issue pass uses credential command panel tokens');
 assert(source.includes('canIssuePassesForEvent'), 'issue pass draft/live guard preserved');
 assert(source.includes('issuePass({'), 'issue pass still calls issuePass mutation');

@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
+import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import {
   chrome,
   fan,
@@ -25,6 +25,7 @@ import {
   shadows,
   text,
 } from '@/theme';
+import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
@@ -36,12 +37,9 @@ import {
   PUBLISH_BEFORE_SCAN_MESSAGE,
 } from '@/lib/event-status';
 import { publishEvent } from '@/lib/publish-event';
+import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
-import {
-  resolveOrganizerArtworkUrl,
-  resolvePassArtworkUri,
-} from '@/lib/event-artwork-display';
 import type { Event } from '@/lib/database.types';
 
 const DASHBOARD_ROUTE = '/' as Href;
@@ -173,11 +171,6 @@ function EventDetailContent({
 }: EventDetailContentProps) {
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
-  const hasUploadedArtwork = Boolean(event.image_url?.trim());
-  const artworkUri =
-    resolveOrganizerArtworkUrl(event.image_url) ??
-    resolvePassArtworkUri(event.image_url, event.name);
-
   const dateTimeLine = formatEventDateTimeLong(event.event_date, event.start_time)?.toUpperCase() ?? null;
   const checkInRate = formatCheckInRatePercent({
     issuedCount,
@@ -188,6 +181,9 @@ function EventDetailContent({
   const isLive = isEventLive(event.status);
   const isDraft = isEventDraft(event.status);
   const statusPillLabel = getEventStatusPillLabel(event.status);
+  const showStatusPill = !isLive && !isDraft;
+  const showVenue = shouldShowVenueLine(event.venue_name, event.name);
+  const venueLine = formatVenueLine(event.venue_name);
   const canOperatePasses = isLive;
 
   async function handlePublishEvent() {
@@ -209,7 +205,7 @@ function EventDetailContent({
   return (
     <MobileViewport>
       <View style={styles.screen}>
-        <ArtworkEnvironment artworkUri={artworkUri} isUploaded={hasUploadedArtwork} />
+        <EventScreenBackground eventName={event.name} imageUrl={event.image_url} />
 
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
           <ScrollView
@@ -241,13 +237,13 @@ function EventDetailContent({
               <View style={styles.metaBlock}>
                 {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
                 <Text style={styles.eventTitle}>{event.name}</Text>
-                {event.venue_name ? (
-                  <Text style={styles.venueLine}>{event.venue_name.toUpperCase()}</Text>
+                {showVenue ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
+                {showStatusPill ? (
+                  <Text
+                    style={[styles.statusPill, isDraft && styles.statusPillDraft, isLive && styles.statusPillLive]}>
+                    {statusPillLabel}
+                  </Text>
                 ) : null}
-                <Text
-                  style={[styles.statusPill, isDraft && styles.statusPillDraft, isLive && styles.statusPillLive]}>
-                  {statusPillLabel}
-                </Text>
               </View>
 
               {isDraft ? (
@@ -529,13 +525,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
-    fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
+    ...organizerEventTitleStyle.title,
     marginBottom: 6,
-    textAlign: 'center',
   },
   venueLine: {
     color: text.secondary,

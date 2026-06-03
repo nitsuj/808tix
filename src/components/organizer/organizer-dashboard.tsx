@@ -165,7 +165,7 @@ export function OrganizerDashboard({
             <View style={styles.headerText}>
               <ThemedText style={styles.screenTitle}>Command center</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
-                {displayName} · {displayEmail}
+                {displayName === displayEmail ? displayEmail : `${displayName} · ${displayEmail}`}
               </ThemedText>
             </View>
 
@@ -510,6 +510,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 24,
+    textTransform: 'none',
   },
   eventStatusBadge: {
     borderRadius: 999,

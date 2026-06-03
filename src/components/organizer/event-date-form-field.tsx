@@ -1,6 +1,6 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { useMemo, useState } from 'react';
-import { Platform, Pressable, StyleSheet, View } from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
 import { eventFormStyles } from '@/components/organizer/event-form-fields';
@@ -11,6 +11,14 @@ import {
   parseYyyyMmDdToLocalDate,
 } from '@/lib/event-date';
 import { formField, spacing, text as textTokens } from '@/theme';
+
+/** Light sheet so iOS spinner wheels stay readable in dark app chrome. */
+const IOS_PICKER_SHEET = {
+  background: '#F2F2F7',
+  backdrop: 'rgba(0, 0, 0, 0.35)',
+  doneText: '#007AFF',
+  pickerText: '#000000',
+} as const;
 
 type EventDateFormFieldProps = {
   label: string;
@@ -94,19 +102,50 @@ export function EventDateFormField({
         </ThemedText>
       </Pressable>
       {error ? <ThemedText style={eventFormStyles.errorText}>{error}</ThemedText> : null}
-      {showPicker ? (
+      {Platform.OS === 'ios' ? (
+        <Modal
+          animationType="slide"
+          onRequestClose={() => setShowPicker(false)}
+          presentationStyle="overFullScreen"
+          statusBarTranslucent
+          transparent
+          visible={showPicker}>
+          <View style={styles.iosModalRoot}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowPicker(false)}
+              style={styles.iosModalBackdrop}
+            />
+            <View style={styles.iosModalSheet}>
+              <View style={styles.iosModalHeader}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setShowPicker(false)}
+                  style={styles.iosDone}>
+                  <ThemedText style={styles.iosDoneText}>Done</ThemedText>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                display="spinner"
+                minimumDate={parseYyyyMmDdToLocalDate(getTodayYyyyMmDdLocal()) ?? undefined}
+                mode="date"
+                style={styles.iosPicker}
+                textColor={IOS_PICKER_SHEET.pickerText}
+                themeVariant="light"
+                value={pickerDate}
+                onChange={handlePickerChange}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : showPicker ? (
         <DateTimePicker
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          display="default"
           minimumDate={parseYyyyMmDdToLocalDate(getTodayYyyyMmDdLocal()) ?? undefined}
           mode="date"
           value={pickerDate}
           onChange={handlePickerChange}
         />
-      ) : null}
-      {Platform.OS === 'ios' && showPicker ? (
-        <Pressable onPress={() => setShowPicker(false)} style={styles.iosDone}>
-          <ThemedText style={styles.iosDoneText}>Done</ThemedText>
-        </Pressable>
       ) : null}
     </View>
   );
@@ -151,13 +190,38 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.6,
   },
+  iosModalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  iosModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: IOS_PICKER_SHEET.backdrop,
+  },
+  iosModalSheet: {
+    backgroundColor: IOS_PICKER_SHEET.background,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: spacing.four,
+  },
+  iosModalHeader: {
+    alignItems: 'flex-end',
+    borderBottomColor: 'rgba(60, 60, 67, 0.18)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: spacing.three,
+    paddingTop: spacing.two,
+  },
   iosDone: {
-    alignSelf: 'flex-end',
     paddingVertical: spacing.one,
   },
   iosDoneText: {
-    color: formField.labelColor,
-    fontSize: 16,
-    fontWeight: '700',
+    color: IOS_PICKER_SHEET.doneText,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  iosPicker: {
+    backgroundColor: IOS_PICKER_SHEET.background,
+    height: 216,
+    width: '100%',
   },
 });

@@ -103,6 +103,8 @@ export const scanner = {
 export const artwork = {
   blurRadius: 28,
   scale: 1.12,
+  /** Slight overscale so `cover` crops edge letterboxing on uploaded hero art. */
+  uploadedCoverScale: 1.16,
   darkOverlay: 'rgba(8, 8, 8, 0.52)',
   vignetteStrong: 'rgba(8, 8, 8, 0.45)',
   vignetteMedium: 'rgba(8, 8, 8, 0.38)',

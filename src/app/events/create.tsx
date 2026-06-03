@@ -21,7 +21,7 @@ import { EventFormField, eventFormStyles } from '@/components/organizer/event-fo
 import { EventStartTimeField } from '@/components/organizer/event-start-time-field';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
@@ -30,6 +30,7 @@ import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
 import { parseMaxPassesInput, type CreateEventFieldErrors } from '@/lib/event-form';
 import { prepareEventFormForSubmit } from '@/lib/event-form-submit';
 import { isEventDateTodayOrFuture } from '@/lib/event-form';
+import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import { generateUniqueEventSlug } from '@/lib/event-slug';
 import { supabase } from '@/lib/supabase';
 import {
@@ -42,6 +43,7 @@ import {
   shadows,
   text,
 } from '@/theme';
+import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 
 const DASHBOARD_ROUTE = '/' as Href;
 const MOBILE_VIEWPORT_WIDTH = 390;
@@ -85,8 +87,8 @@ export default function CreateEventScreen() {
     return formatted ? formatted.toUpperCase() : eventDate;
   }, [eventDate, startTime]);
 
-  const previewVenue = venueName.trim().toUpperCase() || 'VENUE TBD';
-  const backgroundArtworkUri = pendingArtwork?.localUri ?? null;
+  const previewVenue = formatVenueLine(venueName);
+  const showPreviewVenue = shouldShowVenueLine(venueName, previewTitle);
 
   if (authGate.state === 'loading') {
     return (
@@ -220,9 +222,10 @@ export default function CreateEventScreen() {
   return (
     <MobileViewport>
       <View style={styles.screen}>
-        <OrganizerAmbientBackground
+        <EventScreenBackground
           eventName={previewTitle}
-          imageUrl={backgroundArtworkUri}
+          imageUrl={null}
+          pendingLocalUri={pendingArtwork?.localUri}
         />
 
         <KeyboardAvoidingView
@@ -247,7 +250,7 @@ export default function CreateEventScreen() {
                 <View style={styles.metaBlock}>
                   <Text style={styles.dateLine}>{previewDateLine}</Text>
                   <Text style={styles.eventTitle}>{previewTitle}</Text>
-                  <Text style={styles.venueLine}>{previewVenue}</Text>
+                  {showPreviewVenue ? <Text style={styles.venueLine}>{previewVenue}</Text> : null}
                   <Text style={styles.statusPill}>DRAFT</Text>
                 </View>
 
@@ -262,6 +265,8 @@ export default function CreateEventScreen() {
 
                 <View style={eventFormStyles.formPanel}>
                   <EventFormField
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     error={fieldErrors.eventName}
                     label="Event Name"
                     placeholder="Summer Rooftop Session"
@@ -423,13 +428,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
-    fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
+    ...organizerEventTitleStyle.title,
     marginBottom: 6,
-    textAlign: 'center',
   },
   venueLine: {
     color: text.secondary,

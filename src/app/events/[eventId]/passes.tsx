@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventPassListRow } from '@/components/organizer/event-pass-list-row';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { Radii, Spacing } from '@/constants/theme';
 import {
   chrome,
@@ -26,10 +26,11 @@ import {
   shadows,
   text,
 } from '@/theme';
+import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
-import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
+import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import {
   DEFAULT_EVENT_PASS_SORT,
   getEventPassSortOptions,
@@ -148,7 +149,7 @@ export default function EventPassesScreen() {
 
   return (
     <EventPassesContent
-      artworkUrl={resolveOrganizerArtworkUrl(event.image_url)}
+      imageUrl={event.image_url}
       eventName={event.name}
       eventDate={event.event_date}
       eventStartTime={event.start_time}
@@ -167,7 +168,7 @@ type EventPassesContentProps = {
   eventDate: string | null;
   eventStartTime: string | null;
   venueName: string | null;
-  artworkUrl: string | null;
+  imageUrl: string | null;
   filter: EventPassFilter;
   passes: Pass[];
   isLoading: boolean;
@@ -188,7 +189,7 @@ function EventPassesContent({
   eventDate,
   eventStartTime,
   venueName,
-  artworkUrl,
+  imageUrl,
   filter,
   passes,
   isLoading,
@@ -208,7 +209,8 @@ function EventPassesContent({
     const formatted = formatEventDateTimeLong(eventDate, eventStartTime);
     return formatted ? formatted.toUpperCase() : null;
   }, [eventDate, eventStartTime]);
-  const venueLine = (venueName?.trim() || 'VENUE TBD').toUpperCase();
+  const venueLine = formatVenueLine(venueName);
+  const showVenue = shouldShowVenueLine(venueName, eventName);
 
   const visiblePasses = useMemo(
     () => prepareEventPassList(passes, searchQuery, activeSort),
@@ -224,7 +226,7 @@ function EventPassesContent({
   return (
     <MobileViewport>
       <View style={styles.screen}>
-        <OrganizerAmbientBackground eventName={eventName} imageUrl={artworkUrl} />
+        <EventScreenBackground eventName={eventName} imageUrl={imageUrl} />
 
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
           <ScrollView
@@ -244,7 +246,7 @@ function EventPassesContent({
                 <Text numberOfLines={2} style={styles.eventTitle}>
                   {eventName}
                 </Text>
-                <Text style={styles.venueLine}>{venueLine}</Text>
+                {showVenue ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
                 <Text style={styles.listEyebrow}>{listTitle.toUpperCase()}</Text>
                 <Text style={styles.countLine}>{countLabel}</Text>
               </View>
@@ -405,12 +407,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
-    fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
-    textAlign: 'center',
+    ...organizerEventTitleStyle.title,
   },
   venueLine: {
     color: text.secondary,

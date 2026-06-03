@@ -11,6 +11,7 @@ export type EventFormFieldProps = {
   error?: string;
   keyboardType?: 'default' | 'number-pad' | 'phone-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
+  autoCorrect?: boolean;
   onChangeText: (value: string) => void;
   onBlur?: () => void;
   onEndEditing?: () => void;
@@ -24,6 +25,7 @@ export function EventFormField({
   error,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  autoCorrect = true,
   onChangeText,
   onBlur,
   onEndEditing,
@@ -38,6 +40,7 @@ export function EventFormField({
       ) : null}
       <TextInput
         autoCapitalize={autoCapitalize}
+        autoCorrect={autoCorrect}
         editable
         keyboardType={keyboardType}
         placeholder={placeholder}

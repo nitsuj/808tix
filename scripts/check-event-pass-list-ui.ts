@@ -80,7 +80,7 @@ const rowSource = readFileSync(
 
 assert(passesSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'pass lists use 390px viewport');
 assert(passesSource.includes('formatEventDateTimeLong'), 'pass lists show canonical event date');
-assert(passesSource.includes('OrganizerAmbientBackground'), 'pass lists use event artwork context');
+assert(passesSource.includes('EventScreenBackground'), 'pass lists use event artwork context');
 assert(passesSource.includes('prepareEventPassList'), 'pass lists search/sort pipeline unchanged');
 assert(rowSource.includes('View Guest Pass'), 'pass row keeps View Guest Pass action');
 assert(rowSource.includes('Resend SMS'), 'pass row keeps Resend SMS action');

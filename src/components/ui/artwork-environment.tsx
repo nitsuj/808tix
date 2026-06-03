@@ -1,7 +1,7 @@
 import { Image } from 'expo-image';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { artwork, fan } from '@/theme';
+import { artwork, fan, palette } from '@/theme';
 
 const webBlurStyle =
   Platform.OS === 'web' ? ({ filter: `blur(${artwork.blurRadius}px)` } as ViewStyle) : null;
@@ -23,16 +23,18 @@ export function ArtworkEnvironment({
 
   return (
     <View pointerEvents="none" style={[styles.environment, style]}>
-      <View style={[styles.artLayer, useBlur && styles.artLayerScaled]}>
-        <Image
-          blurRadius={blurRadius}
-          cachePolicy={isUploaded ? 'none' : 'memory-disk'}
-          contentFit="cover"
-          recyclingKey={artworkUri}
-          source={{ uri: artworkUri }}
-          style={[StyleSheet.absoluteFill, useBlur && Platform.OS === 'web' ? webBlurStyle : null]}
-        />
-      </View>
+      <Image
+        blurRadius={blurRadius}
+        cachePolicy={isUploaded ? 'none' : 'memory-disk'}
+        contentFit="cover"
+        contentPosition="center"
+        recyclingKey={artworkUri}
+        source={{ uri: artworkUri }}
+        style={[
+          styles.coverImage,
+          useBlur && Platform.OS === 'web' ? webBlurStyle : null,
+        ]}
+      />
 
       {isUploaded ? (
         <>
@@ -52,46 +54,51 @@ export function ArtworkEnvironment({
   );
 }
 
+const COVER_OVERSCAN_PERCENT = `${artwork.uploadedCoverScale * 100}%`;
+const COVER_INSET_PERCENT = `${((1 - artwork.uploadedCoverScale) / 2) * 100}%`;
+
 const styles = StyleSheet.create({
   environment: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: palette.black,
     overflow: 'hidden',
   },
-  artLayer: {
-    ...StyleSheet.absoluteFill,
-  },
-  artLayerScaled: {
-    transform: [{ scale: artwork.scale }],
+  coverImage: {
+    height: COVER_OVERSCAN_PERCENT,
+    left: COVER_INSET_PERCENT,
+    position: 'absolute',
+    top: COVER_INSET_PERCENT,
+    width: COVER_OVERSCAN_PERCENT,
   },
   uploadedTint: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.uploadedTint,
   },
   uploadedBottomScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.uploadedBottomScrim,
     top: '58%',
   },
   fallbackTint: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.fallbackTint,
   },
   fallbackPurpleWash: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: fan.purpleWash,
   },
   fallbackBottomScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.fallbackBottomScrim,
     top: '62%',
   },
   fallbackVignetteTop: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.vignetteMedium,
     bottom: '70%',
   },
   fallbackVignetteBottom: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.vignetteStrong,
     top: '70%',
   },

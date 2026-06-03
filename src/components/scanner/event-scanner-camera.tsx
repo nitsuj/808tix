@@ -295,6 +295,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     lineHeight: 22,
     textAlign: 'center',
+    textTransform: 'none',
     ...(Platform.OS === 'web'
       ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
       : null),

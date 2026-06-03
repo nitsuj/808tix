@@ -16,8 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
-import { EventArtwork } from '@/components/ui/event-artwork';
+import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { Radii, Spacing } from '@/constants/theme';
 import {
   chrome,
@@ -29,11 +28,11 @@ import {
   shadows,
   text,
 } from '@/theme';
+import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
-import { formatIssuedCapacity } from '@/lib/event-display';
-import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
+import { formatIssuedCapacity, formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import type { Event, Pass } from '@/lib/database.types';
 import { issuePass } from '@/lib/issue-pass';
 import {
@@ -310,41 +309,20 @@ function EventContextMeta({ event }: { event: IssuePassEventContext }) {
     return formatted ? formatted.toUpperCase() : null;
   }, [event.event_date, event.start_time]);
 
-  const venueLine = (event.venue_name?.trim() || 'VENUE TBD').toUpperCase();
+  const venueLine = formatVenueLine(event.venue_name);
+  const showVenue = shouldShowVenueLine(event.venue_name, event.name);
 
   return (
     <View style={styles.metaBlock}>
       {dateLine ? <Text style={styles.dateLine}>{dateLine}</Text> : null}
       <Text style={styles.eventTitle}>{event.name}</Text>
-      <Text style={styles.venueLine}>{venueLine}</Text>
+      {showVenue ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
     </View>
   );
 }
 
-function EventArtworkBackdrop({
-  event,
-  windowHeight,
-}: {
-  event: IssuePassEventContext;
-  windowHeight: number;
-}) {
-  const artworkUri = resolveOrganizerArtworkUrl(event.image_url);
-
-  if (artworkUri) {
-    return <ArtworkEnvironment artworkUri={artworkUri} isUploaded />;
-  }
-
-  return (
-    <View style={[styles.fallbackArtLayer, { height: windowHeight }]}>
-      <EventArtwork
-        height={windowHeight}
-        imageUrl={null}
-        name={event.name}
-        rounded={false}
-        style={StyleSheet.absoluteFill}
-      />
-    </View>
-  );
+function EventArtworkBackdrop({ event }: { event: IssuePassEventContext }) {
+  return <EventScreenBackground eventName={event.name} imageUrl={event.image_url} />;
 }
 
 type IssuePassFormViewProps = {
@@ -392,7 +370,7 @@ function IssuePassFormView({
     <MobileViewport>
       <View style={styles.screen}>
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <EventArtworkBackdrop event={activeEvent} windowHeight={900} />
+          <EventArtworkBackdrop event={activeEvent} />
         </View>
 
         <KeyboardAvoidingView
@@ -532,7 +510,7 @@ function IssuePassSuccessView({
     <MobileViewport>
       <View style={styles.screen}>
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <EventArtworkBackdrop event={activeEvent} windowHeight={900} />
+          <EventArtworkBackdrop event={activeEvent} />
         </View>
 
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
@@ -738,13 +716,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
-    fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
+    ...organizerEventTitleStyle.title,
     marginBottom: 6,
-    textAlign: 'center',
   },
   venueLine: {
     color: text.secondary,

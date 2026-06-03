@@ -8,6 +8,7 @@ import { ScanResultView } from '@/components/scanner/scan-result-view';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { Radii, Spacing } from '@/constants/theme';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
+import { formatVenueLine } from '@/lib/event-display';
 import { formatScannerCheckInFooter } from '@/lib/event-stats';
 import { chrome, fan, palette, scannerScreen, text } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
@@ -41,9 +42,7 @@ export default function EventScannerScreen() {
     return formatted ? formatted.toUpperCase() : null;
   }, [event?.event_date, event?.start_time]);
 
-  const venueLine = event?.venue_name?.trim()
-    ? event.venue_name.trim().toUpperCase()
-    : null;
+  const venueLine = event?.venue_name?.trim() ? formatVenueLine(event.venue_name) : null;
 
   useEffect(() => {
     isProcessingRef.current = isProcessing;

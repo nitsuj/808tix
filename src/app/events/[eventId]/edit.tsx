@@ -33,10 +33,16 @@ import {
   shadows,
   text,
 } from '@/theme';
-import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
+import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
-import { formatEventStatus, formatTimeForInput } from '@/lib/event-display';
+import {
+  formatEventStatus,
+  formatTimeForInput,
+  formatVenueLine,
+  shouldShowVenueLine,
+} from '@/lib/event-display';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import {
   isEventDateTodayOrFuture,
@@ -215,8 +221,8 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   }
 
   const previewTitle = eventName.trim() || 'Edit event';
-  const previewVenue = venueName.trim().toUpperCase() || 'VENUE TBD';
-  const backgroundArtworkUri = pendingArtwork?.localUri ?? event.image_url ?? null;
+  const previewVenue = formatVenueLine(venueName);
+  const showPreviewVenue = shouldShowVenueLine(venueName, previewTitle);
 
   const previewDateLine = useMemo(() => {
     if (!eventDate.trim()) {
@@ -232,7 +238,11 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   return (
     <MobileViewport>
       <View style={styles.screen}>
-        <OrganizerAmbientBackground eventName={previewTitle} imageUrl={backgroundArtworkUri} />
+        <EventScreenBackground
+          eventName={previewTitle}
+          imageUrl={event.image_url}
+          pendingLocalUri={pendingArtwork?.localUri}
+        />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -256,7 +266,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                 <View style={styles.metaBlock}>
                   <Text style={styles.dateLine}>{previewDateLine}</Text>
                   <Text style={styles.eventTitle}>{previewTitle}</Text>
-                  <Text style={styles.venueLine}>{previewVenue}</Text>
+                  {showPreviewVenue ? <Text style={styles.venueLine}>{previewVenue}</Text> : null}
                   <Text style={styles.statusPill}>{statusPill}</Text>
                 </View>
 
@@ -271,6 +281,8 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
 
                 <View style={eventFormStyles.formPanel}>
                   <EventFormField
+                    autoCapitalize="none"
+                    autoCorrect={false}
                     error={fieldErrors.eventName}
                     label="Event Name"
                     placeholder="Summer Rooftop Session"
@@ -464,13 +476,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
-    fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
+    ...organizerEventTitleStyle.title,
     marginBottom: 6,
-    textAlign: 'center',
   },
   venueLine: {
     color: text.secondary,

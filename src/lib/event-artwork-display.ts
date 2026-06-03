@@ -46,3 +46,36 @@ export function resolveOrganizerArtworkUrl(imageUrl: string | null | undefined):
   const trimmed = imageUrl?.trim();
   return trimmed || null;
 }
+
+export type EventScreenBackgroundArtwork = {
+  uri: string;
+  /** True when showing organizer-uploaded artwork (not temporary poster fallback). */
+  isUploaded: boolean;
+};
+
+/**
+ * Shared hero background resolver for Event Detail, Edit Event, and related organizer screens.
+ * Pending local picks take precedence; uploaded storage URLs next; otherwise poster fallback.
+ */
+export function resolveEventScreenBackgroundArtwork(
+  imageUrl: string | null | undefined,
+  eventName: string,
+  pendingLocalUri?: string | null,
+): EventScreenBackgroundArtwork {
+  const localUri = pendingLocalUri?.trim();
+
+  if (localUri) {
+    return { uri: localUri, isUploaded: true };
+  }
+
+  const uploaded = resolveOrganizerArtworkUrl(imageUrl);
+
+  if (uploaded) {
+    return { uri: uploaded, isUploaded: true };
+  }
+
+  return {
+    uri: resolvePassArtworkUri(imageUrl, eventName),
+    isUploaded: false,
+  };
+}

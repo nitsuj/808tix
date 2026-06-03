@@ -73,10 +73,11 @@
     "check:event-stats": "tsx scripts/check-event-stats.ts",
     "check:event-status": "tsx scripts/check-event-status.ts",
     "check:organizer-dashboard": "tsx scripts/check-organizer-dashboard-events.ts",
+    "check:organizer-ui-native": "tsx scripts/check-organizer-ui-native.ts",
     "check:native-eas": "node scripts/check-native-eas-readiness.mjs",
     "check:native-env": "node scripts/check-native-env.mjs",
     "check:native-phase0": "npm run check:native-eas && npm run check:native-env",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:issue-pass-screen && npm run check:scanner-screen && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:create-event && npm run check:edit-event && npm run check:event-date && npm run check:event-datetime-display && npm run check:event-slug-uniqueness && npm run check:event-form && npm run check:event-stats && npm run check:event-status && npm run check:organizer-dashboard && npm run check:native-phase0"
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:issue-pass && npm run check:issue-pass-screen && npm run check:scanner-screen && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:create-event && npm run check:edit-event && npm run check:event-date && npm run check:event-datetime-display && npm run check:event-slug-uniqueness && npm run check:event-form && npm run check:event-stats && npm run check:event-status && npm run check:organizer-dashboard && npm run check:organizer-ui-native && npm run check:native-phase0"
   },
   "private": true
 }
