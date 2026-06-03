@@ -1,0 +1,8 @@
+{
+  "ios": {
+    "CFBundleDisplayName": "808Tix"
+  },
+  "android": {
+    "app_name": "808Tix"
+  }
+}

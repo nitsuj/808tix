@@ -1,16 +1,21 @@
 {
   "expo": {
-    "name": "808Tix",
+    "name": "Tix808",
     "slug": "808Tix",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tix808",
+    "locales": {
+      "en": "./locales/en.json"
+    },
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.howzitjustin.808Tix",
       "infoPlist": {
+        "CFBundleDisplayName": "808Tix",
+        "CFBundleName": "Tix808",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -57,7 +62,8 @@
           }
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

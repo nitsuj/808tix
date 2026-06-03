@@ -106,8 +106,11 @@ Sign **in** works on native today. Sign **up with email confirmation** currently
 
 ### A. App configuration (current)
 
+- [x] **Home screen name:** `808Tix` (`CFBundleDisplayName` / Android `app_name`)
+- [x] **Native target name:** `Tix808` (`expo.name`, `CFBundleName` — letter-led for SDK 56 module discovery)
 - [x] URL scheme: `tix808` (`app.json` — custom deep links, Phase 1 auth)
 - [x] Expo slug: `808Tix` (**must match** EAS project slug for `projectId`; do not rename)
+- [x] `expo-asset` direct dependency (required native module for Expo bootstrap)
 - [x] Dev client scheme: `exp+808tix` (derived from slug at native build — **not** `tix808`)
 - [x] iOS bundle ID: `com.howzitjustin.808Tix`
 - [x] Android package: `com.howzitjustin.t808tix`
@@ -124,9 +127,14 @@ exp+808tix://expo-development-client/?url=<encoded-metro-or-tunnel-url>
 
 | Field | Value | Purpose |
 |-------|-------|---------|
+| `name` | `Tix808` | Native Xcode target / `PRODUCT_NAME` (must start with a letter) |
+| `ios.infoPlist.CFBundleDisplayName` | `808Tix` | Home screen label |
+| `ios.infoPlist.CFBundleName` | `Tix808` | `ExpoModulesProvider` lookup (`{CFBundleName}.ExpoModulesProvider`) |
 | `slug` | `808Tix` | EAS / expo.dev project identity; drives `exp+808tix` |
 | `scheme` | `tix808` | App deep links (`tix808://`) |
 | `extra.eas.projectId` | fixed UUID | Links to expo.dev project **808Tix** |
+
+**Do not** set `name` or `CFBundleName` to `808Tix` — a digit-led bundle name breaks SDK 56 native module registration (`Cannot find native module 'ExpoAsset'`).
 
 **EAS rule:** `slug` in `app.json` must match the slug on the Expo project for `projectId`. Changing slug to `tix808` breaks `eas build` (config mismatch).
 
@@ -261,6 +269,8 @@ See prior native architecture plan for Phase 1+.
 |------|-------|
 | EAS project ID | `46ba198a-4f64-4e9d-a800-f48b51d5f463` |
 | Expo slug (EAS — do not change) | `808Tix` |
+| Native target / `CFBundleName` | `Tix808` |
+| Home screen display name | `808Tix` |
 | iOS bundle ID | `com.howzitjustin.808Tix` |
 | Android package | `com.howzitjustin.t808tix` |
 | URL scheme (deep links) | `tix808` |
