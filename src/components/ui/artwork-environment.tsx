@@ -10,8 +10,6 @@ type ArtworkEnvironmentProps = {
   artworkUri: string;
   /** True when showing uploaded event artwork (sharper, lighter overlays). */
   isUploaded?: boolean;
-  /** Event Detail runtime diagnosis — logs Image onLoad/onError to console. */
-  debugArtworkLogging?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -22,7 +20,6 @@ type ArtworkEnvironmentProps = {
 export function ArtworkEnvironment({
   artworkUri,
   isUploaded = false,
-  debugArtworkLogging = false,
   style,
 }: ArtworkEnvironmentProps) {
   const useBlur = !isUploaded;
@@ -35,16 +32,6 @@ export function ArtworkEnvironment({
           <Image
             cachePolicy="none"
             contentFit="cover"
-            onError={(error) => {
-              if (debugArtworkLogging) {
-                console.log('[Event Detail Artwork] onError', { artworkUri, error });
-              }
-            }}
-            onLoad={() => {
-              if (debugArtworkLogging) {
-                console.log('[Event Detail Artwork] onLoad', { artworkUri });
-              }
-            }}
             recyclingKey={artworkUri}
             source={{ uri: artworkUri }}
             style={styles.uploadedImage}

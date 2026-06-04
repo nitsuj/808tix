@@ -165,9 +165,19 @@ export function OrganizerDashboard({
           <View style={styles.headerRow}>
             <View style={styles.headerText}>
               <ThemedText style={styles.screenTitle}>Command center</ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
-                {displayName === displayEmail ? displayEmail : `${displayName} · ${displayEmail}`}
-              </ThemedText>
+              <Pressable
+                accessibilityLabel="Open profile"
+                accessibilityRole="button"
+                onPress={() => router.push('/profile' as Href)}
+                style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
+                <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
+                  {displayName === displayEmail ? displayEmail : `${displayName} · ${displayEmail}`}
+                </ThemedText>
+                <View style={styles.profileIdentityHint}>
+                  <ThemedText style={styles.viewProfileText}>View profile</ThemedText>
+                  <ThemedText style={styles.profileChevron}>›</ThemedText>
+                </View>
+              </Pressable>
             </View>
 
             <Pressable
@@ -409,6 +419,35 @@ const styles = StyleSheet.create({
   },
   organizerMeta: {
     fontSize: 13,
+    lineHeight: 18,
+  },
+  profileIdentity: {
+    alignSelf: 'flex-start',
+    borderColor: chrome.glass.border,
+    borderRadius: Radii.input,
+    borderWidth: 1,
+    gap: Spacing.half,
+    marginTop: Spacing.half,
+    maxWidth: '100%',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+  },
+  profileIdentityHint: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: Spacing.one,
+  },
+  viewProfileText: {
+    color: fan.badgeText,
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  profileChevron: {
+    color: fan.badgeText,
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 16,
   },
   signOutButton: {
     paddingVertical: Spacing.one,

@@ -117,7 +117,6 @@ export function EventDateFormField({
               style={styles.iosModalBackdrop}
             />
             <View style={styles.iosModalSheet}>
-              <ThemedText style={styles.iosDebugLabel}>iOS picker modal path active</ThemedText>
               <View style={styles.iosModalHeader}>
                 <Pressable
                   accessibilityRole="button"
@@ -204,15 +203,6 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     paddingBottom: spacing.four,
-  },
-  iosDebugLabel: {
-    backgroundColor: '#FF0000',
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-    paddingHorizontal: spacing.three,
-    paddingVertical: spacing.one,
-    textAlign: 'center',
   },
   iosModalHeader: {
     alignItems: 'flex-end',

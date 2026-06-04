@@ -1,0 +1,61 @@
+#!/usr/bin/env npx tsx
+/**
+ * Organizer Profile v0 — route, persistence, Command Center entry.
+ */
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const ROOT = process.cwd();
+
+let failures = 0;
+
+function fail(message: string) {
+  console.error(`✗ ${message}`);
+  failures += 1;
+}
+
+function pass(message: string) {
+  console.log(`✓ ${message}`);
+}
+
+function assert(condition: boolean, message: string) {
+  if (!condition) {
+    fail(message);
+    return;
+  }
+  pass(message);
+}
+
+const profileScreen = readFileSync(join(ROOT, 'src/app/profile.tsx'), 'utf8');
+const profileLib = readFileSync(join(ROOT, 'src/lib/organizer-profile.ts'), 'utf8');
+const dashboard = readFileSync(join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'), 'utf8');
+
+assert(!profileScreen.includes("router.push('/profile'"), 'profile screen does not self-link');
+assert(dashboard.includes("router.push('/profile'"), 'Command Center links to Profile screen');
+assert(
+  dashboard.includes('accessibilityLabel="Open profile"') &&
+    dashboard.includes('profileIdentity'),
+  'Command Center opens profile from identity block with accessibility',
+);
+assert(!dashboard.includes('profileButtonText'), 'Command Center has no top-right Profile link');
+assert(profileScreen.includes('EventFormField'), 'profile uses shared EventFormField');
+assert(profileScreen.includes('Save Profile'), 'profile has Save Profile action');
+assert(profileScreen.includes('Sign Out'), 'profile has Sign Out action');
+assert(profileScreen.includes('Coming Soon'), 'profile shows coming soon placeholders');
+assert(profileScreen.includes('Read-only'), 'profile marks email as read-only');
+
+assert(profileLib.includes(".from('profiles')"), 'profile saves display name to profiles table');
+assert(profileLib.includes('auth.updateUser'), 'profile saves business/phone to auth user metadata');
+assert(profileLib.includes('full_name'), 'profile maps display name to full_name column');
+assert(profileLib.includes('business_name'), 'profile uses business_name metadata key');
+assert(profileLib.includes('phone_number'), 'profile uses phone_number metadata key');
+
+assert(profileScreen.includes('reloadProfile'), 'profile reloads profile after save');
+
+if (failures > 0) {
+  console.error(`\ncheck-organizer-profile: ${failures} failure(s)`);
+  process.exit(1);
+}
+
+console.log('\ncheck-organizer-profile: all checks passed');

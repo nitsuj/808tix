@@ -7,7 +7,6 @@ type EventScreenBackgroundProps = {
   eventName: string;
   imageUrl?: string | null;
   pendingLocalUri?: string | null;
-  debugArtworkLogging?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -16,7 +15,6 @@ export function EventScreenBackground({
   eventName,
   imageUrl,
   pendingLocalUri,
-  debugArtworkLogging = false,
   style,
 }: EventScreenBackgroundProps) {
   const { width, height } = useWindowDimensions();
@@ -27,7 +25,6 @@ export function EventScreenBackground({
     <View pointerEvents="none" style={[styles.root, frameStyle, style]}>
       <ArtworkEnvironment
         artworkUri={artwork.uri}
-        debugArtworkLogging={debugArtworkLogging}
         isUploaded={artwork.isUploaded}
         style={frameStyle}
       />
