@@ -31,6 +31,23 @@ function readMetadataString(metadata: Record<string, unknown> | undefined, key: 
 }
 
 /** Maps existing profile row + auth user metadata into v0 profile form fields. */
+/** Command Center identity line: `Name · Business` or `Name · Email` when business is empty. */
+export function formatCommandCenterIdentityLine(params: {
+  displayName: string;
+  businessName: string;
+  email: string;
+}): string {
+  const email = params.email.trim();
+  const name = params.displayName.trim() || email || 'Organizer';
+  const secondary = params.businessName.trim() || email;
+
+  if (!secondary || secondary.toLowerCase() === name.toLowerCase()) {
+    return name;
+  }
+
+  return `${name} · ${secondary}`;
+}
+
 export function organizerProfileFromSources(
   profile: Profile,
   sessionEmail: string | null | undefined,

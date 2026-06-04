@@ -35,25 +35,19 @@ type EventPassStats = {
 
 type OrganizerDashboardProps = {
   organizerId: string;
-  displayName: string;
-  displayEmail: string;
-  onSignOut: () => Promise<void>;
+  identityLine: string;
   welcomeMessage?: string;
   onDismissWelcome?: () => void;
 };
 
 export function OrganizerDashboard({
   organizerId,
-  displayName,
-  displayEmail,
-  onSignOut,
+  identityLine,
   welcomeMessage,
   onDismissWelcome,
 }: OrganizerDashboardProps) {
   const router = useRouter();
   const { events, dashboardEvents, isLoading, error, refetch } = useOrganizerEvents(organizerId);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [signOutError, setSignOutError] = useState<string | null>(null);
   const [statsByEvent, setStatsByEvent] = useState<Record<string, EventPassStats>>({});
   const [statusFilter, setStatusFilter] = useState<DashboardStatusFilter>('all');
 
@@ -132,20 +126,6 @@ export function OrganizerDashboard({
     };
   }, [statsByEvent, dashboardEvents.length]);
 
-  async function handleSignOut() {
-    setIsSigningOut(true);
-    setSignOutError(null);
-
-    try {
-      await onSignOut();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Sign out failed.';
-      setSignOutError(message);
-    } finally {
-      setIsSigningOut(false);
-    }
-  }
-
   const filteredDashboardEvents = useMemo(
     () => filterDashboardEventsByStatus(dashboardEvents, statusFilter),
     [dashboardEvents, statusFilter],
@@ -162,37 +142,22 @@ export function OrganizerDashboard({
       <OrganizerAmbientBackground />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerRow}>
-            <View style={styles.headerText}>
-              <ThemedText style={styles.screenTitle}>Command center</ThemedText>
-              <Pressable
-                accessibilityLabel="Open profile"
-                accessibilityRole="button"
-                onPress={() => router.push('/profile' as Href)}
-                style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
-                <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
-                  {displayName === displayEmail ? displayEmail : `${displayName} · ${displayEmail}`}
-                </ThemedText>
-                <View style={styles.profileIdentityHint}>
-                  <ThemedText style={styles.viewProfileText}>View profile</ThemedText>
-                  <ThemedText style={styles.profileChevron}>›</ThemedText>
-                </View>
-              </Pressable>
-            </View>
-
+          <View style={styles.headerBlock}>
+            <ThemedText style={styles.screenTitle}>Command center</ThemedText>
             <Pressable
-              disabled={isSigningOut}
-              onPress={handleSignOut}
-              style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}>
-              {isSigningOut ? (
-                <ActivityIndicator color={fan.primary} size="small" />
-              ) : (
-                <ThemedText style={styles.signOutText}>Sign out</ThemedText>
-              )}
+              accessibilityLabel="Open profile"
+              accessibilityRole="button"
+              onPress={() => router.push('/profile' as Href)}
+              style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
+              <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
+                {identityLine}
+              </ThemedText>
+              <View style={styles.profileIdentityHint}>
+                <ThemedText style={styles.viewProfileText}>View profile</ThemedText>
+                <ThemedText style={styles.profileChevron}>›</ThemedText>
+              </View>
             </Pressable>
           </View>
-
-          {signOutError ? <ThemedText style={styles.errorText}>{signOutError}</ThemedText> : null}
 
           {welcomeMessage ? (
             <View style={styles.welcomeBanner}>
@@ -401,14 +366,7 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.three,
     width: '100%',
   },
-  headerRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: Spacing.three,
-    justifyContent: 'space-between',
-  },
-  headerText: {
-    flex: 1,
+  headerBlock: {
     gap: Spacing.one,
   },
   screenTitle: {
@@ -448,14 +406,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 16,
-  },
-  signOutButton: {
-    paddingVertical: Spacing.one,
-  },
-  signOutText: {
-    color: text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
   },
   createButton: {
     alignItems: 'center',

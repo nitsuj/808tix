@@ -291,6 +291,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw error;
     }
 
+    setSession(null);
+    setProfile(null);
+    setIsProfileLoading(false);
+    setIsLoading(false);
     setAccountJustConfirmed(false);
     setAuthCallbackError(null);
   }, []);

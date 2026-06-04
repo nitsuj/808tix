@@ -24,6 +24,7 @@ import { ThemedText } from '@/components/themed-text';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { persistEventArtworkUrl, uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
@@ -90,6 +91,8 @@ export default function CreateEventScreen() {
   const previewVenue = formatVenueLine(venueName);
   const showPreviewVenue = shouldShowVenueLine(venueName, previewTitle);
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (authGate.state === 'loading') {
     return (
       <MobileViewport>
@@ -101,7 +104,6 @@ export default function CreateEventScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

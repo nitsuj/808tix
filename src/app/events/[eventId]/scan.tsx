@@ -13,6 +13,7 @@ import { formatScannerCheckInFooter } from '@/lib/event-stats';
 import { chrome, fan, palette, scannerScreen, text } from '@/theme';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { canScanPassesForEvent, PUBLISH_BEFORE_SCAN_MESSAGE } from '@/lib/event-status';
 import { parseScannedSecureToken } from '@/lib/scan-payload';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
@@ -103,6 +104,8 @@ export default function EventScannerScreen() {
 
   const showInitialGate = (authGate.state === 'loading' || isLoading) && !event;
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (showInitialGate) {
     return (
       <MobileViewport>
@@ -114,7 +117,6 @@ export default function EventScannerScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

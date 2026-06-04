@@ -31,6 +31,7 @@ import {
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatIssuedCapacity, formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import type { Event, Pass } from '@/lib/database.types';
@@ -85,6 +86,8 @@ export default function IssuePassScreen() {
   const [smsError, setSmsError] = useState<string | null>(null);
   const [isSendingSms, setIsSendingSms] = useState(false);
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (authGate.state === 'loading' || isLoading) {
     return (
       <MobileViewport>
@@ -96,7 +99,6 @@ export default function IssuePassScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

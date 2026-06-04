@@ -36,6 +36,7 @@ import {
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import {
   formatEventStatus,
@@ -62,6 +63,8 @@ export default function EditEventScreen() {
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (authGate.state === 'loading' || isLoading) {
     return (
       <ThemedView style={styles.centered}>
@@ -71,7 +74,6 @@ export default function EditEventScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

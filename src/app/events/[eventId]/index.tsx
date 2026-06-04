@@ -28,6 +28,7 @@ import {
 import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import {
@@ -88,6 +89,8 @@ export default function EventDetailScreen() {
     router.replace(DASHBOARD_ROUTE);
   }, [router]);
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (authGate.state === 'loading' || isLoading) {
     return (
       <MobileViewport>
@@ -99,7 +102,6 @@ export default function EventDetailScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

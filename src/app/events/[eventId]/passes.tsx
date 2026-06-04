@@ -29,6 +29,7 @@ import {
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { useEventDetail } from '@/hooks/use-event-detail';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import {
@@ -118,6 +119,8 @@ export default function EventPassesScreen() {
     router.replace(`/events/${eventId}` as Href);
   }, [eventId, router]);
 
+  useOrganizerAuthRedirect(authGate.state);
+
   if (authGate.state === 'loading' || isEventLoading) {
     return (
       <MobileViewport>
@@ -129,7 +132,6 @@ export default function EventPassesScreen() {
   }
 
   if (authGate.state === 'unauthenticated') {
-    router.replace('/');
     return null;
   }
 

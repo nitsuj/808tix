@@ -30,6 +30,7 @@ function assert(condition: boolean, message: string) {
 const profileScreen = readFileSync(join(ROOT, 'src/app/profile.tsx'), 'utf8');
 const profileLib = readFileSync(join(ROOT, 'src/lib/organizer-profile.ts'), 'utf8');
 const dashboard = readFileSync(join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'), 'utf8');
+const authContext = readFileSync(join(ROOT, 'src/contexts/auth-context.tsx'), 'utf8');
 
 assert(!profileScreen.includes("router.push('/profile'"), 'profile screen does not self-link');
 assert(dashboard.includes("router.push('/profile'"), 'Command Center links to Profile screen');
@@ -50,8 +51,35 @@ assert(profileLib.includes('auth.updateUser'), 'profile saves business/phone to 
 assert(profileLib.includes('full_name'), 'profile maps display name to full_name column');
 assert(profileLib.includes('business_name'), 'profile uses business_name metadata key');
 assert(profileLib.includes('phone_number'), 'profile uses phone_number metadata key');
+assert(
+  profileLib.includes('formatCommandCenterIdentityLine'),
+  'Command Center identity line formatter exists',
+);
+assert(
+  dashboard.includes('identityLine') && !dashboard.includes('onSignOut'),
+  'Command Center uses identity line without top-right sign out',
+);
+assert(!dashboard.includes('Sign out'), 'Command Center has no sign out control');
 
 assert(profileScreen.includes('reloadProfile'), 'profile reloads profile after save');
+assert(
+  profileScreen.indexOf("authGate.state === 'unauthenticated'") <
+    profileScreen.indexOf('!initialValues'),
+  'profile handles unauthenticated before empty-profile spinner',
+);
+assert(
+  profileScreen.includes('useOrganizerAuthRedirect') && profileScreen.includes('onSignOut={signOut}'),
+  'profile sign out uses auth signOut and effect-based auth redirect',
+);
+assert(
+  !profileScreen.match(/onSignOut[\s\S]*router\.replace/),
+  'profile sign out does not router.replace during handler',
+);
+assert(
+  authContext.includes('setSession(null)') &&
+    authContext.match(/signOut[\s\S]*setProfile\(null\)/),
+  'auth signOut clears session and profile immediately',
+);
 
 if (failures > 0) {
   console.error(`\ncheck-organizer-profile: ${failures} failure(s)`);

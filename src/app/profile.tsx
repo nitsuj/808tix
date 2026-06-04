@@ -1,4 +1,4 @@
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,6 +19,7 @@ import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-ba
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
+import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import {
   organizerProfileFromSources,
   saveOrganizerProfile,
@@ -28,7 +29,6 @@ import {
 } from '@/lib/organizer-profile';
 import { chrome, fan, organizer, semantic, spacing, surface, text } from '@/theme';
 
-const DASHBOARD_ROUTE = '/' as Href;
 const MOBILE_VIEWPORT_WIDTH = 390;
 
 const webViewportMinHeight =
@@ -55,6 +55,12 @@ export default function OrganizerProfileScreen() {
     ? `${profile.id}:${profile.updated_at}:${session?.user.updated_at ?? ''}`
     : 'loading';
 
+  useOrganizerAuthRedirect(authGate.state);
+
+  if (authGate.state === 'unauthenticated') {
+    return null;
+  }
+
   if (authGate.state === 'loading' || !initialValues) {
     return (
       <MobileViewport>
@@ -63,11 +69,6 @@ export default function OrganizerProfileScreen() {
         </View>
       </MobileViewport>
     );
-  }
-
-  if (authGate.state === 'unauthenticated') {
-    router.replace(DASHBOARD_ROUTE);
-    return null;
   }
 
   if (authGate.state === 'profile_missing') {
@@ -161,6 +162,7 @@ function ProfileFormBody({
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign out failed.';
       setSaveError(message);
+    } finally {
       setIsSigningOut(false);
     }
   }
@@ -261,13 +263,19 @@ function ProfileFormBody({
               </View>
 
               <Pressable
+                accessibilityLabel="Sign out"
+                accessibilityRole="button"
                 disabled={isSaving || isSigningOut}
                 onPress={handleSignOut}
-                style={({ pressed }) => [styles.signOutButton, pressed && styles.pressed]}>
+                style={({ pressed }) => [
+                  styles.signOutButton,
+                  pressed && styles.pressed,
+                  (isSaving || isSigningOut) && styles.buttonDisabled,
+                ]}>
                 {isSigningOut ? (
-                  <ActivityIndicator color={fan.primary} size="small" />
+                  <ActivityIndicator color={semantic.errorSoft} />
                 ) : (
-                  <ThemedText style={styles.signOutText}>Sign Out</ThemedText>
+                  <Text style={styles.signOutButtonText}>Sign Out</Text>
                 )}
               </Pressable>
             </ScrollView>
@@ -386,13 +394,18 @@ const styles = StyleSheet.create({
   },
   signOutButton: {
     alignItems: 'center',
-    marginTop: Spacing.two,
-    paddingVertical: Spacing.two,
+    backgroundColor: 'rgba(255, 96, 96, 0.12)',
+    borderColor: 'rgba(255, 96, 96, 0.45)',
+    borderRadius: Radii.button,
+    borderWidth: 1,
+    marginTop: Spacing.four,
+    minHeight: 48,
+    paddingVertical: Spacing.three,
   },
-  signOutText: {
-    color: text.secondary,
-    fontSize: 15,
-    fontWeight: '700',
+  signOutButtonText: {
+    color: semantic.errorSoft,
+    fontSize: 16,
+    fontWeight: '800',
   },
   comingSoonSection: {
     backgroundColor: chrome.glass.fill,
