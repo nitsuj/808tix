@@ -12,10 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EventFormField, eventFormStyles } from '@/components/organizer/event-form-fields';
+import { EventFormField } from '@/components/organizer/event-form-fields';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
-import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
@@ -27,7 +26,7 @@ import {
   type OrganizerProfileFieldErrors,
   type OrganizerProfileFormValues,
 } from '@/lib/organizer-profile';
-import { chrome, fan, organizer, semantic, spacing, surface, text } from '@/theme';
+import { organizer, palette, semantic, text } from '@/theme';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
 
@@ -65,7 +64,7 @@ export default function OrganizerProfileScreen() {
     return (
       <MobileViewport>
         <View style={styles.centered}>
-          <ActivityIndicator color={fan.primary} size="large" />
+          <ActivityIndicator color={organizer.accent} size="large" />
         </View>
       </MobileViewport>
     );
@@ -114,6 +113,10 @@ function ProfileFormBody({
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const identityName = displayName.trim() || 'Your name';
+  const identityBusiness = businessName.trim() || 'Business name';
+  const identityEmail = email || '—';
 
   async function handleSave() {
     const errors = validateOrganizerProfileForm({
@@ -169,119 +172,141 @@ function ProfileFormBody({
 
   return (
     <MobileViewport>
-      <View style={styles.screen}>
-        <OrganizerAmbientBackground />
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboard}>
-          <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
-            <ScrollView
-              contentContainerStyle={styles.scrollContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
-              <View style={styles.topBar}>
-                <Pressable onPress={onBack} style={styles.backHit}>
-                  <Text style={styles.backText}>← Command Center</Text>
-                </Pressable>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.keyboard}>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}>
+            <Pressable onPress={onBack} style={styles.backHit}>
+              <Text style={styles.backText}>← Dashboard</Text>
+            </Pressable>
+
+            <ThemedText style={styles.screenTitle}>Profile</ThemedText>
+
+            <View style={styles.identityCard}>
+              <View style={styles.identityAvatar}>
+                <Text style={styles.identityAvatarText}>808</Text>
               </View>
-
-              <ThemedText style={styles.screenTitle}>Organizer Profile</ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.screenSubtitle}>
-                Your organizer identity for Command Center and door operations.
-              </ThemedText>
-
-              <View style={styles.photoPlaceholder}>
-                <ThemedText style={styles.photoPlaceholderTitle}>Profile Photo / Logo</ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.photoPlaceholderHint}>
-                  Coming Soon
+              <View style={styles.identityTextBlock}>
+                <ThemedText style={styles.identityName} numberOfLines={2}>
+                  {identityName}
+                </ThemedText>
+                <ThemedText style={styles.identityBusiness} numberOfLines={2}>
+                  {identityBusiness}
+                </ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.identityEmail} numberOfLines={1}>
+                  {identityEmail}
                 </ThemedText>
               </View>
+            </View>
 
-              <View style={eventFormStyles.formPanel}>
-                <EventFormField
-                  autoCapitalize="words"
-                  label="Display Name"
-                  placeholder="Your name"
-                  value={displayName}
-                  error={fieldErrors.displayName}
-                  onChangeText={setDisplayName}
-                />
-                <EventFormField
-                  autoCapitalize="words"
-                  label="Business Name"
-                  placeholder="Venue or promoter name"
-                  value={businessName}
-                  error={fieldErrors.businessName}
-                  onChangeText={setBusinessName}
-                />
-                <EventFormField
-                  autoCapitalize="none"
-                  keyboardType="phone-pad"
-                  label="Phone Number"
-                  placeholder="+1 808 555 0100"
-                  value={phoneNumber}
-                  error={fieldErrors.phoneNumber}
-                  onChangeText={setPhoneNumber}
-                />
-                <View style={eventFormStyles.field}>
-                  <ThemedText style={eventFormStyles.label}>Email Address</ThemedText>
-                  <ThemedText themeColor="textSecondary" style={eventFormStyles.hint}>
-                    Read-only for now — tied to your sign-in account.
-                  </ThemedText>
-                  <View style={styles.readOnlyField}>
-                    <Text style={styles.readOnlyText}>{email || '—'}</Text>
-                  </View>
+            <ThemedText style={styles.sectionHeading}>Account Information</ThemedText>
+            <View style={styles.sectionCard}>
+              <EventFormField
+                autoCapitalize="words"
+                label="Display Name"
+                placeholder="Your name"
+                tone="organizer"
+                value={displayName}
+                error={fieldErrors.displayName}
+                onChangeText={setDisplayName}
+              />
+              <EventFormField
+                autoCapitalize="none"
+                keyboardType="phone-pad"
+                label="Phone Number"
+                placeholder="+1 808 555 0100"
+                tone="organizer"
+                value={phoneNumber}
+                error={fieldErrors.phoneNumber}
+                onChangeText={setPhoneNumber}
+              />
+              <View style={styles.readOnlyFieldGroup}>
+                <ThemedText style={styles.readOnlyLabel}>Email Address</ThemedText>
+                <ThemedText themeColor="textSecondary" style={styles.readOnlyHint}>
+                  Read-only for now — tied to your sign-in account.
+                </ThemedText>
+                <View style={styles.readOnlyField}>
+                  <Text style={styles.readOnlyText}>{identityEmail}</Text>
                 </View>
               </View>
+            </View>
 
-              {saveError ? <ThemedText style={styles.errorText}>{saveError}</ThemedText> : null}
-              {saveSuccess ? <ThemedText style={styles.successText}>{saveSuccess}</ThemedText> : null}
+            <ThemedText style={styles.sectionHeading}>Business Information</ThemedText>
+            <View style={styles.sectionCard}>
+              <EventFormField
+                autoCapitalize="words"
+                label="Business Name"
+                placeholder="Venue or promoter name"
+                tone="organizer"
+                value={businessName}
+                error={fieldErrors.businessName}
+                onChangeText={setBusinessName}
+              />
+            </View>
 
-              <Pressable
-                disabled={isSaving || isSigningOut}
-                onPress={handleSave}
-                style={({ pressed }) => [
-                  styles.primaryButton,
-                  pressed && styles.pressed,
-                  isSaving && styles.buttonDisabled,
-                ]}>
-                {isSaving ? (
-                  <ActivityIndicator color={chrome.white} />
-                ) : (
-                  <Text style={styles.primaryButtonText}>Save Profile</Text>
-                )}
-              </Pressable>
+            {saveError ? <ThemedText style={styles.errorText}>{saveError}</ThemedText> : null}
+            {saveSuccess ? <ThemedText style={styles.successText}>{saveSuccess}</ThemedText> : null}
 
-              <View style={styles.comingSoonSection}>
-                <ThemedText style={styles.comingSoonTitle}>Coming Soon</ThemedText>
-                <View style={styles.comingSoonRow}>
-                  <ThemedText themeColor="textSecondary">Team Management</ThemedText>
-                </View>
-                <View style={styles.comingSoonRow}>
-                  <ThemedText themeColor="textSecondary">Business Settings</ThemedText>
-                </View>
+            <Pressable
+              disabled={isSaving || isSigningOut}
+              onPress={handleSave}
+              accessibilityRole="button"
+              accessibilityLabel="Save profile"
+              style={({ pressed }) => [
+                styles.saveButton,
+                pressed && styles.pressed,
+                (isSaving || isSigningOut) && styles.buttonDisabled,
+              ]}>
+              {isSaving ? (
+                <ActivityIndicator color={organizer.accent} />
+              ) : (
+                <Text style={styles.saveButtonText}>Save Profile</Text>
+              )}
+            </Pressable>
+
+            <ThemedText style={styles.sectionHeading}>Coming Soon</ThemedText>
+            <View style={styles.comingSoonCard}>
+              <View style={styles.comingSoonRow}>
+                <ThemedText themeColor="textSecondary">Profile Photo / Logo</ThemedText>
+                <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
               </View>
+              <View style={styles.comingSoonDivider} />
+              <View style={styles.comingSoonRow}>
+                <ThemedText themeColor="textSecondary">Team Management</ThemedText>
+                <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
+              </View>
+              <View style={styles.comingSoonDivider} />
+              <View style={styles.comingSoonRow}>
+                <ThemedText themeColor="textSecondary">Business Settings</ThemedText>
+                <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
+              </View>
+            </View>
 
-              <Pressable
-                accessibilityLabel="Sign out"
-                accessibilityRole="button"
-                disabled={isSaving || isSigningOut}
-                onPress={handleSignOut}
-                style={({ pressed }) => [
-                  styles.signOutButton,
-                  pressed && styles.pressed,
-                  (isSaving || isSigningOut) && styles.buttonDisabled,
-                ]}>
-                {isSigningOut ? (
-                  <ActivityIndicator color={semantic.errorSoft} />
-                ) : (
-                  <Text style={styles.signOutButtonText}>Sign Out</Text>
-                )}
-              </Pressable>
-            </ScrollView>
-          </SafeAreaView>
-        </KeyboardAvoidingView>
-      </View>
+            <View style={styles.signOutSpacer} />
+
+            <Pressable
+              accessibilityLabel="Sign out"
+              accessibilityRole="button"
+              disabled={isSaving || isSigningOut}
+              onPress={handleSignOut}
+              style={({ pressed }) => [
+                styles.signOutButton,
+                pressed && styles.pressed,
+                (isSaving || isSigningOut) && styles.buttonDisabled,
+              ]}>
+              {isSigningOut ? (
+                <ActivityIndicator color={semantic.errorSoft} />
+              ) : (
+                <Text style={styles.signOutButtonText}>Sign Out</Text>
+              )}
+            </Pressable>
+          </ScrollView>
+        </SafeAreaView>
+      </KeyboardAvoidingView>
     </MobileViewport>
   );
 }
@@ -297,19 +322,15 @@ function MobileViewport({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
   viewportOuter: {
     alignItems: 'center',
-    backgroundColor: surface.background,
+    backgroundColor: palette.pureBlack,
     flex: 1,
   },
   viewportInner: {
-    backgroundColor: surface.background,
+    backgroundColor: palette.pureBlack,
     flex: 1,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
     width: '100%',
     ...webViewportMinHeight,
-  },
-  screen: {
-    flex: 1,
-    position: 'relative',
   },
   keyboard: {
     flex: 1,
@@ -318,113 +339,187 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    gap: Spacing.three,
+    gap: Spacing.two + 2,
     paddingBottom: Spacing.six,
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.two,
   },
   centered: {
     alignItems: 'center',
+    backgroundColor: palette.pureBlack,
     flex: 1,
     justifyContent: 'center',
-  },
-  topBar: {
-    marginBottom: Spacing.one,
   },
   backHit: {
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: fan.badgeText,
+    color: organizer.accent,
     fontSize: 15,
     fontWeight: '700',
   },
   screenTitle: {
-    fontSize: 28,
+    color: text.primary,
+    fontSize: 30,
     fontWeight: '800',
-    letterSpacing: 0.6,
-    lineHeight: 32,
+    letterSpacing: 0.2,
+    lineHeight: 34,
   },
-  screenSubtitle: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: Spacing.one,
-  },
-  photoPlaceholder: {
+  identityCard: {
     alignItems: 'center',
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
+    backgroundColor: palette.black,
+    borderColor: organizer.accent,
     borderRadius: Radii.card,
     borderWidth: 1,
-    gap: Spacing.one,
-    paddingVertical: Spacing.five,
+    flexDirection: 'row',
+    gap: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
   },
-  photoPlaceholderTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+  identityAvatar: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(57, 255, 20, 0.08)',
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 64,
+    justifyContent: 'center',
+    width: 64,
   },
-  photoPlaceholderHint: {
-    fontSize: 13,
+  identityAvatarText: {
+    color: organizer.accent,
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  identityTextBlock: {
+    flex: 1,
+    gap: 4,
+    minWidth: 0,
+  },
+  identityName: {
+    color: text.primary,
+    fontSize: 17,
+    fontWeight: '800',
+    lineHeight: 22,
+  },
+  identityBusiness: {
+    color: text.primary,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 18,
+  },
+  identityEmail: {
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  sectionHeading: {
+    color: text.primary,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    marginTop: Spacing.one,
+  },
+  sectionCard: {
+    backgroundColor: '#0C0C0C',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    elevation: 2,
+    gap: Spacing.three,
+    padding: Spacing.three,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  readOnlyFieldGroup: {
+    gap: Spacing.one,
+  },
+  readOnlyLabel: {
+    color: text.secondary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  readOnlyHint: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   readOnlyField: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
+    backgroundColor: palette.pureBlack,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: spacing.three,
-    paddingVertical: spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
   },
   readOnlyText: {
     color: text.secondary,
     fontSize: 16,
     fontWeight: '500',
   },
-  primaryButton: {
+  saveButton: {
     alignItems: 'center',
-    backgroundColor: fan.primary,
-    borderRadius: Radii.button,
-    minHeight: 48,
+    backgroundColor: 'rgba(57, 255, 20, 0.1)',
+    borderColor: organizer.accent,
+    borderRadius: Radii.card,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    marginTop: Spacing.one,
+    minHeight: 56,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
-  primaryButtonText: {
-    color: chrome.white,
-    fontSize: 16,
+  saveButtonText: {
+    color: organizer.accent,
+    fontSize: 17,
     fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  comingSoonCard: {
+    backgroundColor: '#0C0C0C',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: Radii.card,
+    borderWidth: 1,
+    gap: 0,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  comingSoonRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.two,
+  },
+  comingSoonDivider: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    height: 1,
+  },
+  comingSoonBadge: {
+    color: text.muted,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
+  signOutSpacer: {
+    height: Spacing.four,
   },
   signOutButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 96, 96, 0.12)',
-    borderColor: 'rgba(255, 96, 96, 0.45)',
-    borderRadius: Radii.button,
+    backgroundColor: 'rgba(255, 96, 96, 0.08)',
+    borderColor: 'rgba(255, 96, 96, 0.4)',
+    borderRadius: Radii.card,
     borderWidth: 1,
-    marginTop: Spacing.four,
-    minHeight: 48,
+    minHeight: 52,
     paddingVertical: Spacing.three,
   },
   signOutButtonText: {
     color: semantic.errorSoft,
     fontSize: 16,
     fontWeight: '800',
-  },
-  comingSoonSection: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    gap: Spacing.two,
-    marginTop: Spacing.two,
-    padding: Spacing.three,
-  },
-  comingSoonTitle: {
-    color: organizer.accent,
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  comingSoonRow: {
-    paddingVertical: Spacing.half,
   },
   errorText: {
     color: semantic.errorSoft,

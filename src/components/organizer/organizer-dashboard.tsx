@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -12,10 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/themed-text';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
-import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
-import { StatBlock, StatRow } from '@/components/ui/stat-block';
 import { Radii, Spacing, semantic } from '@/constants/theme';
-import { chrome, fan, surface, text } from '@/theme';
+import { organizer, palette, text } from '@/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
@@ -107,25 +106,6 @@ export function OrganizerDashboard({
     };
   }, [dashboardEvents]);
 
-  const aggregateStats = useMemo(() => {
-    let issued = 0;
-    let checkedIn = 0;
-
-    for (const stats of Object.values(statsByEvent)) {
-      issued += stats.issued;
-      checkedIn += stats.checkedIn;
-    }
-
-    const checkInRate = issued > 0 ? Math.round((checkedIn / issued) * 100) : 0;
-
-    return {
-      events: dashboardEvents.length,
-      issued,
-      checkedIn,
-      checkInRate,
-    };
-  }, [statsByEvent, dashboardEvents.length]);
-
   const filteredDashboardEvents = useMemo(
     () => filterDashboardEventsByStatus(dashboardEvents, statusFilter),
     [dashboardEvents, statusFilter],
@@ -139,25 +119,43 @@ export function OrganizerDashboard({
 
   return (
     <View style={styles.container}>
-      <OrganizerAmbientBackground />
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerBlock}>
-            <ThemedText style={styles.screenTitle}>Command center</ThemedText>
-            <Pressable
-              accessibilityLabel="Open profile"
-              accessibilityRole="button"
-              onPress={() => router.push('/profile' as Href)}
-              style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
-              <ThemedText themeColor="textSecondary" style={styles.organizerMeta}>
-                {identityLine}
-              </ThemedText>
+          <ThemedText style={styles.screenTitle}>Dashboard</ThemedText>
+
+          <Pressable
+            accessibilityLabel="Open profile"
+            accessibilityRole="button"
+            onPress={() => router.push('/profile' as Href)}
+            style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
+            <View style={styles.profileAvatar}>
+              <Text style={styles.profileAvatarText}>808</Text>
+            </View>
+            <View style={styles.profileIdentityText}>
+              <ThemedText style={styles.organizerMeta}>{identityLine}</ThemedText>
               <View style={styles.profileIdentityHint}>
                 <ThemedText style={styles.viewProfileText}>View profile</ThemedText>
-                <ThemedText style={styles.profileChevron}>›</ThemedText>
+                <ThemedText style={styles.profileChevron}>{'>'}</ThemedText>
               </View>
-            </Pressable>
-          </View>
+            </View>
+          </Pressable>
+
+          <Pressable
+            accessibilityLabel="Create event"
+            accessibilityRole="button"
+            onPress={() => router.push('/events/create' as Href)}
+            style={({ pressed }) => [styles.createEventCta, pressed && styles.pressed]}>
+            <View style={styles.createEventCtaIconWrap}>
+              <Text style={styles.createEventCtaIcon}>+</Text>
+            </View>
+            <View style={styles.createEventCtaTextWrap}>
+              <ThemedText style={styles.createEventCtaTitle}>Create Event</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.createEventCtaSubtitle}>
+                Set up your next show and start issuing passes
+              </ThemedText>
+            </View>
+            <Text style={styles.createEventCtaChevron}>{'›'}</Text>
+          </Pressable>
 
           {welcomeMessage ? (
             <View style={styles.welcomeBanner}>
@@ -173,35 +171,7 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
-          {showNoEventsEmptyState ? (
-            <View style={styles.stateCard}>
-              <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
-              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
-                Create your first event to start issuing passes.
-              </ThemedText>
-            </View>
-          ) : null}
-
-          <Pressable
-            onPress={() => router.push('/events/create' as Href)}
-            style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}>
-            <ThemedText style={styles.createButtonText}>+ Create Event</ThemedText>
-          </Pressable>
-
-          {!isLoading && !error ? (
-            <StatRow>
-              <StatBlock compact label="Events" value={String(aggregateStats.events)} />
-              <StatBlock compact label="Passes Issued" value={String(aggregateStats.issued)} />
-              <StatBlock compact label="Checked In" value={String(aggregateStats.checkedIn)} />
-              <StatBlock
-                compact
-                label="Check-In Rate"
-                value={`${aggregateStats.checkInRate}%`}
-              />
-            </StatRow>
-          ) : null}
-
-          <ThemedText style={styles.sectionTitle}>Your events</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Upcoming Events</ThemedText>
 
           {!isLoading && !error && dashboardEvents.length > 0 ? (
             <View style={styles.filterRow}>
@@ -212,13 +182,21 @@ export function OrganizerDashboard({
                 return (
                   <Pressable
                     key={option}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: isActive }}
                     onPress={() => setStatusFilter(option)}
                     style={({ pressed }) => [
                       styles.filterChip,
-                      isActive && styles.filterChipActive,
+                      isActive && option === 'draft' && styles.filterChipActiveDraft,
+                      isActive && option !== 'draft' && styles.filterChipActive,
                       pressed && styles.pressed,
                     ]}>
-                    <ThemedText style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                    <ThemedText
+                      style={[
+                        styles.filterChipText,
+                        isActive && option !== 'draft' && styles.filterChipTextActive,
+                        isActive && option === 'draft' && styles.filterChipTextActiveDraft,
+                      ]}>
                       {label}
                     </ThemedText>
                   </Pressable>
@@ -227,9 +205,18 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
+          {showNoEventsEmptyState ? (
+            <View style={styles.stateCard}>
+              <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
+                Create your first event to start issuing passes.
+              </ThemedText>
+            </View>
+          ) : null}
+
           {isLoading ? (
             <View style={styles.stateCard}>
-              <ActivityIndicator color={fan.primary} />
+              <ActivityIndicator color={organizer.accent} />
               <ThemedText themeColor="textSecondary">Loading events…</ThemedText>
             </View>
           ) : null}
@@ -262,16 +249,18 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
-          {!isLoading && !error
-            ? filteredDashboardEvents.map((event) => (
+          {!isLoading && !error && filteredDashboardEvents.length > 0 ? (
+            <View style={styles.eventsList}>
+              {filteredDashboardEvents.map((event) => (
                 <EventCard
                   key={event.id}
                   event={event}
                   stats={statsByEvent[event.id] ?? { issued: 0, checkedIn: 0 }}
                   onPress={() => router.push(`/events/${event.id}` as Href)}
                 />
-              ))
-            : null}
+              ))}
+            </View>
+          ) : null}
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -288,70 +277,64 @@ function EventCard({
   onPress: () => void;
 }) {
   const dateLabel = formatEventDateTimeLong(event.event_date, event.start_time);
-  const checkInRate = stats.issued > 0 ? Math.round((stats.checkedIn / stats.issued) * 100) : 0;
-  const statusLabel = getEventStatusPillLabel(event.status);
+  const saleLabel = isEventLive(event.status) ? 'On Sale' : getEventStatusPillLabel(event.status);
   const isLive = isEventLive(event.status);
   const isDraft = isEventDraft(event.status);
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.eventCard, pressed && styles.pressed]}>
-      <EventArtwork height={88} imageUrl={event.image_url} name={event.name} rounded={false} />
-      <View style={styles.eventCardBody}>
-        <View style={styles.eventCardTop}>
-          <View style={styles.eventCardInfo}>
-            <View style={styles.eventTitleRow}>
-              <ThemedText style={styles.eventName}>{event.name}</ThemedText>
-              <View
-                style={[
-                  styles.eventStatusBadge,
-                  isLive && styles.eventStatusBadgeLive,
-                  isDraft && styles.eventStatusBadgeDraft,
-                ]}>
-                <ThemedText style={styles.eventStatusBadgeText}>{statusLabel}</ThemedText>
-              </View>
-            </View>
-            {event.venue_name ? (
-              <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
-                {event.venue_name}
-              </ThemedText>
-            ) : null}
-            {dateLabel ? (
-              <ThemedText themeColor="textSecondary" style={styles.eventMeta}>
-                {dateLabel}
-              </ThemedText>
-            ) : null}
-          </View>
-          <ThemedText style={styles.chevron}>›</ThemedText>
-        </View>
+      <View style={styles.eventArtworkWrap}>
+        <EventArtwork height={72} imageUrl={event.image_url} name={event.name} rounded />
+      </View>
 
-        <View style={styles.eventStatsRow}>
-          <MiniStat label="Issued" value={String(stats.issued)} />
-          <MiniStat label="Checked In" value={String(stats.checkedIn)} />
-          <MiniStat label="Rate" value={`${checkInRate}%`} />
-        </View>
+      <View style={styles.eventCardInfo}>
+        <ThemedText style={styles.eventName} numberOfLines={2}>
+          {event.name}
+        </ThemedText>
+        {dateLabel ? (
+          <ThemedText themeColor="textSecondary" style={styles.eventMeta} numberOfLines={1}>
+            {dateLabel}
+          </ThemedText>
+        ) : null}
+        {event.venue_name ? (
+          <ThemedText themeColor="textSecondary" style={styles.eventMeta} numberOfLines={1}>
+            {event.venue_name}
+          </ThemedText>
+        ) : null}
+        {saleLabel ? (
+          <View
+            style={[
+              styles.eventStatusBadge,
+              isLive && styles.eventStatusBadgeLive,
+              isDraft && styles.eventStatusBadgeDraft,
+            ]}>
+            <ThemedText
+              style={[
+                styles.eventStatusBadgeText,
+                isLive && styles.eventStatusBadgeTextLive,
+                isDraft && styles.eventStatusBadgeTextDraft,
+              ]}>
+              {saleLabel}
+            </ThemedText>
+          </View>
+        ) : null}
+      </View>
+
+      <View style={styles.eventIssuedStat}>
+        <ThemedText style={styles.eventIssuedValue}>{String(stats.issued)}</ThemedText>
+        <ThemedText themeColor="textSecondary" style={styles.eventIssuedLabel}>
+          Issued
+        </ThemedText>
       </View>
     </Pressable>
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.miniStat}>
-      <ThemedText style={styles.miniStatValue}>{value}</ThemedText>
-      <ThemedText themeColor="textSecondary" style={styles.miniStatLabel}>
-        {label}
-      </ThemedText>
-    </View>
-  );
-}
-
-// (removed) local date formatting helper — use canonical formatter instead
-
 const MOBILE_VIEWPORT_WIDTH = 390;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: surface.background,
+    backgroundColor: palette.pureBlack,
     flex: 1,
   },
   safeArea: {
@@ -359,104 +342,172 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     alignSelf: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two + 2,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
     paddingBottom: Spacing.six,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.three,
+    paddingTop: Spacing.two,
     width: '100%',
   },
-  headerBlock: {
-    gap: Spacing.one,
-  },
   screenTitle: {
-    fontSize: 28,
+    color: text.primary,
+    fontSize: 30,
     fontWeight: '800',
-    letterSpacing: 0.6,
-    lineHeight: 32,
-  },
-  organizerMeta: {
-    fontSize: 13,
-    lineHeight: 18,
+    letterSpacing: 0.2,
+    lineHeight: 34,
   },
   profileIdentity: {
-    alignSelf: 'flex-start',
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.input,
+    alignItems: 'center',
+    backgroundColor: palette.black,
+    borderColor: organizer.accent,
+    borderRadius: Radii.card,
     borderWidth: 1,
-    gap: Spacing.half,
-    marginTop: Spacing.half,
-    maxWidth: '100%',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
+    flexDirection: 'row',
+    gap: Spacing.three,
+    marginBottom: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+  },
+  profileAvatar: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(57, 255, 20, 0.08)',
+    borderColor: organizer.accent,
+    borderRadius: 999,
+    borderWidth: 2,
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
+  profileAvatarText: {
+    color: organizer.accent,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  profileIdentityText: {
+    flex: 1,
+    gap: 4,
+  },
+  organizerMeta: {
+    color: text.primary,
+    fontSize: 15,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   profileIdentityHint: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: Spacing.one,
+    gap: 6,
   },
   viewProfileText: {
-    color: fan.badgeText,
-    fontSize: 12,
+    color: organizer.accent,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.2,
   },
   profileChevron: {
-    color: fan.badgeText,
-    fontSize: 14,
+    color: organizer.accent,
+    fontSize: 13,
     fontWeight: '700',
-    lineHeight: 16,
   },
-  createButton: {
+  createEventCta: {
     alignItems: 'center',
-    backgroundColor: fan.primary,
-    borderRadius: Radii.button,
-    minHeight: 48,
+    backgroundColor: 'rgba(57, 255, 20, 0.1)',
+    borderColor: organizer.accent,
+    borderRadius: Radii.card,
+    borderWidth: 1.5,
+    flexDirection: 'row',
+    gap: Spacing.three,
+    minHeight: 72,
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.three,
   },
-  createButtonText: {
-    color: chrome.white,
-    fontSize: 16,
+  createEventCtaIconWrap: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(57, 255, 20, 0.16)',
+    borderColor: organizer.accent,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    height: 48,
+    justifyContent: 'center',
+    width: 48,
+  },
+  createEventCtaIcon: {
+    color: organizer.accent,
+    fontSize: 28,
+    fontWeight: '300',
+    lineHeight: 30,
+    marginTop: -2,
+  },
+  createEventCtaTextWrap: {
+    flex: 1,
+    gap: 3,
+    minWidth: 0,
+  },
+  createEventCtaTitle: {
+    color: text.primary,
+    fontSize: 17,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
+    lineHeight: 22,
+  },
+  createEventCtaSubtitle: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  createEventCtaChevron: {
+    color: organizer.accent,
+    fontSize: 26,
+    fontWeight: '600',
+    lineHeight: 28,
   },
   sectionTitle: {
-    color: chrome.brand.eyebrow,
-    fontSize: 13,
+    color: text.primary,
+    fontSize: 18,
     fontWeight: '800',
-    letterSpacing: 1,
-    marginTop: Spacing.one,
-    textTransform: 'uppercase',
+    letterSpacing: 0.2,
+    marginTop: Spacing.two,
+  },
+  eventsList: {
+    gap: 8,
   },
   filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: 8,
   },
   filterChip: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
-    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 6,
     borderWidth: 1,
-    paddingHorizontal: Spacing.two + 2,
-    paddingVertical: Spacing.one + 2,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
   },
   filterChipActive: {
-    borderColor: fan.primary,
-    backgroundColor: 'rgba(162, 91, 255, 0.14)',
+    backgroundColor: 'rgba(57, 255, 20, 0.1)',
+    borderColor: 'rgba(57, 255, 20, 0.35)',
+  },
+  filterChipActiveDraft: {
+    backgroundColor: 'rgba(255, 196, 64, 0.08)',
+    borderColor: 'rgba(255, 196, 64, 0.32)',
   },
   filterChipText: {
     color: text.secondary,
-    fontSize: 12,
+    fontSize: 9,
     fontWeight: '700',
+    letterSpacing: 0.3,
+    lineHeight: 12,
   },
   filterChipTextActive: {
-    color: fan.badgeText,
+    color: organizer.accent,
+  },
+  filterChipTextActiveDraft: {
+    color: '#FFC440',
   },
   stateCard: {
     alignItems: 'center',
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
+    backgroundColor: palette.black,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: Radii.card,
     borderWidth: 1,
     gap: Spacing.two,
@@ -470,91 +521,86 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventCard: {
-    backgroundColor: chrome.glass.fill,
-    borderColor: chrome.glass.border,
+    alignItems: 'center',
+    backgroundColor: '#0C0C0C',
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: Radii.card,
     borderWidth: 1,
-    overflow: 'hidden',
-  },
-  eventCardBody: {
-    gap: Spacing.three,
-    padding: Spacing.three,
-  },
-  eventCardTop: {
-    alignItems: 'flex-start',
+    elevation: 2,
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Spacing.two + 2,
+    overflow: 'hidden',
+    paddingHorizontal: Spacing.two + 2,
+    paddingVertical: Spacing.two,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+  },
+  eventArtworkWrap: {
+    borderRadius: 12,
+    height: 72,
+    overflow: 'hidden',
+    width: 72,
   },
   eventCardInfo: {
     flex: 1,
-    gap: Spacing.half,
-  },
-  eventTitleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.two,
+    gap: 2,
+    minWidth: 0,
   },
   eventName: {
     ...organizerEventDisplayTitleStyle.cardTitle,
-    flexShrink: 1,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
+    fontSize: 16,
+    fontWeight: '800',
+    lineHeight: 20,
+  },
+  eventMeta: {
+    fontSize: 13,
+    lineHeight: 17,
   },
   eventStatusBadge: {
-    borderRadius: 999,
+    alignSelf: 'flex-start',
+    borderRadius: 6,
     borderWidth: 1,
-    paddingHorizontal: Spacing.two,
+    marginTop: 2,
+    paddingHorizontal: 7,
     paddingVertical: 2,
   },
   eventStatusBadgeLive: {
-    borderColor: 'rgba(57, 255, 20, 0.45)',
     backgroundColor: 'rgba(57, 255, 20, 0.1)',
+    borderColor: 'rgba(57, 255, 20, 0.35)',
   },
   eventStatusBadgeDraft: {
-    borderColor: 'rgba(255, 196, 64, 0.45)',
-    backgroundColor: 'rgba(255, 196, 64, 0.1)',
+    backgroundColor: 'rgba(255, 196, 64, 0.08)',
+    borderColor: 'rgba(255, 196, 64, 0.32)',
   },
   eventStatusBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-  },
-  eventMeta: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  chevron: {
-    color: fan.primary,
-    fontSize: 28,
-    fontWeight: '300',
-    lineHeight: 28,
-  },
-  eventStatsRow: {
-    flexDirection: 'row',
-    gap: Spacing.two,
-  },
-  miniStat: {
-    backgroundColor: chrome.glass.highlight,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.input,
-    borderWidth: 1,
-    flex: 1,
-    gap: 2,
-    paddingHorizontal: Spacing.two,
-    paddingVertical: Spacing.two,
-  },
-  miniStatValue: {
-    color: fan.primary,
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  miniStatLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    lineHeight: 12,
+  },
+  eventStatusBadgeTextLive: {
+    color: organizer.accent,
+  },
+  eventStatusBadgeTextDraft: {
+    color: '#FFC440',
+  },
+  eventIssuedStat: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 52,
+  },
+  eventIssuedValue: {
+    color: text.primary,
+    fontSize: 22,
+    fontWeight: '800',
+    lineHeight: 26,
+  },
+  eventIssuedLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
   welcomeBanner: {
     alignItems: 'center',
@@ -580,7 +626,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.half,
   },
   welcomeDismissText: {
-    color: fan.primary,
+    color: organizer.accent,
     fontSize: 14,
     fontWeight: '700',
   },
@@ -588,7 +634,7 @@ const styles = StyleSheet.create({
     color: semantic.errorSoft,
   },
   linkText: {
-    color: fan.primary,
+    color: organizer.accent,
     fontWeight: '700',
   },
   pressed: {

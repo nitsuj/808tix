@@ -1,7 +1,7 @@
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
-import { formField, radius, spacing, surface } from '@/theme';
+import { formField, palette, radius, spacing, surface, text } from '@/theme';
 
 export type EventFormFieldProps = {
   label: string;
@@ -15,6 +15,8 @@ export type EventFormFieldProps = {
   onChangeText: (value: string) => void;
   onBlur?: () => void;
   onEndEditing?: () => void;
+  /** Organizer Profile / Dashboard-aligned field styling. */
+  tone?: 'default' | 'organizer';
 };
 
 export function EventFormField({
@@ -29,10 +31,15 @@ export function EventFormField({
   onChangeText,
   onBlur,
   onEndEditing,
+  tone = 'default',
 }: EventFormFieldProps) {
+  const isOrganizerTone = tone === 'organizer';
+
   return (
     <View style={eventFormStyles.field}>
-      <ThemedText style={eventFormStyles.label}>{label}</ThemedText>
+      <ThemedText style={[eventFormStyles.label, isOrganizerTone && organizerFieldStyles.label]}>
+        {label}
+      </ThemedText>
       {hint ? (
         <ThemedText themeColor="textSecondary" style={eventFormStyles.hint}>
           {hint}
@@ -44,8 +51,13 @@ export function EventFormField({
         editable
         keyboardType={keyboardType}
         placeholder={placeholder}
-        placeholderTextColor={formField.placeholderColor}
-        style={[eventFormStyles.input, error ? eventFormStyles.inputError : null]}
+        placeholderTextColor={isOrganizerTone ? text.muted : formField.placeholderColor}
+        style={[
+          eventFormStyles.input,
+          isOrganizerTone && organizerFieldStyles.input,
+          error ? eventFormStyles.inputError : null,
+          error && isOrganizerTone ? organizerFieldStyles.inputError : null,
+        ]}
         value={value}
         onBlur={onBlur}
         onChangeText={onChangeText}
@@ -100,5 +112,24 @@ export const eventFormStyles = StyleSheet.create({
   hint: {
     fontSize: 12,
     marginTop: -2,
+  },
+});
+
+const organizerFieldStyles = StyleSheet.create({
+  label: {
+    color: text.secondary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: palette.pureBlack,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    color: text.primary,
+  },
+  inputError: {
+    borderColor: formField.errorColor,
   },
 });
