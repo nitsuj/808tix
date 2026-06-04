@@ -9,31 +9,39 @@ type ScannerArtworkBackgroundProps = {
   imageUrl?: string | null;
 };
 
+/**
+ * Full-screen scanner artwork — must be position:absolute so ArtworkEnvironment
+ * (height/width 100%) does not expand the flex layout and push UI off-screen.
+ */
 export function ScannerArtworkBackground({ eventName, imageUrl }: ScannerArtworkBackgroundProps) {
-  const { height: windowHeight } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const artworkUri = resolveOrganizerArtworkUrl(imageUrl);
   const hasUploadedArtwork = Boolean(artworkUri);
-
-  if (hasUploadedArtwork) {
-    return <ArtworkEnvironment artworkUri={artworkUri!} isUploaded />;
-  }
+  const frame = { height, width };
 
   return (
-    <View style={[styles.fallbackLayer, { height: windowHeight }]}>
-      <EventArtwork
-        height={windowHeight}
-        imageUrl={null}
-        name={eventName}
-        rounded={false}
-        style={StyleSheet.absoluteFill}
-      />
+    <View pointerEvents="none" style={[styles.layer, frame]}>
+      {hasUploadedArtwork ? (
+        <ArtworkEnvironment artworkUri={artworkUri!} isUploaded style={frame} />
+      ) : (
+        <EventArtwork
+          height={height}
+          imageUrl={null}
+          name={eventName}
+          rounded={false}
+          style={StyleSheet.absoluteFill}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  fallbackLayer: {
-    ...StyleSheet.absoluteFill,
+  layer: {
+    left: 0,
     overflow: 'hidden',
+    position: 'absolute',
+    top: 0,
+    zIndex: 0,
   },
 });

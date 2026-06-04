@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
 import { EventArtwork } from '@/components/ui/event-artwork';
+import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { StatBlock, StatRow } from '@/components/ui/stat-block';
 import { Radii, Spacing, semantic } from '@/constants/theme';
@@ -506,11 +507,11 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   eventName: {
+    ...organizerEventDisplayTitleStyle.cardTitle,
     flexShrink: 1,
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 24,
-    textTransform: 'none',
   },
   eventStatusBadge: {
     borderRadius: 999,

@@ -25,7 +25,7 @@ import {
   shadows,
   text,
 } from '@/theme';
-import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
+import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useEventDetail } from '@/hooks/use-event-detail';
@@ -38,6 +38,7 @@ import {
 } from '@/lib/event-status';
 import { publishEvent } from '@/lib/publish-event';
 import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
+import { resolveEventScreenBackgroundArtwork } from '@/lib/event-artwork-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
 import type { Event } from '@/lib/database.types';
@@ -185,6 +186,11 @@ function EventDetailContent({
   const showVenue = shouldShowVenueLine(event.venue_name, event.name);
   const venueLine = formatVenueLine(event.venue_name);
   const canOperatePasses = isLive;
+  const backgroundArtwork = resolveEventScreenBackgroundArtwork(event.image_url, event.name);
+
+  useEffect(() => {
+    console.log('[DEBUG BUILD ACTIVE] Event Detail source loaded');
+  }, []);
 
   async function handlePublishEvent() {
     setIsPublishing(true);
@@ -205,9 +211,30 @@ function EventDetailContent({
   return (
     <MobileViewport>
       <View style={styles.screen}>
-        <EventScreenBackground eventName={event.name} imageUrl={event.image_url} />
+        <EventScreenBackground
+          debugArtworkLogging
+          eventName={event.name}
+          imageUrl={event.image_url}
+        />
 
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+          <View style={styles.debugBuildBanner}>
+            <Text style={styles.debugBuildBannerText}>DEBUG BUILD ACTIVE - 808TIX</Text>
+          </View>
+          <View style={styles.debugArtworkBanner}>
+            <Text style={styles.debugArtworkBannerText}>
+              image_url: {event.image_url?.trim() ? event.image_url : '(empty)'}
+            </Text>
+            <Text style={styles.debugArtworkBannerText}>
+              resolved uri: {backgroundArtwork.uri}
+            </Text>
+            <Text style={styles.debugArtworkBannerText}>
+              ArtworkEnvironment received uri: {backgroundArtwork.uri.trim() ? 'yes' : 'no'}
+            </Text>
+            <Text style={styles.debugArtworkBannerText}>
+              isUploaded: {backgroundArtwork.isUploaded ? 'yes' : 'no'}
+            </Text>
+          </View>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}>
@@ -419,6 +446,36 @@ const styles = StyleSheet.create({
     flex: 1,
     zIndex: 1,
   },
+  debugBuildBanner: {
+    backgroundColor: '#FF0000',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    width: '100%',
+    zIndex: 10,
+  },
+  debugBuildBannerText: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'center',
+  },
+  debugArtworkBanner: {
+    backgroundColor: '#1A1A1A',
+    borderBottomColor: '#FF0000',
+    borderBottomWidth: 2,
+    gap: 4,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    width: '100%',
+    zIndex: 10,
+  },
+  debugArtworkBannerText: {
+    color: '#FFFF00',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 10,
+    lineHeight: 14,
+  },
   scrollContent: {
     flexGrow: 1,
     paddingBottom: LAYOUT.panelBottomInset,
@@ -525,7 +582,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   eventTitle: {
-    ...organizerEventTitleStyle.title,
+    ...organizerEventDisplayTitleStyle.title,
     marginBottom: 6,
   },
   venueLine: {

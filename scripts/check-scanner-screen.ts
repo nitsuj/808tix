@@ -33,6 +33,10 @@ const cameraNativeSource = readFileSync(
   join(process.cwd(), 'src/components/scanner/event-scanner-camera.tsx'),
   'utf8',
 );
+const artworkBgSource = readFileSync(
+  join(process.cwd(), 'src/components/scanner/scanner-artwork-background.tsx'),
+  'utf8',
+);
 const validateScanSource = readFileSync(join(process.cwd(), 'src/lib/validate-pass-scan.ts'), 'utf8');
 
 assert(scanSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'scanner screen uses 390px viewport');
@@ -48,6 +52,15 @@ assert(!resultSource.includes('validatePassScan'), 'scan result view has no vali
 
 assert(cameraNativeSource.includes('eventDateLine'), 'camera overlay shows event date context');
 assert(cameraNativeSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'native camera respects 390 layout');
+assert(cameraNativeSource.includes('SafeAreaView'), 'scanner camera uses SafeAreaView for insets');
+assert(
+  cameraNativeSource.includes("overflow: 'hidden'") && cameraNativeSource.includes('minHeight: 0'),
+  'scanner camera UI is bounded within viewport',
+);
+assert(
+  artworkBgSource.includes("position: 'absolute'") && artworkBgSource.includes('useWindowDimensions'),
+  'scanner artwork background is absolutely positioned with explicit window frame',
+);
 
 assert(validateScanSource.includes('validate_pass'), 'validate_pass RPC remains in validatePassScan module');
 

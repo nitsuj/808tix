@@ -222,8 +222,7 @@ const styles = StyleSheet.create({
   scannerScreen: {
     backgroundColor: palette.pureBlack,
     flex: 1,
-    height: '100%',
-    minHeight: '100%',
+    overflow: 'hidden',
     width: '100%',
   },
   centered: {

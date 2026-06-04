@@ -11,10 +11,12 @@ const ROOT = process.cwd();
 const FILES = {
   artworkDisplay: join(ROOT, 'src/lib/event-artwork-display.ts'),
   artworkEnvironment: join(ROOT, 'src/components/ui/artwork-environment.tsx'),
+  eventArtwork: join(ROOT, 'src/components/ui/event-artwork.tsx'),
   eventScreenBackground: join(ROOT, 'src/components/ui/event-screen-background.tsx'),
   dateField: join(ROOT, 'src/components/organizer/event-date-form-field.tsx'),
   eventDetail: join(ROOT, 'src/app/events/[eventId]/index.tsx'),
   editEvent: join(ROOT, 'src/app/events/[eventId]/edit.tsx'),
+  organizerDashboard: join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'),
   organizerEventTitle: join(ROOT, 'src/theme/organizer-event-title.ts'),
 } as const;
 
@@ -43,10 +45,12 @@ function read(path: string): string {
 
 const artworkDisplay = read(FILES.artworkDisplay);
 const artworkEnvironment = read(FILES.artworkEnvironment);
+const eventArtwork = read(FILES.eventArtwork);
 const eventScreenBackground = read(FILES.eventScreenBackground);
 const dateField = read(FILES.dateField);
 const eventDetail = read(FILES.eventDetail);
 const editEvent = read(FILES.editEvent);
+const organizerDashboard = read(FILES.organizerDashboard);
 const organizerEventTitle = read(FILES.organizerEventTitle);
 
 assert(
@@ -57,11 +61,15 @@ assert(
   eventScreenBackground.includes('resolveEventScreenBackgroundArtwork'),
   'EventScreenBackground uses shared artwork resolver',
 );
+assert(
+  eventScreenBackground.includes('useWindowDimensions'),
+  'full-screen background uses explicit window dimensions',
+);
 
 assert(
   eventDetail.includes('EventScreenBackground') &&
     eventDetail.includes('imageUrl={event.image_url}'),
-  'Event Detail uses EventScreenBackground with event.image_url',
+  'Event Detail uses canonical EventScreenBackground with event.image_url',
 );
 assert(
   editEvent.includes('EventScreenBackground') &&
@@ -74,26 +82,81 @@ assert(
 );
 
 assert(
+  eventArtwork.includes('source={{ uri: resolvedImageUrl }}') &&
+    eventArtwork.includes('cachePolicy="none"') &&
+    eventArtwork.includes('StyleSheet.absoluteFill'),
+  'Command Center EventArtwork uses uri source, cachePolicy none, absoluteFill',
+);
+assert(
+  artworkEnvironment.includes('source={{ uri: artworkUri }}') &&
+    artworkEnvironment.includes('cachePolicy="none"') &&
+    artworkEnvironment.includes('styles.uploadedImage'),
+  'uploaded full-screen artwork uses same uri source shape as Command Center',
+);
+assert(
+  artworkEnvironment.match(/uploadedImage:[\s\S]*StyleSheet\.absoluteFill/) &&
+    !artworkEnvironment.includes('uploadedCoverScale'),
+  'uploaded full-screen image uses absoluteFill without overscan transform',
+);
+assert(
+  !artworkEnvironment.includes('COVER_OVERSCAN_PERCENT') &&
+    !artworkEnvironment.includes('coverImage'),
+  'ArtworkEnvironment does not use broken percentage cover layout',
+);
+assert(
+  artworkEnvironment.includes("height: '100%'") &&
+    artworkEnvironment.includes("width: '100%'"),
+  'full-screen artwork environment has explicit percent dimensions',
+);
+assert(
+  artworkEnvironment.includes('styles.uploadedBottomFade') &&
+    artworkEnvironment.match(/isUploaded \?[\s\S]*styles\.uploadedImage/),
+  'uploaded image renders before bottom fade overlay',
+);
+assert(
+  artworkEnvironment.includes('artLayerScaled') &&
+    artworkEnvironment.match(/isUploaded \?[\s\S]*: \([\s\S]*artLayerScaled/),
+  'cover scale transform applies only to fallback blur layer',
+);
+assert(
+  eventScreenBackground.includes('artwork.uri') &&
+    eventScreenBackground.includes('ArtworkEnvironment'),
+  'EventScreenBackground passes resolved uri to ArtworkEnvironment',
+);
+
+assert(
   artworkEnvironment.includes('contentFit="cover"') &&
     !artworkEnvironment.includes('contentFit="contain"'),
   'artwork background uses cover (not contain)',
 );
+
+import { resolveEventScreenBackgroundArtwork } from '../src/lib/event-artwork-display';
+
+const uploaded = resolveEventScreenBackgroundArtwork(
+  'https://cdn.example.com/event-artwork.jpg',
+  'Summer Session',
+);
 assert(
-  artworkEnvironment.includes('uploadedCoverScale') || artworkEnvironment.includes('COVER_OVERSCAN'),
-  'artwork background applies cover overscan',
+  uploaded.uri === 'https://cdn.example.com/event-artwork.jpg' && uploaded.isUploaded === true,
+  'resolver preserves image_url when event artwork exists',
 );
 
 assert(
-  organizerEventTitle.includes("textTransform: 'none'"),
-  'organizer event title style preserves casing',
+  organizerEventTitle.includes("textTransform: 'none'") &&
+    organizerEventTitle.includes("textTransform: 'uppercase'"),
+  'organizer title styles separate form casing from display uppercase',
 );
 assert(
-  eventDetail.includes('...organizerEventTitleStyle.title'),
-  'Event Detail eventTitle uses shared casing-preserving style',
+  eventDetail.includes('...organizerEventDisplayTitleStyle.title'),
+  'Event Detail eventTitle uses shared display uppercase style',
+);
+assert(
+  organizerDashboard.includes('organizerEventDisplayTitleStyle.cardTitle'),
+  'Command Center event cards use shared display uppercase style',
 );
 assert(
   editEvent.includes('...organizerEventTitleStyle.title'),
-  'Edit Event eventTitle uses shared casing-preserving style',
+  'Edit Event eventTitle uses form casing-preserving style',
 );
 
 assert(

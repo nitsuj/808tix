@@ -46,9 +46,11 @@ export function EventScannerCamera({
 }: EventScannerCameraProps) {
   const [permission, requestPermission] = useCameraPermissions();
   const lastScanAtRef = useRef(0);
-  const { width: windowWidth } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const layoutWidth = Math.min(windowWidth, MOBILE_VIEWPORT_WIDTH);
-  const frameSize = Math.min(layoutWidth - spacing.six * 2, 300);
+  const frameMaxByWidth = layoutWidth - spacing.six * 2;
+  const frameMaxByHeight = Math.max(180, Math.floor(windowHeight * 0.4));
+  const frameSize = Math.min(frameMaxByWidth, 300, frameMaxByHeight);
 
   const handleBarcodeScanned = useCallback(
     ({ data }: { data: string }) => {
@@ -192,33 +194,45 @@ export function EventScannerCamera({
 const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
 
+const overlayTextShadow =
+  Platform.OS === 'web'
+    ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
+    : ({
+        textShadowColor: 'rgba(0, 0, 0, 0.9)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+      } as ViewStyle);
+
 const styles = StyleSheet.create({
   root: {
     backgroundColor: scannerScreen.overlay.background,
     flex: 1,
+    overflow: 'hidden',
     position: 'relative',
   },
   cameraScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: scannerScreen.cameraScrim,
+    zIndex: 1,
   },
   loadingScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
     backgroundColor: scannerScreen.cameraScrim,
     justifyContent: 'center',
-    zIndex: 1,
+    zIndex: 2,
   },
   permissionScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: scannerScreen.cameraScrim,
+    zIndex: 1,
   },
   permissionSafeArea: {
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
     paddingHorizontal: spacing.four,
-    zIndex: 1,
+    zIndex: 2,
   },
   permissionCard: {
     backgroundColor: chrome.glass.fill,
@@ -233,11 +247,13 @@ const styles = StyleSheet.create({
   uiLayer: {
     flex: 1,
     justifyContent: 'space-between',
-    zIndex: 1,
+    minHeight: 0,
+    zIndex: 2,
   },
   topBar: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    flexShrink: 0,
     justifyContent: 'space-between',
     paddingHorizontal: spacing.four,
     paddingTop: spacing.two,
@@ -285,9 +301,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
     minWidth: 56,
-    ...(Platform.OS === 'web'
-      ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
-      : null),
+    ...overlayTextShadow,
   },
   eventName: {
     color: scannerScreen.overlay.text,
@@ -296,14 +310,15 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     textAlign: 'center',
     textTransform: 'none',
-    ...(Platform.OS === 'web'
-      ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
-      : null),
+    ...overlayTextShadow,
   },
   frameSection: {
     alignItems: 'center',
+    flex: 1,
+    flexShrink: 1,
     gap: spacing.three,
     justifyContent: 'center',
+    minHeight: 0,
     paddingHorizontal: spacing.four,
   },
   frameGlowShell: {
@@ -374,9 +389,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     textAlign: 'center',
-    ...(Platform.OS === 'web'
-      ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
-      : null),
+    ...overlayTextShadow,
   },
   processingRow: {
     alignItems: 'center',
@@ -385,6 +398,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignItems: 'center',
+    flexShrink: 0,
     paddingBottom: spacing.two,
     paddingHorizontal: spacing.four,
   },
