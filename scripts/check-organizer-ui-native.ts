@@ -154,11 +154,16 @@ assert(
   'Dashboard uses subtle organizer ambient background',
 );
 assert(
-  organizerAmbientBackground.includes('ElectricMagentaAmbience') &&
-    organizerAmbientBackground.includes('organizerAmbient.deepBlue') &&
-    organizerAmbientBackground.includes('organizerAmbient.purple') &&
-    organizerAmbientBackground.includes('organizerAmbient.magenta'),
-  'Organizer ambient uses Electric Magenta purple / magenta / deep blue tokens',
+  organizerAmbientBackground.includes('electric-magenta.png') &&
+    organizerAmbientBackground.includes('contentFit="cover"') &&
+    organizerAmbientBackground.includes('ELECTRIC_MAGENTA_BACKGROUND'),
+  'Organizer ambient uses bundled Electric Magenta image with cover fit',
+);
+assert(
+  !organizerAmbientBackground.includes('ElectricMagentaAmbience') &&
+    !organizerAmbientBackground.includes('proofDeepBlueWash') &&
+    !organizerAmbientBackground.includes('AURORA_DEBUG'),
+  'Organizer ambient excludes procedural wash layers and debug overlays',
 );
 assert(
   !organizerAmbientBackground.includes('AuroraGlow') &&
