@@ -92,14 +92,16 @@ export default function IndexScreen() {
     );
 
     return (
-      <OrganizerDashboard
-        greetingLine={greetingLine}
-        organizerId={profile.id}
-        welcomeMessage={
-          accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined
-        }
-        onDismissWelcome={dismissAccountJustConfirmed}
-      />
+      <View style={styles.dashboardShell}>
+        <OrganizerDashboard
+          greetingLine={greetingLine}
+          organizerId={profile.id}
+          welcomeMessage={
+            accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined
+          }
+          onDismissWelcome={dismissAccountJustConfirmed}
+        />
+      </View>
     );
   }
 
@@ -333,8 +335,12 @@ function OrganizerAuthScreen() {
 }
 
 const styles = StyleSheet.create({
+  dashboardShell: {
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
   bootScreen: {
-    backgroundColor: surface.background,
+    backgroundColor: 'transparent',
     flex: 1,
   },
   keyboardView: {

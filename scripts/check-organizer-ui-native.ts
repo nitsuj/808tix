@@ -17,6 +17,11 @@ const FILES = {
   eventDetail: join(ROOT, 'src/app/events/[eventId]/index.tsx'),
   editEvent: join(ROOT, 'src/app/events/[eventId]/edit.tsx'),
   organizerDashboard: join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'),
+  organizerAmbientBackground: join(ROOT, 'src/components/ui/organizer-ambient-background.tsx'),
+  organizerMobileViewport: join(ROOT, 'src/components/ui/organizer-mobile-viewport.tsx'),
+  createEvent: join(ROOT, 'src/app/events/create.tsx'),
+  indexScreen: join(ROOT, 'src/app/index.tsx'),
+  profileScreen: join(ROOT, 'src/app/profile.tsx'),
   organizerEventTitle: join(ROOT, 'src/theme/organizer-event-title.ts'),
 } as const;
 
@@ -51,6 +56,11 @@ const dateField = read(FILES.dateField);
 const eventDetail = read(FILES.eventDetail);
 const editEvent = read(FILES.editEvent);
 const organizerDashboard = read(FILES.organizerDashboard);
+const organizerAmbientBackground = read(FILES.organizerAmbientBackground);
+const organizerMobileViewport = read(FILES.organizerMobileViewport);
+const createEvent = read(FILES.createEvent);
+const indexScreen = read(FILES.indexScreen);
+const profileScreen = read(FILES.profileScreen);
 const organizerEventTitle = read(FILES.organizerEventTitle);
 
 assert(
@@ -122,6 +132,86 @@ assert(
   eventScreenBackground.includes('artwork.uri') &&
     eventScreenBackground.includes('ArtworkEnvironment'),
   'EventScreenBackground passes resolved uri to ArtworkEnvironment',
+);
+assert(
+  eventScreenBackground.includes('OrganizerAmbientBackground') &&
+    eventScreenBackground.includes('variant="subtle"'),
+  'EventScreenBackground uses subtle Electric Magenta ambience when no uploaded artwork',
+);
+assert(
+  eventScreenBackground.includes('artwork.isUploaded') &&
+    eventScreenBackground.match(/artwork\.isUploaded \?[\s\S]*ArtworkEnvironment/),
+  'EventScreenBackground uses ArtworkEnvironment only for uploaded artwork',
+);
+assert(
+  profileScreen.includes('OrganizerAmbientBackground') &&
+    profileScreen.includes('variant="subtle"'),
+  'Profile uses subtle organizer ambient background',
+);
+assert(
+  organizerDashboard.includes('OrganizerAmbientBackground') &&
+    organizerDashboard.includes('variant="subtle"'),
+  'Dashboard uses subtle organizer ambient background',
+);
+assert(
+  organizerAmbientBackground.includes('ElectricMagentaAmbience') &&
+    organizerAmbientBackground.includes('organizerAmbient.deepBlue') &&
+    organizerAmbientBackground.includes('organizerAmbient.purple') &&
+    organizerAmbientBackground.includes('organizerAmbient.magenta'),
+  'Organizer ambient uses Electric Magenta purple / magenta / deep blue tokens',
+);
+assert(
+  !organizerAmbientBackground.includes('AuroraGlow') &&
+    !organizerAmbientBackground.includes('glowGreen') &&
+    !organizerAmbientBackground.includes('39FF14'),
+  'Organizer ambient excludes aurora orbs and green washes',
+);
+assert(
+  organizerAmbientBackground.includes('useWindowDimensions') &&
+    organizerAmbientBackground.includes('{ height, width }'),
+  'Organizer ambient root uses full viewport dimensions',
+);
+assert(
+  organizerDashboard.includes("backgroundColor: 'transparent'") &&
+    organizerDashboard.match(/safeArea:[\s\S]*backgroundColor: 'transparent'/),
+  'Dashboard wrappers stay transparent over ambient',
+);
+assert(
+  indexScreen.includes('dashboardShell') &&
+    indexScreen.match(/dashboardShell:[\s\S]*backgroundColor: 'transparent'/),
+  'Index dashboard shell is transparent flex root',
+);
+assert(
+  organizerMobileViewport.includes('useWindowDimensions') &&
+    organizerMobileViewport.includes('backgroundFrame') &&
+    organizerMobileViewport.match(/viewportOuter:[\s\S]*backgroundColor: 'transparent'/),
+  'Organizer mobile viewport uses transparent outer + device-sized background frame',
+);
+assert(
+  createEvent.includes('OrganizerMobileViewport') &&
+    createEvent.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*EventScreenBackground/),
+  'Create Event hoists EventScreenBackground outside max-width column',
+);
+assert(
+  profileScreen.includes('OrganizerMobileViewport') &&
+    profileScreen.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*OrganizerAmbientBackground/),
+  'Profile hoists OrganizerAmbientBackground outside max-width column',
+);
+assert(
+  eventDetail.includes('OrganizerMobileViewport') &&
+    eventDetail.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*EventScreenBackground/),
+  'Event Detail hoists EventScreenBackground outside max-width column',
+);
+assert(
+  !createEvent.includes('viewportOuter') &&
+    !profileScreen.includes('viewportOuter') &&
+    !eventDetail.includes('viewportOuter'),
+  'Organizer screens no longer use local pureBlack viewportOuter gutters',
+);
+assert(
+  eventScreenBackground.includes('useWindowDimensions') &&
+    eventScreenBackground.includes('frameStyle'),
+  'EventScreenBackground fills viewport with explicit window dimensions',
 );
 
 assert(

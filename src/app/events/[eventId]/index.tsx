@@ -2,7 +2,6 @@ import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,15 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { OrganizerMobileViewport } from '@/components/ui/organizer-mobile-viewport';
 import {
-  chrome,
   fan,
   organizer,
-  organizerScreen,
+  organizerOpsScreen,
   palette,
-  passScreen,
   semantic,
-  shadows,
   text,
 } from '@/theme';
 import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
@@ -62,9 +60,6 @@ const LAYOUT = {
   statLabel: { fontSize: 10, lineHeight: 12, letterSpacing: 0.7 },
 } as const;
 
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
-
 const ARTWORK_UPLOAD_FAILED_MESSAGE =
   'Your event was created, but artwork could not be uploaded. Open Edit Event to try again.';
 
@@ -93,11 +88,11 @@ export default function EventDetailScreen() {
 
   if (authGate.state === 'loading' || isLoading) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport background={<OrganizerAmbientBackground variant="subtle" />}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={fan.primary} />
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -111,7 +106,7 @@ export default function EventDetailScreen() {
 
   if (error || !event) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport background={<OrganizerAmbientBackground variant="subtle" />}>
         <View style={styles.screen}>
           <SafeAreaView style={styles.errorSafeArea}>
             <Pressable onPress={goToDashboard} style={styles.backHit}>
@@ -120,7 +115,7 @@ export default function EventDetailScreen() {
             <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
           </SafeAreaView>
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -139,14 +134,6 @@ export default function EventDetailScreen() {
       onRefetch={refetch}
       router={router}
     />
-  );
-}
-
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
   );
 }
 
@@ -205,10 +192,11 @@ function EventDetailContent({
   }
 
   return (
-    <MobileViewport>
-      <View style={styles.screen}>
+    <OrganizerMobileViewport
+      background={
         <EventScreenBackground eventName={event.name} imageUrl={event.image_url} />
-
+      }>
+      <View style={styles.screen}>
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -241,10 +229,21 @@ function EventDetailContent({
                 <Text style={styles.eventTitle}>{event.name}</Text>
                 {showVenue ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
                 {showStatusPill ? (
-                  <Text
-                    style={[styles.statusPill, isDraft && styles.statusPillDraft, isLive && styles.statusPillLive]}>
-                    {statusPillLabel}
-                  </Text>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      isDraft && styles.statusPillDraft,
+                      isLive && styles.statusPillLive,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        isDraft && styles.statusPillTextDraft,
+                        isLive && styles.statusPillTextLive,
+                      ]}>
+                      {statusPillLabel}
+                    </Text>
+                  </View>
                 ) : null}
               </View>
 
@@ -298,7 +297,7 @@ function EventDetailContent({
                         isPublishing && styles.actionDisabled,
                       ]}>
                       {isPublishing ? (
-                        <ActivityIndicator color={chrome.white} />
+                        <ActivityIndicator color={organizer.accent} />
                       ) : (
                         <Text style={styles.actionPrimaryText}>Publish Event</Text>
                       )}
@@ -361,7 +360,7 @@ function EventDetailContent({
           </ScrollView>
         </SafeAreaView>
       </View>
-    </MobileViewport>
+    </OrganizerMobileViewport>
   );
 }
 
@@ -399,25 +398,13 @@ function StatChip({
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   screen: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
-    overflow: 'hidden',
     position: 'relative',
   },
   foreground: {
+    backgroundColor: 'transparent',
     flex: 1,
     zIndex: 1,
   },
@@ -429,7 +416,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     justifyContent: 'center',
   },
@@ -446,54 +433,42 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: fan.badgeText,
-    fontSize: 15,
-    fontWeight: '700',
+    ...organizerOpsScreen.backLink,
   },
   liveBadge: {
-    backgroundColor: organizerScreen.liveBadge.backgroundColor,
-    borderColor: fan.muted,
-    borderRadius: Radii.input,
+    backgroundColor: organizerOpsScreen.liveBadge.backgroundColor,
+    borderColor: organizerOpsScreen.liveBadge.borderColor,
+    borderRadius: 6,
     borderWidth: 1,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
   liveBadgeText: {
-    color: fan.primary,
+    color: organizerOpsScreen.liveBadge.color,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   draftBadge: {
-    backgroundColor: 'rgba(255, 196, 64, 0.12)',
-    borderColor: 'rgba(255, 196, 64, 0.45)',
-    borderRadius: Radii.input,
+    backgroundColor: organizerOpsScreen.draftBadge.backgroundColor,
+    borderColor: organizerOpsScreen.draftBadge.borderColor,
+    borderRadius: 6,
     borderWidth: 1,
     paddingHorizontal: Spacing.two,
     paddingVertical: Spacing.one,
   },
   draftBadgeText: {
-    color: '#FFC440',
+    color: organizerOpsScreen.draftBadge.color,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   commandPanel: {
+    ...organizerOpsScreen.panel,
     alignSelf: 'center',
-    backgroundColor: passScreen.credential.cardBackground,
-    borderColor: passScreen.credential.cardBorder,
-    borderRadius: passScreen.credential.borderRadius,
-    borderWidth: 1,
     gap: 0,
     marginTop: LAYOUT.panelTopInset,
     maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
-    paddingBottom: passScreen.credential.paddingBottom,
-    paddingHorizontal: passScreen.credential.paddingHorizontal,
-    paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
     width: '100%',
   },
   warningBanner: {
@@ -518,11 +493,7 @@ const styles = StyleSheet.create({
     marginBottom: LAYOUT.metaToStats,
   },
   dateLine: {
-    color: fan.badgeText,
-    fontSize: LAYOUT.date.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.date.letterSpacing,
-    lineHeight: LAYOUT.date.lineHeight,
+    ...organizerOpsScreen.meta.date,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -531,34 +502,29 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   venueLine: {
-    color: text.secondary,
-    fontSize: LAYOUT.subtitle.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.subtitle.letterSpacing,
-    lineHeight: LAYOUT.subtitle.lineHeight,
+    ...organizerOpsScreen.meta.venue,
     textAlign: 'center',
   },
   statusPill: {
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 1,
-    color: organizer.accent,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginTop: Spacing.two,
-    overflow: 'hidden',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
-    textAlign: 'center',
+    ...organizerOpsScreen.statusPill.base,
   },
   statusPillDraft: {
-    borderColor: 'rgba(255, 196, 64, 0.55)',
-    color: '#FFC440',
+    backgroundColor: organizerOpsScreen.statusPill.draft.backgroundColor,
+    borderColor: organizerOpsScreen.statusPill.draft.borderColor,
   },
   statusPillLive: {
-    borderColor: organizer.accent,
-    color: organizer.accent,
+    backgroundColor: organizerOpsScreen.statusPill.live.backgroundColor,
+    borderColor: organizerOpsScreen.statusPill.live.borderColor,
+  },
+  statusPillText: {
+    ...organizerOpsScreen.statusPill.text,
+    color: text.secondary,
+  },
+  statusPillTextDraft: {
+    color: organizerOpsScreen.statusPill.draft.color,
+  },
+  statusPillTextLive: {
+    color: organizerOpsScreen.statusPill.live.color,
   },
   draftHint: {
     color: text.secondary,
@@ -585,9 +551,9 @@ const styles = StyleSheet.create({
   },
   statChip: {
     alignItems: 'center',
-    backgroundColor: chrome.glass.highlight,
-    borderColor: chrome.glass.border,
-    borderRadius: Radii.input,
+    backgroundColor: organizerOpsScreen.statChip.backgroundColor,
+    borderColor: organizerOpsScreen.statChip.borderColor,
+    borderRadius: Radii.card,
     borderWidth: 1,
     flex: 1,
     gap: 4,
@@ -601,7 +567,7 @@ const styles = StyleSheet.create({
     lineHeight: LAYOUT.statValue.lineHeight,
   },
   statValueAccent: {
-    color: fan.primary,
+    color: organizerOpsScreen.statChip.valueAccent,
   },
   statLabel: {
     color: text.muted,
@@ -612,7 +578,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   statTapHint: {
-    color: fan.badgeText,
+    color: organizerOpsScreen.statChip.tapHint,
     fontSize: 9,
     fontWeight: '700',
     letterSpacing: 0.5,
@@ -620,7 +586,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   progressTrack: {
-    backgroundColor: chrome.glass.highlight,
+    backgroundColor: organizerOpsScreen.progress.track,
     borderRadius: 999,
     height: 6,
     marginBottom: LAYOUT.progressToActions,
@@ -628,7 +594,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   progressFill: {
-    backgroundColor: fan.primary,
+    backgroundColor: organizerOpsScreen.progress.fill,
     borderRadius: 999,
     height: '100%',
   },
@@ -644,21 +610,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   actionPrimary: {
-    backgroundColor: fan.primary,
+    backgroundColor: organizerOpsScreen.button.primary.backgroundColor,
+    borderColor: organizerOpsScreen.button.primary.borderColor,
+    borderWidth: organizerOpsScreen.button.primary.borderWidth,
   },
   actionPrimaryText: {
-    color: chrome.white,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    color: organizerOpsScreen.button.primary.text,
+    ...organizerOpsScreen.button.text,
   },
   actionSecondary: {
-    backgroundColor: 'transparent',
-    borderColor: chrome.glass.border,
-    borderWidth: 1,
+    backgroundColor: organizerOpsScreen.button.secondary.backgroundColor,
+    borderColor: organizerOpsScreen.button.secondary.borderColor,
+    borderWidth: organizerOpsScreen.button.secondary.borderWidth,
   },
   actionSecondaryText: {
-    color: text.primary,
+    color: organizerOpsScreen.button.secondary.text,
     fontSize: 15,
     fontWeight: '700',
   },
@@ -667,13 +633,13 @@ const styles = StyleSheet.create({
     marginTop: Spacing.one,
   },
   actionDisabledButton: {
-    backgroundColor: chrome.glass.highlight,
-    borderColor: chrome.glass.border,
+    backgroundColor: organizerOpsScreen.button.disabled.backgroundColor,
+    borderColor: organizerOpsScreen.button.disabled.borderColor,
     borderWidth: 1,
     opacity: 0.55,
   },
   actionDisabledText: {
-    color: text.muted,
+    color: organizerOpsScreen.button.disabled.text,
     fontSize: 15,
     fontWeight: '600',
   },

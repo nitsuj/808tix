@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
 import { Radii, Spacing, semantic } from '@/constants/theme';
@@ -119,8 +120,12 @@ export function OrganizerDashboard({
 
   return (
     <View style={styles.container}>
+      <OrganizerAmbientBackground variant="subtle" />
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}>
           <ThemedText style={styles.screenTitle}>Dashboard</ThemedText>
 
           <View style={styles.greetingBlock}>
@@ -331,10 +336,18 @@ const MOBILE_VIEWPORT_WIDTH = 390;
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
+    overflow: 'hidden',
+    position: 'relative',
   },
   safeArea: {
+    backgroundColor: 'transparent',
+    flex: 1,
+    zIndex: 1,
+  },
+  scrollView: {
+    backgroundColor: 'transparent',
     flex: 1,
   },
   scrollContent: {

@@ -1,6 +1,7 @@
 import { StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { resolveEventScreenBackgroundArtwork } from '@/lib/event-artwork-display';
 
 type EventScreenBackgroundProps = {
@@ -23,11 +24,15 @@ export function EventScreenBackground({
 
   return (
     <View pointerEvents="none" style={[styles.root, frameStyle, style]}>
-      <ArtworkEnvironment
-        artworkUri={artwork.uri}
-        isUploaded={artwork.isUploaded}
-        style={frameStyle}
-      />
+      {artwork.isUploaded ? (
+        <ArtworkEnvironment
+          artworkUri={artwork.uri}
+          isUploaded={artwork.isUploaded}
+          style={frameStyle}
+        />
+      ) : (
+        <OrganizerAmbientBackground variant="subtle" style={StyleSheet.absoluteFillObject} />
+      )}
     </View>
   );
 }

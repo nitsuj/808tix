@@ -24,15 +24,14 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Radii, Spacing } from '@/constants/theme';
 import {
-  chrome,
   fan,
   organizer,
+  organizerOpsScreen,
   palette,
-  passScreen,
   semantic,
-  shadows,
   text,
 } from '@/theme';
+import { isEventDraft, isEventLive } from '@/lib/event-status';
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
@@ -236,6 +235,8 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   }, [eventDate, startTime]);
 
   const statusPill = formatEventStatus(event.status).toUpperCase();
+  const statusIsLive = isEventLive(event.status);
+  const statusIsDraft = isEventDraft(event.status);
 
   return (
     <MobileViewport>
@@ -269,7 +270,21 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                   <Text style={styles.dateLine}>{previewDateLine}</Text>
                   <Text style={styles.eventTitle}>{previewTitle}</Text>
                   {showPreviewVenue ? <Text style={styles.venueLine}>{previewVenue}</Text> : null}
-                  <Text style={styles.statusPill}>{statusPill}</Text>
+                  <View
+                    style={[
+                      styles.statusPill,
+                      statusIsLive && styles.statusPillLive,
+                      statusIsDraft && styles.statusPillDraft,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.statusPillText,
+                        statusIsLive && styles.statusPillTextLive,
+                        statusIsDraft && styles.statusPillTextDraft,
+                      ]}>
+                      {statusPill}
+                    </Text>
+                  </View>
                 </View>
 
                 <EventArtworkUploadField
@@ -288,6 +303,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                     error={fieldErrors.eventName}
                     label="Event Name"
                     placeholder="Summer Rooftop Session"
+                    tone="organizer"
                     value={eventName}
                     onChangeText={setEventName}
                   />
@@ -295,6 +311,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                     error={fieldErrors.venueName}
                     label="Venue"
                     placeholder="The Loft"
+                    tone="organizer"
                     value={venueName}
                     onChangeText={setVenueName}
                   />
@@ -319,6 +336,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                     keyboardType="number-pad"
                     label="Max Passes"
                     placeholder="100"
+                    tone="organizer"
                     value={maxPasses}
                     onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
                   />
@@ -338,7 +356,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                     isSubmitting && styles.disabled,
                   ]}>
                   {isSubmitting ? (
-                    <ActivityIndicator color={chrome.white} />
+                    <ActivityIndicator color={organizer.accent} />
                   ) : (
                     <Text style={styles.actionPrimaryText}>Save Changes</Text>
                   )}
@@ -383,7 +401,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   viewportInner: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
     width: '100%',
@@ -398,7 +416,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   screen: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     overflow: 'hidden',
     position: 'relative',
@@ -419,7 +437,7 @@ const styles = StyleSheet.create({
   centered: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
   },
   topBar: {
@@ -435,9 +453,7 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: fan.badgeText,
-    fontSize: 15,
-    fontWeight: '700',
+    ...organizerOpsScreen.backLink,
   },
   pressed: {
     opacity: 0.88,
@@ -446,21 +462,11 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   commandPanel: {
+    ...organizerOpsScreen.panel,
     alignSelf: 'center',
-    backgroundColor: passScreen.credential.cardBackground,
-    borderColor: passScreen.credential.cardBorder,
-    borderRadius: passScreen.credential.borderRadius,
-    borderWidth: 1,
     gap: Spacing.three,
     marginTop: LAYOUT.panelTopInset,
     maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
-    paddingBottom: passScreen.credential.paddingBottom,
-    paddingHorizontal: passScreen.credential.paddingHorizontal,
-    paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
     width: '100%',
   },
   metaBlock: {
@@ -469,11 +475,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   dateLine: {
-    color: fan.badgeText,
-    fontSize: LAYOUT.date.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.date.letterSpacing,
-    lineHeight: LAYOUT.date.lineHeight,
+    ...organizerOpsScreen.meta.date,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -482,26 +484,29 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   venueLine: {
-    color: text.secondary,
-    fontSize: LAYOUT.subtitle.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.subtitle.letterSpacing,
-    lineHeight: LAYOUT.subtitle.lineHeight,
+    ...organizerOpsScreen.meta.venue,
     textAlign: 'center',
   },
   statusPill: {
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 1,
-    color: organizer.accent,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginTop: Spacing.two,
-    overflow: 'hidden',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
-    textAlign: 'center',
+    ...organizerOpsScreen.statusPill.base,
+  },
+  statusPillLive: {
+    backgroundColor: organizerOpsScreen.statusPill.live.backgroundColor,
+    borderColor: organizerOpsScreen.statusPill.live.borderColor,
+  },
+  statusPillDraft: {
+    backgroundColor: organizerOpsScreen.statusPill.draft.backgroundColor,
+    borderColor: organizerOpsScreen.statusPill.draft.borderColor,
+  },
+  statusPillText: {
+    ...organizerOpsScreen.statusPill.text,
+    color: text.secondary,
+  },
+  statusPillTextLive: {
+    color: organizerOpsScreen.statusPill.live.color,
+  },
+  statusPillTextDraft: {
+    color: organizerOpsScreen.statusPill.draft.color,
   },
   errorText: {
     color: semantic.errorSoft,
@@ -519,12 +524,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   actionPrimary: {
-    backgroundColor: fan.primary,
+    backgroundColor: organizerOpsScreen.button.primary.backgroundColor,
+    borderColor: organizerOpsScreen.button.primary.borderColor,
+    borderWidth: organizerOpsScreen.button.primary.borderWidth,
   },
   actionPrimaryText: {
-    color: chrome.white,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    color: organizerOpsScreen.button.primary.text,
+    ...organizerOpsScreen.button.text,
   },
 });

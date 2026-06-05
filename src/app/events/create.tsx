@@ -22,6 +22,7 @@ import { EventStartTimeField } from '@/components/organizer/event-start-time-fie
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
+import { OrganizerMobileViewport } from '@/components/ui/organizer-mobile-viewport';
 import { Radii, Spacing } from '@/constants/theme';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
@@ -35,14 +36,11 @@ import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import { generateUniqueEventSlug } from '@/lib/event-slug';
 import { supabase } from '@/lib/supabase';
 import {
-  chrome,
   fan,
   organizer,
+  organizerOpsScreen,
   palette,
-  passScreen,
   semantic,
-  shadows,
-  text,
 } from '@/theme';
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 
@@ -60,9 +58,6 @@ const LAYOUT = {
   title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
   subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
 } as const;
-
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 export default function CreateEventScreen() {
   const router = useRouter();
@@ -95,11 +90,14 @@ export default function CreateEventScreen() {
 
   if (authGate.state === 'loading') {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport
+        background={
+          <EventScreenBackground eventName="New event" imageUrl={null} pendingLocalUri={null} />
+        }>
         <View style={styles.centered}>
           <ActivityIndicator color={fan.primary} size="large" />
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -222,14 +220,15 @@ export default function CreateEventScreen() {
   }
 
   return (
-    <MobileViewport>
-      <View style={styles.screen}>
+    <OrganizerMobileViewport
+      background={
         <EventScreenBackground
           eventName={previewTitle}
           imageUrl={null}
           pendingLocalUri={pendingArtwork?.localUri}
         />
-
+      }>
+      <View style={styles.screen}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}>
@@ -253,7 +252,9 @@ export default function CreateEventScreen() {
                   <Text style={styles.dateLine}>{previewDateLine}</Text>
                   <Text style={styles.eventTitle}>{previewTitle}</Text>
                   {showPreviewVenue ? <Text style={styles.venueLine}>{previewVenue}</Text> : null}
-                  <Text style={styles.statusPill}>DRAFT</Text>
+                  <View style={[styles.statusPill, styles.statusPillDraft]}>
+                    <Text style={styles.statusPillText}>DRAFT</Text>
+                  </View>
                 </View>
 
                 <EventArtworkUploadField
@@ -272,6 +273,7 @@ export default function CreateEventScreen() {
                     error={fieldErrors.eventName}
                     label="Event Name"
                     placeholder="Summer Rooftop Session"
+                    tone="organizer"
                     value={eventName}
                     onChangeText={setEventName}
                   />
@@ -279,6 +281,7 @@ export default function CreateEventScreen() {
                     error={fieldErrors.venueName}
                     label="Venue"
                     placeholder="The Loft"
+                    tone="organizer"
                     value={venueName}
                     onChangeText={setVenueName}
                   />
@@ -303,6 +306,7 @@ export default function CreateEventScreen() {
                     keyboardType="number-pad"
                     label="Max Passes"
                     placeholder="100"
+                    tone="organizer"
                     value={maxPasses}
                     onChangeText={(text) => setMaxPasses(text.replace(/[^\d]/g, ''))}
                   />
@@ -320,7 +324,7 @@ export default function CreateEventScreen() {
                     isSubmitting && styles.disabled,
                   ]}>
                   {isSubmitting ? (
-                    <ActivityIndicator color={chrome.white} />
+                    <ActivityIndicator color={organizer.accent} />
                   ) : (
                     <Text style={styles.actionPrimaryText}>Create Event</Text>
                   )}
@@ -330,41 +334,21 @@ export default function CreateEventScreen() {
           </SafeAreaView>
         </KeyboardAvoidingView>
       </View>
-    </MobileViewport>
-  );
-}
-
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
+    </OrganizerMobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   screen: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
-    overflow: 'hidden',
     position: 'relative',
   },
   keyboardView: {
     flex: 1,
   },
   foreground: {
+    backgroundColor: 'transparent',
     flex: 1,
     zIndex: 1,
   },
@@ -376,7 +360,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     justifyContent: 'center',
   },
@@ -393,26 +377,14 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
   },
   backText: {
-    color: fan.badgeText,
-    fontSize: 15,
-    fontWeight: '700',
+    ...organizerOpsScreen.backLink,
   },
   commandPanel: {
+    ...organizerOpsScreen.panel,
     alignSelf: 'center',
-    backgroundColor: passScreen.credential.cardBackground,
-    borderColor: passScreen.credential.cardBorder,
-    borderRadius: passScreen.credential.borderRadius,
-    borderWidth: 1,
     gap: Spacing.three,
     marginTop: LAYOUT.panelTopInset,
     maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
-    paddingBottom: passScreen.credential.paddingBottom,
-    paddingHorizontal: passScreen.credential.paddingHorizontal,
-    paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
     width: '100%',
   },
   metaBlock: {
@@ -421,11 +393,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   dateLine: {
-    color: fan.badgeText,
-    fontSize: LAYOUT.date.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.date.letterSpacing,
-    lineHeight: LAYOUT.date.lineHeight,
+    ...organizerOpsScreen.meta.date,
     marginBottom: 8,
     textAlign: 'center',
   },
@@ -434,26 +402,18 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   venueLine: {
-    color: text.secondary,
-    fontSize: LAYOUT.subtitle.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.subtitle.letterSpacing,
-    lineHeight: LAYOUT.subtitle.lineHeight,
+    ...organizerOpsScreen.meta.venue,
     textAlign: 'center',
   },
   statusPill: {
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 1,
-    color: organizer.accent,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    marginTop: Spacing.two,
-    overflow: 'hidden',
-    paddingHorizontal: Spacing.two,
-    paddingVertical: 4,
-    textAlign: 'center',
+    ...organizerOpsScreen.statusPill.base,
+  },
+  statusPillDraft: {
+    ...organizerOpsScreen.statusPill.draft,
+  },
+  statusPillText: {
+    ...organizerOpsScreen.statusPill.text,
+    color: organizerOpsScreen.statusPill.draft.color,
   },
   errorText: {
     color: semantic.errorSoft,
@@ -471,13 +431,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   actionPrimary: {
-    backgroundColor: fan.primary,
+    backgroundColor: organizerOpsScreen.button.primary.backgroundColor,
+    borderColor: organizerOpsScreen.button.primary.borderColor,
+    borderWidth: organizerOpsScreen.button.primary.borderWidth,
   },
   actionPrimaryText: {
-    color: chrome.white,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+    color: organizerOpsScreen.button.primary.text,
+    ...organizerOpsScreen.button.text,
   },
   pressed: {
     opacity: 0.88,

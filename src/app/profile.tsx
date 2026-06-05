@@ -15,6 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { EventFormField } from '@/components/organizer/event-form-fields';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
+import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
+import { OrganizerMobileViewport } from '@/components/ui/organizer-mobile-viewport';
 import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
@@ -27,11 +29,6 @@ import {
   type OrganizerProfileFormValues,
 } from '@/lib/organizer-profile';
 import { organizer, palette, semantic, text } from '@/theme';
-
-const MOBILE_VIEWPORT_WIDTH = 390;
-
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 export default function OrganizerProfileScreen() {
   const router = useRouter();
@@ -62,11 +59,13 @@ export default function OrganizerProfileScreen() {
 
   if (authGate.state === 'loading' || !initialValues) {
     return (
-      <MobileViewport>
-        <View style={styles.centered}>
-          <ActivityIndicator color={organizer.accent} size="large" />
+      <OrganizerMobileViewport background={<OrganizerAmbientBackground variant="subtle" />}>
+        <View style={styles.screen}>
+          <View style={styles.centered}>
+            <ActivityIndicator color={organizer.accent} size="large" />
+          </View>
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -171,11 +170,12 @@ function ProfileFormBody({
   }
 
   return (
-    <MobileViewport>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboard}>
-        <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+    <OrganizerMobileViewport background={<OrganizerAmbientBackground variant="subtle" />}>
+      <View style={styles.screen}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.keyboard}>
+          <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
@@ -302,35 +302,23 @@ function ProfileFormBody({
           </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
-    </MobileViewport>
-  );
-}
-
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
+      </View>
+    </OrganizerMobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
+  screen: {
+    backgroundColor: 'transparent',
     flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
+    position: 'relative',
   },
   keyboard: {
     flex: 1,
+    zIndex: 1,
   },
   safeArea: {
+    backgroundColor: 'transparent',
     flex: 1,
   },
   scrollContent: {
@@ -341,7 +329,7 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     justifyContent: 'center',
   },

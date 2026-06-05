@@ -37,7 +37,7 @@ assert(
   'Create Event uses full-bleed artwork background like Event Detail',
 );
 assert(source.includes('commandPanel'), 'Create Event uses Event Detail-style command panel');
-assert(source.includes('passScreen.credential'), 'Create Event uses credential panel tokens');
+assert(source.includes('organizerOpsScreen.panel'), 'Create Event uses shared organizer ops panel tokens');
 
 const layoutStart = source.indexOf('styles.commandPanel');
 const layoutSource = layoutStart >= 0 ? source.slice(layoutStart) : source;

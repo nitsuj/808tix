@@ -29,7 +29,9 @@ import {
   artworkUpload,
   chrome,
   formField,
+  organizerAmbient,
   organizerScreen,
+  organizerOpsScreen,
   passScreen,
   qrCode,
   scannerScreen,
@@ -54,8 +56,10 @@ export {
   type ThemeColor,
   artworkUpload,
   chrome,
+  organizerAmbient,
   formField,
   organizerScreen,
+  organizerOpsScreen,
   passScreen,
   qrCode,
   scannerScreen,
@@ -118,6 +122,7 @@ export const theme = {
     qrCode,
     artworkUpload,
     chrome,
+    organizerAmbient,
   },
 } as const;
 
