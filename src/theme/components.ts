@@ -113,49 +113,13 @@ export const artworkUpload = {
   actionText: organizer.accent,
 } as const;
 
-/**
- * Electric Magenta — organizer ops ambience (Dashboard, Profile, auth, event fallbacks).
- * Magenta / purple / deep blue only; green reserved for operational indicators.
- */
-export const organizerAmbient = {
-  deepBlue: {
-    default: 'rgba(18, 28, 86, 0.24)',
-    subtle: 'rgba(18, 28, 86, 0.16)',
-  },
-  purple: {
-    default: 'rgba(125, 58, 228, 0.34)',
-    subtle: 'rgba(125, 58, 228, 0.26)',
-  },
-  magenta: {
-    default: 'rgba(236, 52, 156, 0.42)',
-    subtle: 'rgba(236, 52, 156, 0.32)',
-  },
-  scrim: {
-    default: 'rgba(8, 8, 12, 0.12)',
-    subtle: 'rgba(8, 8, 12, 0.08)',
-    withArtwork: 'rgba(8, 8, 8, 0.28)',
-  },
-  vignetteBottom: {
-    default: 'rgba(0, 0, 0, 0.34)',
-    subtle: 'rgba(0, 0, 0, 0.24)',
-    withArtwork: 'rgba(0, 0, 0, 0.42)',
-  },
-} as const;
-
 /** Shared chrome — premium dark UI surfaces (login, dashboard, ops screens). */
 export const chrome = {
   pureBlack: palette.pureBlack,
   white: palette.white,
   screen: {
     background: surface.background,
-    ambientDeepBlue: organizerAmbient.deepBlue.default,
-    ambientPurple: organizerAmbient.purple.default,
-    ambientMagenta: organizerAmbient.magenta.default,
-    ambientDeepBlueSubtle: organizerAmbient.deepBlue.subtle,
-    ambientPurpleSubtle: organizerAmbient.purple.subtle,
-    ambientMagentaSubtle: organizerAmbient.magenta.subtle,
     scrim: 'rgba(8, 8, 8, 0.65)',
-    scrimSubtle: organizerAmbient.scrim.subtle,
   },
   glass: {
     fill: 'rgba(18, 18, 24, 0.88)',

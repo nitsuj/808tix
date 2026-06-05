@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { ORGANIZER_AVATAR_SIZE, OrganizerAvatar } from '@/components/organizer/organizer-avatar';
 import { ThemedText } from '@/components/themed-text';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { EventArtwork } from '@/components/ui/event-artwork';
@@ -36,6 +37,7 @@ type EventPassStats = {
 type OrganizerDashboardProps = {
   organizerId: string;
   greetingLine: string;
+  logoUrl?: string | null;
   welcomeMessage?: string;
   onDismissWelcome?: () => void;
 };
@@ -43,6 +45,7 @@ type OrganizerDashboardProps = {
 export function OrganizerDashboard({
   organizerId,
   greetingLine,
+  logoUrl,
   welcomeMessage,
   onDismissWelcome,
 }: OrganizerDashboardProps) {
@@ -126,19 +129,31 @@ export function OrganizerDashboard({
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           style={styles.scrollView}>
-          <ThemedText style={styles.screenTitle}>Dashboard</ThemedText>
+          <View style={styles.headerRow}>
+            <View style={styles.headerTextCol}>
+              <ThemedText style={styles.screenTitle}>Dashboard</ThemedText>
+              <View style={styles.greetingBlock}>
+                <ThemedText themeColor="textSecondary" style={styles.greetingLine}>
+                  {greetingLine}
+                </ThemedText>
+                <Pressable
+                  accessibilityLabel="Open profile"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => router.push('/profile' as Href)}
+                  style={({ pressed }) => [styles.profileLinkHit, pressed && styles.pressed]}>
+                  <ThemedText style={styles.profileLinkText}>Manage profile</ThemedText>
+                </Pressable>
+              </View>
+            </View>
 
-          <View style={styles.greetingBlock}>
-            <ThemedText themeColor="textSecondary" style={styles.greetingLine}>
-              {greetingLine}
-            </ThemedText>
             <Pressable
               accessibilityLabel="Open profile"
               accessibilityRole="button"
               hitSlop={8}
               onPress={() => router.push('/profile' as Href)}
-              style={({ pressed }) => [styles.profileLinkHit, pressed && styles.pressed]}>
-              <ThemedText style={styles.profileLinkText}>Manage profile</ThemedText>
+              style={({ pressed }) => [styles.avatarHit, pressed && styles.pressed]}>
+              <OrganizerAvatar logoUrl={logoUrl} size={ORGANIZER_AVATAR_SIZE} />
             </Pressable>
           </View>
 
@@ -359,6 +374,18 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
     width: '100%',
   },
+  headerRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: Spacing.two,
+    justifyContent: 'space-between',
+  },
+  headerTextCol: {
+    flex: 1,
+    gap: Spacing.half,
+    minWidth: 0,
+    paddingRight: Spacing.one,
+  },
   screenTitle: {
     color: text.primary,
     fontSize: 30,
@@ -369,6 +396,10 @@ const styles = StyleSheet.create({
   greetingBlock: {
     gap: 4,
     marginTop: -Spacing.half,
+  },
+  avatarHit: {
+    marginRight: Spacing.one,
+    marginTop: 2,
   },
   greetingLine: {
     fontSize: 15,

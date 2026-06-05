@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 export const ORGANIZER_PROFILE_METADATA_KEYS = {
   businessName: 'business_name',
   phoneNumber: 'phone_number',
+  logoUrl: 'logo_url',
 } as const;
 
 export type OrganizerProfileFormValues = {
@@ -12,6 +13,11 @@ export type OrganizerProfileFormValues = {
   businessName: string;
   phoneNumber: string;
   email: string;
+  logoUrl: string | null;
+};
+
+type ProfileWithOptionalLogo = Profile & {
+  logo_url?: string | null;
 };
 
 export type OrganizerProfileFieldErrors = {
@@ -65,6 +71,22 @@ export function formatDashboardGreeting(displayName: string, welcomeBack: boolea
   return welcomeBack ? `Welcome back, ${firstName}` : `Welcome, ${firstName}`;
 }
 
+/** v0 logo URL — profiles.logo_url when present, otherwise auth user_metadata.logo_url. */
+export function resolveOrganizerLogoUrl(
+  profile: Profile,
+  userMetadata: Record<string, unknown> | undefined,
+): string | null {
+  const profileLogo = (profile as ProfileWithOptionalLogo).logo_url?.trim();
+
+  if (profileLogo) {
+    return profileLogo;
+  }
+
+  const metadataLogo = readMetadataString(userMetadata, ORGANIZER_PROFILE_METADATA_KEYS.logoUrl);
+
+  return metadataLogo || null;
+}
+
 export function organizerProfileFromSources(
   profile: Profile,
   sessionEmail: string | null | undefined,
@@ -75,7 +97,24 @@ export function organizerProfileFromSources(
     businessName: readMetadataString(userMetadata, ORGANIZER_PROFILE_METADATA_KEYS.businessName),
     phoneNumber: readMetadataString(userMetadata, ORGANIZER_PROFILE_METADATA_KEYS.phoneNumber),
     email: profile.email?.trim() || sessionEmail?.trim() || '',
+    logoUrl: resolveOrganizerLogoUrl(profile, userMetadata),
   };
+}
+
+export async function persistOrganizerLogoUrl(
+  logoUrl: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error } = await supabase.auth.updateUser({
+    data: {
+      [ORGANIZER_PROFILE_METADATA_KEYS.logoUrl]: logoUrl.trim(),
+    },
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  return { ok: true };
 }
 
 export function validateOrganizerProfileForm(values: OrganizerProfileFormValues): OrganizerProfileFieldErrors {

@@ -4,21 +4,25 @@ import { StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle }
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
-import { organizerAmbient, palette } from '@/theme';
+import { palette } from '@/theme';
 
-const ELECTRIC_MAGENTA_BACKGROUND = require('@/assets/backgrounds/electric-magenta.png');
+const ORGANIZER_BACKGROUND = require('@/assets/backgrounds/organizer-background.png');
+
+/** Readability overlays when uploaded artwork replaces the branded background. */
+const UPLOADED_ARTWORK_SCRIM = 'rgba(8, 8, 8, 0.28)';
+const UPLOADED_ARTWORK_VIGNETTE = 'rgba(0, 0, 0, 0.42)';
 
 export type OrganizerAmbientVariant = 'default' | 'subtle';
 
 type OrganizerAmbientBackgroundProps = {
   eventName?: string;
   imageUrl?: string | null;
-  /** Preserved for call sites; image background is shared across variants. */
+  /** Preserved for call sites; branded image background is shared across variants. */
   variant?: OrganizerAmbientVariant;
   style?: StyleProp<ViewStyle>;
 };
 
-/** Shared Electric Magenta organizer backdrop for ops screens. */
+/** Shared 808Tix organizer backdrop — approved brand asset, full-bleed cover. */
 export function OrganizerAmbientBackground({
   eventName,
   imageUrl,
@@ -42,19 +46,13 @@ export function OrganizerAmbientBackground({
           style={StyleSheet.absoluteFill}
         />
       ) : (
-        <Image
-          contentFit="cover"
-          source={ELECTRIC_MAGENTA_BACKGROUND}
-          style={StyleSheet.absoluteFill}
-        />
+        <Image contentFit="cover" source={ORGANIZER_BACKGROUND} style={StyleSheet.absoluteFill} />
       )}
 
       {hasArtwork ? (
         <>
-          <View style={[styles.scrimVeil, { backgroundColor: organizerAmbient.scrim.withArtwork }]} />
-          <View
-            style={[styles.scrimBottomVignette, { backgroundColor: organizerAmbient.vignetteBottom.withArtwork }]}
-          />
+          <View style={[styles.scrimVeil, { backgroundColor: UPLOADED_ARTWORK_SCRIM }]} />
+          <View style={[styles.scrimBottomVignette, { backgroundColor: UPLOADED_ARTWORK_VIGNETTE }]} />
         </>
       ) : null}
     </View>

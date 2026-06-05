@@ -29,6 +29,7 @@ function assert(condition: boolean, message: string) {
 
 const profileScreen = readFileSync(join(ROOT, 'src/app/profile.tsx'), 'utf8');
 const profileLib = readFileSync(join(ROOT, 'src/lib/organizer-profile.ts'), 'utf8');
+const logoUpload = readFileSync(join(ROOT, 'src/components/organizer/organizer-logo-upload.tsx'), 'utf8');
 const dashboard = readFileSync(join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'), 'utf8');
 const authContext = readFileSync(join(ROOT, 'src/contexts/auth-context.tsx'), 'utf8');
 
@@ -43,7 +44,23 @@ assert(profileScreen.includes('Save Profile'), 'profile has Save Profile action'
 assert(profileScreen.includes('Sign Out'), 'profile has Sign Out action');
 assert(profileScreen.includes('Coming Soon'), 'profile shows coming soon placeholders');
 assert(profileScreen.includes('Profile Logo'), 'profile shows profile logo section');
+assert(
+  profileScreen.includes('OrganizerLogoUpload') &&
+    logoUpload.includes('editBadge') &&
+    logoUpload.includes('handlePickLogo') &&
+    !logoUpload.includes('actionButton'),
+  'profile uses inline avatar edit affordance without separate upload button',
+);
+assert(
+  dashboard.includes('ORGANIZER_AVATAR_SIZE') &&
+    !dashboard.includes('size={40}'),
+  'dashboard avatar uses shared large organizer avatar size',
+);
 assert(profileScreen.includes('profileHero'), 'profile shows identity hero');
+assert(
+  !profileScreen.includes('Profile Photo / Logo'),
+  'profile logo is no longer marked coming soon',
+);
 assert(!profileScreen.includes('Business Information'), 'profile has no separate business section');
 assert(profileScreen.includes('Read-only'), 'profile marks email as read-only');
 
@@ -52,6 +69,16 @@ assert(profileLib.includes('auth.updateUser'), 'profile saves business/phone to 
 assert(profileLib.includes('full_name'), 'profile maps display name to full_name column');
 assert(profileLib.includes('business_name'), 'profile uses business_name metadata key');
 assert(profileLib.includes('phone_number'), 'profile uses phone_number metadata key');
+assert(profileLib.includes('logo_url'), 'profile uses logo_url metadata key');
+assert(profileLib.includes('resolveOrganizerLogoUrl'), 'profile resolves logo from profile or metadata');
+assert(profileLib.includes('persistOrganizerLogoUrl'), 'profile persists logo_url to auth metadata');
+assert(
+  dashboard.includes('OrganizerAvatar') &&
+    dashboard.includes('avatarHit') &&
+    dashboard.includes("router.push('/profile'"),
+  'dashboard avatar opens profile',
+);
+assert(!dashboard.includes('profileIdentity'), 'dashboard does not reintroduce large identity card');
 assert(
   profileLib.includes('formatCommandCenterIdentityLine'),
   'Command Center identity line formatter exists',

@@ -95,6 +95,7 @@ export default function IndexScreen() {
       <View style={styles.dashboardShell}>
         <OrganizerDashboard
           greetingLine={greetingLine}
+          logoUrl={profileValues.logoUrl}
           organizerId={profile.id}
           welcomeMessage={
             accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined

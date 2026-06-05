@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EventFormField } from '@/components/organizer/event-form-fields';
+import { OrganizerLogoUpload } from '@/components/organizer/organizer-logo-upload';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
@@ -106,6 +107,7 @@ function ProfileFormBody({
   const [displayName, setDisplayName] = useState(initialValues.displayName);
   const [businessName, setBusinessName] = useState(initialValues.businessName);
   const [phoneNumber, setPhoneNumber] = useState(initialValues.phoneNumber);
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialValues.logoUrl);
   const email = initialValues.email;
   const [fieldErrors, setFieldErrors] = useState<OrganizerProfileFieldErrors>({});
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -188,9 +190,17 @@ function ProfileFormBody({
 
             <View style={styles.profileLogoSection}>
               <ThemedText style={styles.profileLogoLabel}>Profile Logo</ThemedText>
-              <View style={styles.profileLogoCircle}>
-                <Text style={styles.profileLogoText}>808</Text>
-              </View>
+              <OrganizerLogoUpload
+                disabled={isSaving || isSigningOut}
+                logoUrl={logoUrl}
+                organizerId={organizerId}
+                onLogoUrlChange={(nextLogoUrl) => {
+                  setLogoUrl(nextLogoUrl);
+                  setSaveSuccess(null);
+                  void refreshSession();
+                }}
+                onUploadError={setSaveError}
+              />
             </View>
 
             <View style={styles.profileHero}>
@@ -265,11 +275,6 @@ function ProfileFormBody({
 
             <ThemedText style={styles.sectionHeading}>Coming Soon</ThemedText>
             <View style={styles.comingSoonCard}>
-              <View style={styles.comingSoonRow}>
-                <ThemedText themeColor="textSecondary">Profile Photo / Logo</ThemedText>
-                <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
-              </View>
-              <View style={styles.comingSoonDivider} />
               <View style={styles.comingSoonRow}>
                 <ThemedText themeColor="textSecondary">Team Management</ThemedText>
                 <ThemedText style={styles.comingSoonBadge}>Coming Soon</ThemedText>
@@ -359,22 +364,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  profileLogoCircle: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(57, 255, 20, 0.08)',
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 2,
-    height: 96,
-    justifyContent: 'center',
-    width: 96,
-  },
-  profileLogoText: {
-    color: organizer.accent,
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: 0.5,
   },
   profileHero: {
     alignItems: 'center',

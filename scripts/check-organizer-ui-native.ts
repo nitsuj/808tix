@@ -154,10 +154,10 @@ assert(
   'Dashboard uses subtle organizer ambient background',
 );
 assert(
-  organizerAmbientBackground.includes('electric-magenta.png') &&
+  organizerAmbientBackground.includes('organizer-background.png') &&
     organizerAmbientBackground.includes('contentFit="cover"') &&
-    organizerAmbientBackground.includes('ELECTRIC_MAGENTA_BACKGROUND'),
-  'Organizer ambient uses bundled Electric Magenta image with cover fit',
+    organizerAmbientBackground.includes('ORGANIZER_BACKGROUND'),
+  'Organizer ambient uses bundled brand background image with cover fit',
 );
 assert(
   !organizerAmbientBackground.includes('ElectricMagentaAmbience') &&
