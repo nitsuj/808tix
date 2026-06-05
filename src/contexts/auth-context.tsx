@@ -11,6 +11,10 @@ import {
 
 import { completeAuthCallbackFromUrl, readAuthCallbackSnapshot } from '@/lib/auth-callback-url';
 import { resolveAuthEmailRedirectUrl } from '@/lib/auth-redirect-url';
+import {
+  clearStaleLocalAuthSession,
+  isStaleRefreshTokenError,
+} from '@/lib/auth-session-recovery';
 import type { Profile } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
 
@@ -109,6 +113,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accountJustConfirmed, setAccountJustConfirmed] = useState(false);
   const [authCallbackError, setAuthCallbackError] = useState<string | null>(null);
 
+  const resetToSignedOutState = useCallback(() => {
+    setSession(null);
+    setProfile(null);
+    setIsLoading(false);
+    setIsProfileLoading(false);
+    setIsAuthCallbackProcessing(false);
+    setAccountJustConfirmed(false);
+  }, []);
+
+  const recoverFromStaleRefreshToken = useCallback(async () => {
+    await clearStaleLocalAuthSession();
+    resetToSignedOutState();
+  }, [resetToSignedOutState]);
+
   const loadProfileForSession = useCallback(async (nextSession: Session | null) => {
     const userId = nextSession?.user.id;
 
@@ -153,10 +171,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const {
         data: { session: initialSession },
+        error: sessionError,
       } = await supabase.auth.getSession();
 
       if (!isMounted) {
         return;
+      }
+
+      if (sessionError) {
+        if (isStaleRefreshTokenError(sessionError)) {
+          await recoverFromStaleRefreshToken();
+
+          if (!isMounted) {
+            return;
+          }
+
+          if (callbackError) {
+            setAuthCallbackError(callbackError);
+          }
+
+          return;
+        }
+
+        console.warn('[auth] getSession failed:', sessionError.message);
       }
 
       if (callbackError && !initialSession) {
@@ -195,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [loadProfileForSession]);
+  }, [loadProfileForSession, recoverFromStaleRefreshToken]);
 
   const reloadProfile = useCallback(async () => {
     const userId = session?.user.id;
@@ -288,7 +325,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signOut();
 
     if (error) {
-      throw error;
+      if (isStaleRefreshTokenError(error)) {
+        await clearStaleLocalAuthSession();
+      } else {
+        throw error;
+      }
     }
 
     setSession(null);
@@ -302,10 +343,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshSession = useCallback(async () => {
     const { error } = await supabase.auth.refreshSession();
 
-    if (error) {
-      throw error;
+    if (!error) {
+      return;
     }
-  }, []);
+
+    if (isStaleRefreshTokenError(error)) {
+      await recoverFromStaleRefreshToken();
+      return;
+    }
+
+    throw error;
+  }, [recoverFromStaleRefreshToken]);
 
   const dismissAccountJustConfirmed = useCallback(() => {
     setAccountJustConfirmed(false);

@@ -8,6 +8,10 @@ import {
   stripAuthCallbackFromUrl,
   type AuthCallbackParams,
 } from '@/lib/auth-callback-url.core';
+import {
+  clearStaleLocalAuthSession,
+  isStaleRefreshTokenError,
+} from '@/lib/auth-session-recovery';
 import { supabase } from '@/lib/supabase';
 
 export {
@@ -107,6 +111,10 @@ export async function completeAuthCallbackFromUrl(): Promise<{
   clearAuthCallbackFromBrowserUrl();
 
   if (error) {
+    if (isStaleRefreshTokenError(error)) {
+      await clearStaleLocalAuthSession();
+    }
+
     return {
       sessionEstablished: false,
       intent,
