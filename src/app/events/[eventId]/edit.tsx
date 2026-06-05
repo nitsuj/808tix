@@ -34,6 +34,7 @@ import {
 import { isEventDraft, isEventLive } from '@/lib/event-status';
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
+import { OrganizerMobileViewport, ORGANIZER_MOBILE_VIEWPORT_WIDTH } from '@/components/ui/organizer-mobile-viewport';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { useEventDetail } from '@/hooks/use-event-detail';
@@ -239,14 +240,15 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
   const statusIsDraft = isEventDraft(event.status);
 
   return (
-    <MobileViewport>
-      <View style={styles.screen}>
+    <OrganizerMobileViewport
+      background={
         <EventScreenBackground
           eventName={previewTitle}
           imageUrl={event.image_url}
           pendingLocalUri={pendingArtwork?.localUri}
         />
-
+      }>
+      <View style={styles.screen}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}>
@@ -366,11 +368,9 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
           </SafeAreaView>
         </KeyboardAvoidingView>
       </View>
-    </MobileViewport>
+    </OrganizerMobileViewport>
   );
 }
-
-const MOBILE_VIEWPORT_WIDTH = 390;
 
 const LAYOUT = {
   horizontalPadding: 24,
@@ -383,30 +383,7 @@ const LAYOUT = {
   subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
 } as const;
 
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
-
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: 'transparent',
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   // Used by EditEventScreen error/loading fallback UI.
   container: {
     backgroundColor: palette.pureBlack,
@@ -418,7 +395,6 @@ const styles = StyleSheet.create({
   screen: {
     backgroundColor: 'transparent',
     flex: 1,
-    overflow: 'hidden',
     position: 'relative',
   },
   keyboardView: {
@@ -466,7 +442,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: Spacing.three,
     marginTop: LAYOUT.panelTopInset,
-    maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
+    maxWidth: ORGANIZER_MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
     width: '100%',
   },
   metaBlock: {

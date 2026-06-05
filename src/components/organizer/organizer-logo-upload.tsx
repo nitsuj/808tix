@@ -4,11 +4,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { ORGANIZER_AVATAR_SIZE, OrganizerAvatar } from '@/components/organizer/organizer-avatar';
 import { ThemedText } from '@/components/themed-text';
-import {
-  EVENT_ARTWORK_REQUIREMENTS_LABEL,
-  measureLocalFileSize,
-  validateEventArtworkFile,
-} from '@/lib/event-artwork-validation';
+import { measureLocalFileSize, validateEventArtworkFile } from '@/lib/event-artwork-validation';
 import { uploadOrganizerLogo } from '@/lib/organizer-logo-storage';
 import { persistOrganizerLogoUrl } from '@/lib/organizer-profile';
 import { organizer, palette, spacing } from '@/theme';
@@ -115,10 +111,6 @@ export function OrganizerLogoUpload({
         )}
       </Pressable>
 
-      <ThemedText themeColor="textSecondary" style={styles.hint}>
-        {EVENT_ARTWORK_REQUIREMENTS_LABEL}
-      </ThemedText>
-
       {validationError ? <ThemedText style={styles.errorText}>{validationError}</ThemedText> : null}
     </View>
   );
@@ -159,11 +151,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     lineHeight: 18,
-  },
-  hint: {
-    fontSize: 12,
-    lineHeight: 16,
-    textAlign: 'center',
   },
   errorText: {
     color: '#FF6B6B',

@@ -1,11 +1,13 @@
 import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { EventScannerCamera } from '@/components/scanner/event-scanner-camera';
 import { ScanResultView } from '@/components/scanner/scan-result-view';
+import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
+import { OrganizerMobileViewport } from '@/components/ui/organizer-mobile-viewport';
 import { Radii, Spacing } from '@/constants/theme';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 import { formatVenueLine } from '@/lib/event-display';
@@ -20,10 +22,6 @@ import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 import { validatePassScan } from '@/lib/validate-pass-scan';
 
 type ScannerPhase = 'camera' | 'result';
-
-const MOBILE_VIEWPORT_WIDTH = 390;
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 export default function EventScannerScreen() {
   const router = useRouter();
@@ -108,11 +106,11 @@ export default function EventScannerScreen() {
 
   if (showInitialGate) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={fan.primary} />
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -162,11 +160,15 @@ export default function EventScannerScreen() {
   }
 
   return (
-    <MobileViewport>
+    <OrganizerMobileViewport
+      background={
+        <ScannerArtworkBackground eventName={event.name} imageUrl={event.image_url} />
+      }>
       <View style={styles.scannerScreen}>
         <EventScannerCamera
           eventDateLine={eventDateLine}
           eventName={event.name}
+          hideArtworkBackground
           imageUrl={event.image_url}
           isProcessing={isProcessing}
           overlayFooterLabel={checkInFooterLabel}
@@ -175,7 +177,7 @@ export default function EventScannerScreen() {
           onCancel={handleCancel}
         />
       </View>
-    </MobileViewport>
+    </OrganizerMobileViewport>
   );
 }
 
@@ -187,7 +189,7 @@ function ScannerStateShell({
   onBack: () => void;
 }) {
   return (
-    <MobileViewport>
+    <OrganizerMobileViewport>
       <View style={styles.stateScreen}>
         <SafeAreaView edges={['top', 'bottom']} style={styles.stateSafeArea}>
           <Pressable onPress={onBack} style={styles.backHit}>
@@ -196,33 +198,13 @@ function ScannerStateShell({
           <View style={styles.statePanel}>{children}</View>
         </SafeAreaView>
       </View>
-    </MobileViewport>
-  );
-}
-
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
+    </OrganizerMobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   scannerScreen: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
     overflow: 'hidden',
     width: '100%',

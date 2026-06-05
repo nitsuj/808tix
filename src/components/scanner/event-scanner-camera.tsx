@@ -24,6 +24,7 @@ type EventScannerCameraProps = {
   venueLine?: string | null;
   imageUrl?: string | null;
   isProcessing: boolean;
+  hideArtworkBackground?: boolean;
   onBarcodeScanned: (rawData: string) => void;
   onCancel: () => void;
   overlayFooterLabel?: string;
@@ -40,6 +41,7 @@ export function EventScannerCamera({
   venueLine,
   imageUrl,
   isProcessing,
+  hideArtworkBackground = false,
   onBarcodeScanned,
   onCancel,
   overlayFooterLabel,
@@ -72,8 +74,10 @@ export function EventScannerCamera({
 
   if (!permission) {
     return (
-      <View style={styles.root}>
-        <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+      <View style={[styles.root, hideArtworkBackground && styles.rootTransparent]}>
+        {!hideArtworkBackground ? (
+          <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+        ) : null}
         <View style={styles.loadingScrim}>
           <ActivityIndicator size="large" color={organizer.accent} />
         </View>
@@ -83,8 +87,10 @@ export function EventScannerCamera({
 
   if (!permission.granted) {
     return (
-      <View style={styles.root}>
-        <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+      <View style={[styles.root, hideArtworkBackground && styles.rootTransparent]}>
+        {!hideArtworkBackground ? (
+          <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+        ) : null}
         <View style={styles.permissionScrim} />
         <SafeAreaView edges={['top', 'bottom']} style={styles.permissionSafeArea}>
           <View style={styles.permissionCard}>
@@ -107,8 +113,10 @@ export function EventScannerCamera({
   }
 
   return (
-    <View style={styles.root}>
-      <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+    <View style={[styles.root, hideArtworkBackground && styles.rootTransparent]}>
+      {!hideArtworkBackground ? (
+        <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
+      ) : null}
       <View pointerEvents="none" style={styles.cameraScrim} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.uiLayer}>
@@ -209,6 +217,9 @@ const styles = StyleSheet.create({
     flex: 1,
     overflow: 'hidden',
     position: 'relative',
+  },
+  rootTransparent: {
+    backgroundColor: 'transparent',
   },
   cameraScrim: {
     ...StyleSheet.absoluteFillObject,

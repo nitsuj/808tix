@@ -16,6 +16,11 @@ const FILES = {
   dateField: join(ROOT, 'src/components/organizer/event-date-form-field.tsx'),
   eventDetail: join(ROOT, 'src/app/events/[eventId]/index.tsx'),
   editEvent: join(ROOT, 'src/app/events/[eventId]/edit.tsx'),
+  issuePass: join(ROOT, 'src/app/events/[eventId]/issue.tsx'),
+  scanPass: join(ROOT, 'src/app/events/[eventId]/scan.tsx'),
+  scanResultView: join(ROOT, 'src/components/scanner/scan-result-view.tsx'),
+  scannerArtworkBackground: join(ROOT, 'src/components/scanner/scanner-artwork-background.tsx'),
+  scannerCamera: join(ROOT, 'src/components/scanner/event-scanner-camera.tsx'),
   organizerDashboard: join(ROOT, 'src/components/organizer/organizer-dashboard.tsx'),
   organizerAmbientBackground: join(ROOT, 'src/components/ui/organizer-ambient-background.tsx'),
   organizerMobileViewport: join(ROOT, 'src/components/ui/organizer-mobile-viewport.tsx'),
@@ -55,6 +60,11 @@ const eventScreenBackground = read(FILES.eventScreenBackground);
 const dateField = read(FILES.dateField);
 const eventDetail = read(FILES.eventDetail);
 const editEvent = read(FILES.editEvent);
+const issuePass = read(FILES.issuePass);
+const scanPass = read(FILES.scanPass);
+const scanResultView = read(FILES.scanResultView);
+const scannerArtworkBackground = read(FILES.scannerArtworkBackground);
+const scannerCamera = read(FILES.scannerCamera);
 const organizerDashboard = read(FILES.organizerDashboard);
 const organizerAmbientBackground = read(FILES.organizerAmbientBackground);
 const organizerMobileViewport = read(FILES.organizerMobileViewport);
@@ -208,9 +218,44 @@ assert(
   'Event Detail hoists EventScreenBackground outside max-width column',
 );
 assert(
+  editEvent.includes('OrganizerMobileViewport') &&
+    editEvent.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*EventScreenBackground/),
+  'Edit Event hoists EventScreenBackground outside max-width column',
+);
+assert(
+  issuePass.includes('OrganizerMobileViewport') &&
+    issuePass.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*EventScreenBackground/),
+  'Issue Pass hoists EventScreenBackground outside max-width column',
+);
+assert(
+  scanPass.includes('OrganizerMobileViewport') &&
+    scanPass.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*ScannerArtworkBackground/),
+  'Scan Pass hoists ScannerArtworkBackground outside max-width column',
+);
+assert(
+  scanResultView.includes('OrganizerMobileViewport') &&
+    scanResultView.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*ScannerArtworkBackground/),
+  'Scan result hoists ScannerArtworkBackground outside max-width column',
+);
+assert(
+  scannerArtworkBackground.includes('EventScreenBackground') &&
+    scannerArtworkBackground.match(/return <EventScreenBackground/),
+  'ScannerArtworkBackground delegates to shared EventScreenBackground',
+);
+assert(
+  scannerCamera.includes('rootTransparent') &&
+    scannerCamera.includes('hideArtworkBackground') &&
+    scannerCamera.includes("backgroundColor: 'transparent'"),
+  'Scanner camera content column stays transparent over hoisted artwork',
+);
+assert(
   !createEvent.includes('viewportOuter') &&
     !profileScreen.includes('viewportOuter') &&
-    !eventDetail.includes('viewportOuter'),
+    !eventDetail.includes('viewportOuter') &&
+    !editEvent.includes('viewportOuter') &&
+    !issuePass.includes('viewportOuter') &&
+    !scanPass.includes('viewportOuter') &&
+    !scanResultView.includes('viewportOuter'),
   'Organizer screens no longer use local pureBlack viewportOuter gutters',
 );
 assert(

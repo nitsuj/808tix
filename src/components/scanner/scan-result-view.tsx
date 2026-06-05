@@ -2,6 +2,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
+import { OrganizerMobileViewport } from '@/components/ui/organizer-mobile-viewport';
 import {
   getScannerDisplayState,
   getScannerResultColors,
@@ -12,11 +13,6 @@ import { Radii } from '@/constants/theme';
 import { formatCheckedInAt } from '@/lib/check-in-display';
 import { fan, organizer, palette, radius, scanner, scannerScreen, spacing, text } from '@/theme';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
-
-const MOBILE_VIEWPORT_WIDTH = 390;
-
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 type ScanResultViewProps = {
   result: ScanValidationDisplay;
@@ -64,13 +60,12 @@ export function ScanResultView({
   const isDarkText = colors.text === text.primary || colors.text === '#000000';
 
   return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>
-        <View style={styles.container}>
-          <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
-          <View style={[styles.resultOverlay, { backgroundColor: overlayColor }]} />
+    <OrganizerMobileViewport
+      background={<ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />}>
+      <View style={styles.container}>
+        <View style={[styles.resultOverlay, { backgroundColor: overlayColor }]} />
 
-          <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
+        <SafeAreaView edges={['top', 'bottom']} style={styles.safeArea}>
             <View style={styles.eventContext}>
               <Text numberOfLines={2} style={styles.eventContextName}>
                 {eventName}
@@ -173,25 +168,12 @@ export function ScanResultView({
               </Pressable>
             </View>
           </SafeAreaView>
-        </View>
       </View>
-    </View>
+    </OrganizerMobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   container: {
     flex: 1,
     position: 'relative',

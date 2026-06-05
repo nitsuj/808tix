@@ -48,8 +48,9 @@ assert(
   profileScreen.includes('OrganizerLogoUpload') &&
     logoUpload.includes('editBadge') &&
     logoUpload.includes('handlePickLogo') &&
-    !logoUpload.includes('actionButton'),
-  'profile uses inline avatar edit affordance without separate upload button',
+    !logoUpload.includes('actionButton') &&
+    !logoUpload.includes('EVENT_ARTWORK_REQUIREMENTS_LABEL'),
+  'profile uses inline avatar edit affordance without file requirements helper text',
 );
 assert(
   dashboard.includes('ORGANIZER_AVATAR_SIZE') &&

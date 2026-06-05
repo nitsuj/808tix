@@ -39,14 +39,23 @@ const artworkBgSource = readFileSync(
 );
 const validateScanSource = readFileSync(join(process.cwd(), 'src/lib/validate-pass-scan.ts'), 'utf8');
 
-assert(scanSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'scanner screen uses 390px viewport');
+assert(scanSource.includes('OrganizerMobileViewport'), 'scanner screen uses OrganizerMobileViewport');
+assert(
+  scanSource.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*ScannerArtworkBackground/),
+  'scanner hoists ScannerArtworkBackground to full viewport frame',
+);
+assert(scanSource.includes('hideArtworkBackground'), 'scanner camera skips duplicate in-column artwork');
 assert(scanSource.includes('formatEventDateTimeLong'), 'scanner shows canonical event date');
 assert(scanSource.includes('validatePassScan'), 'scanner still validates via validatePassScan');
 assert(scanSource.includes('parseScannedSecureToken'), 'scanner still parses QR payload');
 assert(scanSource.includes('canScanPassesForEvent'), 'draft/live scan guard preserved');
 assert(!scanSource.includes('.rpc('), 'scan screen does not call validate_pass RPC directly');
 
-assert(resultSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'scan result uses 390px viewport');
+assert(resultSource.includes('OrganizerMobileViewport'), 'scan result uses OrganizerMobileViewport');
+assert(
+  resultSource.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*ScannerArtworkBackground/),
+  'scan result hoists ScannerArtworkBackground to full viewport frame',
+);
 assert(resultSource.includes('getScannerResultTitle'), 'scan result uses shared result titles');
 assert(!resultSource.includes('validatePassScan'), 'scan result view has no validation logic');
 
@@ -58,8 +67,20 @@ assert(
   'scanner camera UI is bounded within viewport',
 );
 assert(
-  artworkBgSource.includes("position: 'absolute'") && artworkBgSource.includes('useWindowDimensions'),
-  'scanner artwork background is absolutely positioned with explicit window frame',
+  artworkBgSource.includes('EventScreenBackground') &&
+    artworkBgSource.match(/return <EventScreenBackground[\s\S]*eventName=\{eventName\}/),
+  'scanner artwork background delegates to shared EventScreenBackground',
+);
+assert(
+  cameraNativeSource.includes('hideArtworkBackground') &&
+    cameraNativeSource.includes('rootTransparent') &&
+    cameraNativeSource.includes("backgroundColor: 'transparent'"),
+  'native scanner camera uses transparent root when artwork is hoisted',
+);
+assert(
+  cameraNativeSource.includes('!hideArtworkBackground') &&
+    cameraNativeSource.includes('ScannerArtworkBackground'),
+  'native scanner skips in-column artwork when background is hoisted',
 );
 
 assert(validateScanSource.includes('validate_pass'), 'validate_pass RPC remains in validatePassScan module');

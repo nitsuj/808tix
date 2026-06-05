@@ -17,6 +17,10 @@ import { EventFormField, eventFormStyles } from '@/components/organizer/event-fo
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
+import {
+  ORGANIZER_MOBILE_VIEWPORT_WIDTH,
+  OrganizerMobileViewport,
+} from '@/components/ui/organizer-mobile-viewport';
 import { Radii, Spacing } from '@/constants/theme';
 import {
   chrome,
@@ -46,7 +50,7 @@ import { canIssuePassesForEvent, PUBLISH_BEFORE_ISSUE_MESSAGE } from '@/lib/even
 import { buildPassLinkUrl } from '@/lib/pass-link';
 import { sendPassSms } from '@/lib/send-pass-sms';
 
-const MOBILE_VIEWPORT_WIDTH = 390;
+const MOBILE_VIEWPORT_WIDTH = ORGANIZER_MOBILE_VIEWPORT_WIDTH;
 
 const LAYOUT = {
   horizontalPadding: 24,
@@ -58,9 +62,6 @@ const LAYOUT = {
   title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
   subtitle: { fontSize: 14, lineHeight: 18, letterSpacing: 0.4 },
 } as const;
-
-const webViewportMinHeight =
-  Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 type IssuePassEventContext = Pick<
   Event,
@@ -90,11 +91,11 @@ export default function IssuePassScreen() {
 
   if (authGate.state === 'loading' || isLoading) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport>
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={fan.primary} />
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -108,13 +109,13 @@ export default function IssuePassScreen() {
 
   if (error || !event || !eventId) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport>
         <View style={styles.screen}>
           <SafeAreaView style={styles.errorSafeArea}>
             <ThemedText style={styles.errorText}>{error ?? 'Event not found.'}</ThemedText>
           </SafeAreaView>
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -122,7 +123,7 @@ export default function IssuePassScreen() {
 
   if (!canIssuePassesForEvent(activeEvent.status)) {
     return (
-      <MobileViewport>
+      <OrganizerMobileViewport>
         <View style={styles.screen}>
           <SafeAreaView style={styles.errorSafeArea}>
             <Pressable onPress={() => router.replace(`/events/${eventId}` as Href)} style={styles.backHit}>
@@ -139,7 +140,7 @@ export default function IssuePassScreen() {
             </View>
           </SafeAreaView>
         </View>
-      </MobileViewport>
+      </OrganizerMobileViewport>
     );
   }
 
@@ -297,14 +298,6 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
-  );
-}
-
 function EventContextMeta({ event }: { event: IssuePassEventContext }) {
   const dateLine = useMemo(() => {
     const formatted = formatEventDateTimeLong(event.event_date, event.start_time);
@@ -321,10 +314,6 @@ function EventContextMeta({ event }: { event: IssuePassEventContext }) {
       {showVenue ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
     </View>
   );
-}
-
-function EventArtworkBackdrop({ event }: { event: IssuePassEventContext }) {
-  return <EventScreenBackground eventName={event.name} imageUrl={event.image_url} />;
 }
 
 type IssuePassFormViewProps = {
@@ -369,12 +358,11 @@ function IssuePassFormView({
   onSubmit,
 }: IssuePassFormViewProps) {
   return (
-    <MobileViewport>
+    <OrganizerMobileViewport
+      background={
+        <EventScreenBackground eventName={activeEvent.name} imageUrl={activeEvent.image_url} />
+      }>
       <View style={styles.screen}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <EventArtworkBackdrop event={activeEvent} />
-        </View>
-
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={styles.keyboardView}>
@@ -475,7 +463,7 @@ function IssuePassFormView({
           </SafeAreaView>
         </KeyboardAvoidingView>
       </View>
-    </MobileViewport>
+    </OrganizerMobileViewport>
   );
 }
 
@@ -509,12 +497,11 @@ function IssuePassSuccessView({
   onIssueAnother,
 }: IssuePassSuccessViewProps) {
   return (
-    <MobileViewport>
+    <OrganizerMobileViewport
+      background={
+        <EventScreenBackground eventName={activeEvent.name} imageUrl={activeEvent.image_url} />
+      }>
       <View style={styles.screen}>
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <EventArtworkBackdrop event={activeEvent} />
-        </View>
-
         <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -617,27 +604,14 @@ function IssuePassSuccessView({
           </ScrollView>
         </SafeAreaView>
       </View>
-    </MobileViewport>
+    </OrganizerMobileViewport>
   );
 }
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    maxWidth: MOBILE_VIEWPORT_WIDTH,
-    width: '100%',
-    ...webViewportMinHeight,
-  },
   screen: {
-    backgroundColor: palette.pureBlack,
+    backgroundColor: 'transparent',
     flex: 1,
-    overflow: 'hidden',
     position: 'relative',
   },
   keyboardView: {

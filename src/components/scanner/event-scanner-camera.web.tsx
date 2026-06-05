@@ -14,6 +14,7 @@ type EventScannerCameraProps = {
   venueLine?: string | null;
   imageUrl?: string | null;
   isProcessing: boolean;
+  hideArtworkBackground?: boolean;
   onBarcodeScanned: (rawData: string) => void;
   onCancel: () => void;
   overlayFooterLabel?: string;
@@ -152,7 +153,7 @@ function mountFrameOverlay(scanSquare: HTMLDivElement) {
   scanSquare.appendChild(cornerBR);
 }
 
-function createScannerStack(): ScannerStack {
+function createScannerStack(hideArtworkBackground = false): ScannerStack {
   const existing = document.getElementById(STACK_ID) as HTMLDivElement | null;
 
   if (existing) {
@@ -173,11 +174,19 @@ function createScannerStack(): ScannerStack {
   root.style.overflow = 'hidden';
   root.style.display = 'flex';
   root.style.justifyContent = 'center';
-  root.style.backgroundColor = palette.pureBlack;
+  root.style.backgroundColor = hideArtworkBackground ? 'transparent' : palette.pureBlack;
 
   const artworkSlot = document.createElement('div');
   applyFixedLayerStyles(artworkSlot);
-  applyViewportColumnStyles(artworkSlot);
+  if (hideArtworkBackground) {
+    artworkSlot.style.left = '0';
+    artworkSlot.style.right = '0';
+    artworkSlot.style.transform = 'none';
+    artworkSlot.style.width = '100%';
+    artworkSlot.style.maxWidth = 'none';
+  } else {
+    applyViewportColumnStyles(artworkSlot);
+  }
   artworkSlot.style.zIndex = '1';
 
   const scrimSlot = document.createElement('div');
@@ -535,6 +544,7 @@ export function EventScannerCamera({
   venueLine,
   imageUrl,
   isProcessing,
+  hideArtworkBackground = false,
   onBarcodeScanned,
   onCancel,
   overlayFooterLabel,
@@ -576,12 +586,16 @@ export function EventScannerCamera({
     let stack = stackRef.current;
 
     if (!stack) {
-      stack = createScannerStack();
+      stack = createScannerStack(hideArtworkBackground);
       stackRef.current = stack;
     }
 
     syncScanSquareSize(stack.scanSquareSlot);
-    mountArtworkLayer(stack.artworkSlot, imageUrl, eventName);
+    if (!hideArtworkBackground) {
+      mountArtworkLayer(stack.artworkSlot, imageUrl, eventName);
+    } else {
+      stack.artworkSlot.replaceChildren();
+    }
     mountScrimLayer(stack.scrimSlot);
 
     const hint = isProcessing ? 'Validating…' : 'Point at the guest pass QR code';
@@ -611,7 +625,7 @@ export function EventScannerCamera({
       window.removeEventListener('resize', handleResize);
       cleanupUi();
     };
-  }, [eventDateLine, eventName, imageUrl, isProcessing, overlayFooterLabel, status, venueLine]);
+  }, [eventDateLine, eventName, hideArtworkBackground, imageUrl, isProcessing, overlayFooterLabel, status, venueLine]);
 
   useEffect(() => {
     return () => {
