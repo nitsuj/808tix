@@ -34,14 +34,14 @@ type EventPassStats = {
 
 type OrganizerDashboardProps = {
   organizerId: string;
-  identityLine: string;
+  greetingLine: string;
   welcomeMessage?: string;
   onDismissWelcome?: () => void;
 };
 
 export function OrganizerDashboard({
   organizerId,
-  identityLine,
+  greetingLine,
   welcomeMessage,
   onDismissWelcome,
 }: OrganizerDashboardProps) {
@@ -123,22 +123,19 @@ export function OrganizerDashboard({
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           <ThemedText style={styles.screenTitle}>Dashboard</ThemedText>
 
-          <Pressable
-            accessibilityLabel="Open profile"
-            accessibilityRole="button"
-            onPress={() => router.push('/profile' as Href)}
-            style={({ pressed }) => [styles.profileIdentity, pressed && styles.pressed]}>
-            <View style={styles.profileAvatar}>
-              <Text style={styles.profileAvatarText}>808</Text>
-            </View>
-            <View style={styles.profileIdentityText}>
-              <ThemedText style={styles.organizerMeta}>{identityLine}</ThemedText>
-              <View style={styles.profileIdentityHint}>
-                <ThemedText style={styles.viewProfileText}>View profile</ThemedText>
-                <ThemedText style={styles.profileChevron}>{'>'}</ThemedText>
-              </View>
-            </View>
-          </Pressable>
+          <View style={styles.greetingBlock}>
+            <ThemedText themeColor="textSecondary" style={styles.greetingLine}>
+              {greetingLine}
+            </ThemedText>
+            <Pressable
+              accessibilityLabel="Open profile"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => router.push('/profile' as Href)}
+              style={({ pressed }) => [styles.profileLinkHit, pressed && styles.pressed]}>
+              <ThemedText style={styles.profileLinkText}>Manage profile</ThemedText>
+            </Pressable>
+          </View>
 
           <Pressable
             accessibilityLabel="Create event"
@@ -151,7 +148,7 @@ export function OrganizerDashboard({
             <View style={styles.createEventCtaTextWrap}>
               <ThemedText style={styles.createEventCtaTitle}>Create Event</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.createEventCtaSubtitle}>
-                Set up your next show and start issuing passes
+                Set up your next show
               </ThemedText>
             </View>
             <Text style={styles.createEventCtaChevron}>{'›'}</Text>
@@ -171,7 +168,7 @@ export function OrganizerDashboard({
             </View>
           ) : null}
 
-          <ThemedText style={styles.sectionTitle}>Upcoming Events</ThemedText>
+          <ThemedText style={styles.sectionTitle}>Your Events</ThemedText>
 
           {!isLoading && !error && dashboardEvents.length > 0 ? (
             <View style={styles.filterRow}>
@@ -356,55 +353,20 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     lineHeight: 34,
   },
-  profileIdentity: {
-    alignItems: 'center',
-    backgroundColor: palette.black,
-    borderColor: organizer.accent,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: Spacing.three,
-    marginBottom: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
-  },
-  profileAvatar: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(57, 255, 20, 0.08)',
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 2,
-    height: 52,
-    justifyContent: 'center',
-    width: 52,
-  },
-  profileAvatarText: {
-    color: organizer.accent,
-    fontSize: 15,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  profileIdentityText: {
-    flex: 1,
+  greetingBlock: {
     gap: 4,
+    marginTop: -Spacing.half,
   },
-  organizerMeta: {
-    color: text.primary,
+  greetingLine: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: '600',
     lineHeight: 20,
   },
-  profileIdentityHint: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 6,
+  profileLinkHit: {
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
   },
-  viewProfileText: {
-    color: organizer.accent,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  profileChevron: {
+  profileLinkText: {
     color: organizer.accent,
     fontSize: 13,
     fontWeight: '700',
@@ -417,9 +379,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     flexDirection: 'row',
     gap: Spacing.three,
-    minHeight: 72,
+    minHeight: 80,
     paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    paddingVertical: Spacing.two + 2,
   },
   createEventCtaIconWrap: {
     alignItems: 'center',
@@ -427,20 +389,20 @@ const styles = StyleSheet.create({
     borderColor: organizer.accent,
     borderRadius: 14,
     borderWidth: 1.5,
-    height: 48,
+    height: 44,
     justifyContent: 'center',
-    width: 48,
+    width: 44,
   },
   createEventCtaIcon: {
     color: organizer.accent,
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '300',
-    lineHeight: 30,
-    marginTop: -2,
+    lineHeight: 28,
+    marginTop: -1,
   },
   createEventCtaTextWrap: {
     flex: 1,
-    gap: 3,
+    gap: 2,
     minWidth: 0,
   },
   createEventCtaTitle: {
@@ -456,9 +418,9 @@ const styles = StyleSheet.create({
   },
   createEventCtaChevron: {
     color: organizer.accent,
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '600',
-    lineHeight: 28,
+    lineHeight: 26,
   },
   sectionTitle: {
     color: text.primary,

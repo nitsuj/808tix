@@ -14,7 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { OrganizerDashboard } from '@/components/organizer/organizer-dashboard';
-import { formatCommandCenterIdentityLine, organizerProfileFromSources } from '@/lib/organizer-profile';
+import { formatDashboardGreeting, organizerProfileFromSources } from '@/lib/organizer-profile';
 import { SignUpCheckEmailScreen } from '@/components/organizer/signup-check-email-screen';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -86,15 +86,14 @@ export default function IndexScreen() {
       session.user.email,
       session.user.user_metadata,
     );
-    const identityLine = formatCommandCenterIdentityLine({
-      displayName: profileValues.displayName || profileValues.email,
-      businessName: profileValues.businessName,
-      email: profileValues.email,
-    });
+    const greetingLine = formatDashboardGreeting(
+      profileValues.displayName || profileValues.email,
+      !accountJustConfirmed,
+    );
 
     return (
       <OrganizerDashboard
-        identityLine={identityLine}
+        greetingLine={greetingLine}
         organizerId={profile.id}
         welcomeMessage={
           accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined

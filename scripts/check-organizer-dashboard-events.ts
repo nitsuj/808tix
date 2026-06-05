@@ -88,8 +88,13 @@ assert(
 assert(dashboardSource.includes('filterDashboardEventsByStatus'), 'dashboard filters by draft/live');
 assert(dashboardSource.includes("'all', 'live', 'draft'"), 'dashboard has All/Live/Draft chips');
 assert(dashboardSource.includes('Dashboard'), 'dashboard screen title');
-assert(dashboardSource.includes('Upcoming Events'), 'dashboard upcoming events section');
+assert(dashboardSource.includes('Your Events'), 'dashboard your events section');
 assert(dashboardSource.includes('createEventCta'), 'dashboard create event CTA');
+assert(!dashboardSource.includes('createEventHero'), 'dashboard has no oversized create event hero');
+assert(dashboardSource.includes('greetingLine'), 'dashboard greeting line');
+assert(dashboardSource.includes("router.push('/profile'"), 'dashboard links to profile');
+assert(dashboardSource.includes('Manage profile'), 'dashboard shows manage profile affordance');
+assert(!dashboardSource.includes('profileIdentity'), 'dashboard has no profile identity card');
 assert(dashboardSource.includes('Create Event'), 'dashboard create event label');
 assert(dashboardSource.includes('/events/create'), 'dashboard create event route');
 assert(!dashboardSource.includes('Issue Pass'), 'dashboard has no issue pass action');
@@ -97,7 +102,6 @@ assert(!dashboardSource.includes('Scan Pass'), 'dashboard has no scan pass actio
 assert(!dashboardSource.includes('View Reports'), 'dashboard has no reports action');
 assert(!dashboardSource.includes('COMMAND CENTER'), 'dashboard has no command center label');
 assert(dashboardSource.includes('On Sale'), 'dashboard shows on sale badge for live events');
-assert(dashboardSource.includes('profileIdentity'), 'dashboard identity card opens profile');
 assert(!dashboardSource.includes('View all'), 'dashboard has no view all control');
 assert(!dashboardSource.includes('showAllEvents'), 'dashboard has no expand/collapse list');
 assert(!dashboardSource.includes('bellIcon'), 'dashboard has no bell icon');

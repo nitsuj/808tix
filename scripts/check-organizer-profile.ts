@@ -33,17 +33,18 @@ const dashboard = readFileSync(join(ROOT, 'src/components/organizer/organizer-da
 const authContext = readFileSync(join(ROOT, 'src/contexts/auth-context.tsx'), 'utf8');
 
 assert(!profileScreen.includes("router.push('/profile'"), 'profile screen does not self-link');
-assert(dashboard.includes("router.push('/profile'"), 'Command Center links to Profile screen');
-assert(
-  dashboard.includes('accessibilityLabel="Open profile"') &&
-    dashboard.includes('profileIdentity'),
-  'Command Center opens profile from identity block with accessibility',
-);
-assert(!dashboard.includes('profileButtonText'), 'Command Center has no top-right Profile link');
+assert(dashboard.includes("router.push('/profile'"), 'dashboard links to profile');
+assert(dashboard.includes('Manage profile'), 'dashboard shows manage profile affordance');
+assert(!dashboard.includes('profileIdentity'), 'dashboard has no profile identity card');
+assert(!dashboard.includes('profileButtonText'), 'dashboard has no top-right Profile link');
+assert(dashboard.includes('greetingLine'), 'dashboard shows greeting line');
 assert(profileScreen.includes('EventFormField'), 'profile uses shared EventFormField');
 assert(profileScreen.includes('Save Profile'), 'profile has Save Profile action');
 assert(profileScreen.includes('Sign Out'), 'profile has Sign Out action');
 assert(profileScreen.includes('Coming Soon'), 'profile shows coming soon placeholders');
+assert(profileScreen.includes('Profile Logo'), 'profile shows profile logo section');
+assert(profileScreen.includes('profileHero'), 'profile shows identity hero');
+assert(!profileScreen.includes('Business Information'), 'profile has no separate business section');
 assert(profileScreen.includes('Read-only'), 'profile marks email as read-only');
 
 assert(profileLib.includes(".from('profiles')"), 'profile saves display name to profiles table');
@@ -55,11 +56,12 @@ assert(
   profileLib.includes('formatCommandCenterIdentityLine'),
   'Command Center identity line formatter exists',
 );
+assert(!dashboard.includes('onSignOut'), 'dashboard has no sign out control');
+assert(!dashboard.includes('Sign out'), 'dashboard has no sign out control');
 assert(
-  dashboard.includes('identityLine') && !dashboard.includes('onSignOut'),
-  'Command Center uses identity line without top-right sign out',
+  profileLib.includes('formatDashboardGreeting'),
+  'dashboard greeting formatter exists',
 );
-assert(!dashboard.includes('Sign out'), 'Command Center has no sign out control');
 
 assert(profileScreen.includes('reloadProfile'), 'profile reloads profile after save');
 assert(

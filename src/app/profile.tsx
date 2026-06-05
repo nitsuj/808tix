@@ -114,9 +114,9 @@ function ProfileFormBody({
   const [isSaving, setIsSaving] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const identityName = displayName.trim() || 'Your name';
-  const identityBusiness = businessName.trim() || 'Business name';
-  const identityEmail = email || '—';
+  const heroName = displayName.trim() || 'Your name';
+  const heroBusiness = businessName.trim() || 'Business name';
+  const emailDisplay = email || '—';
 
   async function handleSave() {
     const errors = validateOrganizerProfileForm({
@@ -186,21 +186,20 @@ function ProfileFormBody({
 
             <ThemedText style={styles.screenTitle}>Profile</ThemedText>
 
-            <View style={styles.identityCard}>
-              <View style={styles.identityAvatar}>
-                <Text style={styles.identityAvatarText}>808</Text>
+            <View style={styles.profileLogoSection}>
+              <ThemedText style={styles.profileLogoLabel}>Profile Logo</ThemedText>
+              <View style={styles.profileLogoCircle}>
+                <Text style={styles.profileLogoText}>808</Text>
               </View>
-              <View style={styles.identityTextBlock}>
-                <ThemedText style={styles.identityName} numberOfLines={2}>
-                  {identityName}
-                </ThemedText>
-                <ThemedText style={styles.identityBusiness} numberOfLines={2}>
-                  {identityBusiness}
-                </ThemedText>
-                <ThemedText themeColor="textSecondary" style={styles.identityEmail} numberOfLines={1}>
-                  {identityEmail}
-                </ThemedText>
-              </View>
+            </View>
+
+            <View style={styles.profileHero}>
+              <ThemedText style={styles.heroName} numberOfLines={2}>
+                {heroName}
+              </ThemedText>
+              <ThemedText themeColor="textSecondary" style={styles.heroBusiness} numberOfLines={2}>
+                {heroBusiness}
+              </ThemedText>
             </View>
 
             <ThemedText style={styles.sectionHeading}>Account Information</ThemedText>
@@ -213,6 +212,15 @@ function ProfileFormBody({
                 value={displayName}
                 error={fieldErrors.displayName}
                 onChangeText={setDisplayName}
+              />
+              <EventFormField
+                autoCapitalize="words"
+                label="Business Name"
+                placeholder="Venue or promoter name"
+                tone="organizer"
+                value={businessName}
+                error={fieldErrors.businessName}
+                onChangeText={setBusinessName}
               />
               <EventFormField
                 autoCapitalize="none"
@@ -230,22 +238,9 @@ function ProfileFormBody({
                   Read-only for now — tied to your sign-in account.
                 </ThemedText>
                 <View style={styles.readOnlyField}>
-                  <Text style={styles.readOnlyText}>{identityEmail}</Text>
+                  <Text style={styles.readOnlyText}>{emailDisplay}</Text>
                 </View>
               </View>
-            </View>
-
-            <ThemedText style={styles.sectionHeading}>Business Information</ThemedText>
-            <View style={styles.sectionCard}>
-              <EventFormField
-                autoCapitalize="words"
-                label="Business Name"
-                placeholder="Venue or promoter name"
-                tone="organizer"
-                value={businessName}
-                error={fieldErrors.businessName}
-                onChangeText={setBusinessName}
-              />
             </View>
 
             {saveError ? <ThemedText style={styles.errorText}>{saveError}</ThemedText> : null}
@@ -365,53 +360,52 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
     lineHeight: 34,
   },
-  identityCard: {
+  profileLogoSection: {
     alignItems: 'center',
-    backgroundColor: palette.black,
-    borderColor: organizer.accent,
-    borderRadius: Radii.card,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: Spacing.three,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.three,
+    gap: Spacing.two,
+    marginTop: Spacing.one,
   },
-  identityAvatar: {
+  profileLogoLabel: {
+    color: text.secondary,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  profileLogoCircle: {
     alignItems: 'center',
     backgroundColor: 'rgba(57, 255, 20, 0.08)',
     borderColor: organizer.accent,
     borderRadius: 999,
     borderWidth: 2,
-    height: 64,
+    height: 96,
     justifyContent: 'center',
-    width: 64,
+    width: 96,
   },
-  identityAvatarText: {
+  profileLogoText: {
     color: organizer.accent,
-    fontSize: 17,
+    fontSize: 24,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
-  identityTextBlock: {
-    flex: 1,
+  profileHero: {
+    alignItems: 'center',
     gap: 4,
-    minWidth: 0,
+    paddingBottom: Spacing.one,
+    paddingTop: Spacing.half,
   },
-  identityName: {
+  heroName: {
     color: text.primary,
-    fontSize: 17,
+    fontSize: 22,
     fontWeight: '800',
-    lineHeight: 22,
+    lineHeight: 28,
+    textAlign: 'center',
   },
-  identityBusiness: {
-    color: text.primary,
-    fontSize: 14,
+  heroBusiness: {
+    fontSize: 15,
     fontWeight: '600',
-    lineHeight: 18,
-  },
-  identityEmail: {
-    fontSize: 13,
-    lineHeight: 17,
+    lineHeight: 20,
+    textAlign: 'center',
   },
   sectionHeading: {
     color: text.primary,

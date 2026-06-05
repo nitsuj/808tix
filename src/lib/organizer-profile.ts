@@ -48,6 +48,23 @@ export function formatCommandCenterIdentityLine(params: {
   return `${name} · ${secondary}`;
 }
 
+/** First token of display name for Dashboard greeting copy. */
+export function organizerFirstNameFromDisplayName(displayName: string): string {
+  const trimmed = displayName.trim();
+
+  if (!trimmed) {
+    return 'Organizer';
+  }
+
+  return trimmed.split(/\s+/)[0] ?? trimmed;
+}
+
+export function formatDashboardGreeting(displayName: string, welcomeBack: boolean): string {
+  const firstName = organizerFirstNameFromDisplayName(displayName);
+
+  return welcomeBack ? `Welcome back, ${firstName}` : `Welcome, ${firstName}`;
+}
+
 export function organizerProfileFromSources(
   profile: Profile,
   sessionEmail: string | null | undefined,
