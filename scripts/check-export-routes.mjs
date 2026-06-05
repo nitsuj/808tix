@@ -19,6 +19,7 @@ const REQUIRED_FILES = [
   'events/[eventId]/issue.html',
   'events/[eventId]/edit.html',
   'events/[eventId]/passes.html',
+  'home.html',
 ];
 
 let failures = 0;
