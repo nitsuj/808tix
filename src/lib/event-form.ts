@@ -1,5 +1,5 @@
 import type { EventStatus } from '@/lib/database.types';
-import { getTodayYyyyMmDdLocal } from '@/lib/event-date';
+import { getTodayYyyyMmDdLocal, isValidDateInput } from '@/lib/event-date';
 import { normalizeTimeDisplayFromInput } from '@/lib/event-time-input';
 
 export type { EventStatus };
@@ -126,23 +126,6 @@ export function parseMaxPassesInput(input: string): number | null {
   }
 
   return value;
-}
-
-export function isValidDateInput(input: string): boolean {
-  const trimmed = input.trim();
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-    return false;
-  }
-
-  const [year, month, day] = trimmed.split('-').map((part) => Number(part));
-  const parsed = new Date(year, month - 1, day, 12, 0, 0, 0);
-
-  return (
-    parsed.getFullYear() === year &&
-    parsed.getMonth() === month - 1 &&
-    parsed.getDate() === day
-  );
 }
 
 /** Returns Postgres-compatible time string HH:MM:SS or null if invalid. */

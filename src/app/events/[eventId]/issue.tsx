@@ -48,6 +48,11 @@ import {
 } from '@/lib/issue-pass-form';
 import { canIssuePassesForEvent, PUBLISH_BEFORE_ISSUE_MESSAGE } from '@/lib/event-status';
 import { buildPassLinkUrl } from '@/lib/pass-link';
+import {
+  formatPhoneNumberForDisplay,
+  formatPhoneNumberInput,
+  normalizePhoneNumber,
+} from '@/lib/phone-validation';
 import { sendPassSms } from '@/lib/send-pass-sms';
 
 const MOBILE_VIEWPORT_WIDTH = ORGANIZER_MOBILE_VIEWPORT_WIDTH;
@@ -171,7 +176,7 @@ export default function IssuePassScreen() {
       guestName: combineGuestName(guestFirstName, guestLastName),
       passType,
       guestEmail: guestEmail || undefined,
-      guestPhone: guestPhone || undefined,
+      guestPhone: guestPhone ? normalizePhoneNumber(guestPhone) : undefined,
       issuedCount,
       capacity: activeEvent.capacity,
     });
@@ -280,7 +285,7 @@ export default function IssuePassScreen() {
       onGuestEmailChange={setGuestEmail}
       onGuestFirstNameChange={setGuestFirstName}
       onGuestLastNameChange={setGuestLastName}
-      onGuestPhoneChange={setGuestPhone}
+      onGuestPhoneChange={(value) => setGuestPhone(formatPhoneNumberInput(value))}
       onPassTypeChange={setPassType}
       onSubmit={handleIssuePass}
     />
@@ -527,7 +532,10 @@ function IssuePassSuccessView({
                   <SummaryRow label="Email" value={createdPass.guest_email} />
                 ) : null}
                 {createdPass.guest_phone ? (
-                  <SummaryRow label="Phone" value={createdPass.guest_phone} />
+                  <SummaryRow
+                    label="Phone"
+                    value={formatPhoneNumberForDisplay(createdPass.guest_phone)}
+                  />
                 ) : null}
                 <SummaryRow label="Status" value={createdPass.status} />
               </View>

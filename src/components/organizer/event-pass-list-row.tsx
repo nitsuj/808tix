@@ -16,6 +16,7 @@ import type { Pass, PassStatus } from '@/lib/database.types';
 import { formatPassTimestamp } from '@/lib/pass-datetime';
 import { formatPassStatusLabel } from '@/lib/pass-display';
 import { buildPassLinkUrl } from '@/lib/pass-link';
+import { formatPhoneNumberForDisplay } from '@/lib/phone-validation';
 import { sendPassSms } from '@/lib/send-pass-sms';
 
 type EventPassListRowProps = {
@@ -38,9 +39,10 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
   const checkedInAt = formatPassTimestamp(pass.checked_in_at);
   const hasPhone = Boolean(pass.guest_phone?.trim());
   const hasMultipleSendActions = hasPhone;
-  const contactLine = [pass.guest_email?.trim() || null, pass.guest_phone?.trim() || null]
-    .filter(Boolean)
-    .join(' · ');
+  const formattedPhone = pass.guest_phone?.trim()
+    ? formatPhoneNumberForDisplay(pass.guest_phone)
+    : null;
+  const contactLine = [pass.guest_email?.trim() || null, formattedPhone].filter(Boolean).join(' · ');
 
   async function handleViewGuestPass() {
     try {

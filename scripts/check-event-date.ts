@@ -2,11 +2,19 @@
 /**
  * Event date helpers (src/lib/event-date.ts).
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
   formatDateToYyyyMmDd,
   formatEventDateForDisplay,
+  isValidDateInput,
   parseYyyyMmDdToLocalDate,
 } from '../src/lib/event-date';
+
+const ROOT = process.cwd();
+const eventDateSource = readFileSync(join(ROOT, 'src/lib/event-date.ts'), 'utf8');
+const eventFormSource = readFileSync(join(ROOT, 'src/lib/event-form.ts'), 'utf8');
 
 let failures = 0;
 
@@ -41,6 +49,27 @@ assert(parseYyyyMmDdToLocalDate('2026-13-40') === null, 'invalid date returns nu
 assert(
   formatEventDateForDisplay('2026-06-10').includes('2026'),
   'formatEventDateForDisplay includes year',
+);
+
+assert(isValidDateInput('2026-06-10'), 'isValidDateInput accepts valid date');
+assert(!isValidDateInput('2026-13-40'), 'isValidDateInput rejects invalid date');
+
+assert(
+  !eventDateSource.includes("from '@/lib/event-form'"),
+  'event-date does not import event-form (require cycle broken)',
+);
+assert(
+  eventFormSource.includes("from '@/lib/event-date'") &&
+    eventFormSource.includes('isValidDateInput'),
+  'event-form imports isValidDateInput from event-date',
+);
+assert(
+  eventDateSource.includes('export function isValidDateInput'),
+  'isValidDateInput is defined in event-date',
+);
+assert(
+  !eventFormSource.includes('export function isValidDateInput'),
+  'isValidDateInput is not duplicated in event-form',
 );
 
 if (failures > 0) {

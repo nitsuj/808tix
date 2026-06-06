@@ -1,4 +1,3 @@
-import { isValidDateInput } from '@/lib/event-form';
 import { formatEventDateLong } from '@/lib/event-datetime-display';
 
 /** Format a local calendar date as YYYY-MM-DD (Postgres date). */
@@ -12,6 +11,24 @@ export function formatDateToYyyyMmDd(date: Date): string {
 /** Local calendar today as YYYY-MM-DD (for create-event validation). */
 export function getTodayYyyyMmDdLocal(): string {
   return formatDateToYyyyMmDd(new Date());
+}
+
+/** True when input is a real calendar date in YYYY-MM-DD form. */
+export function isValidDateInput(input: string): boolean {
+  const trimmed = input.trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    return false;
+  }
+
+  const [year, month, day] = trimmed.split('-').map((part) => Number(part));
+  const parsed = new Date(year, month - 1, day, 12, 0, 0, 0);
+
+  return (
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day
+  );
 }
 
 /** Parse YYYY-MM-DD to local midnight (for pickers). */
