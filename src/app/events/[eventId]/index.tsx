@@ -39,9 +39,9 @@ import { publishEvent } from '@/lib/publish-event';
 import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import { formatCheckInRatePercent } from '@/lib/event-stats';
 import { navigateToEventPassList } from '@/lib/event-pass-navigation';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import type { Event } from '@/lib/database.types';
 
-const DASHBOARD_ROUTE = '/' as Href;
 const MOBILE_VIEWPORT_WIDTH = 390;
 
 const LAYOUT = {
@@ -81,7 +81,7 @@ export default function EventDetailScreen() {
   }, [refreshStats, refetch]);
 
   const goToDashboard = useCallback(() => {
-    router.replace(DASHBOARD_ROUTE);
+    safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE);
   }, [router]);
 
   useOrganizerAuthRedirect(authGate.state);

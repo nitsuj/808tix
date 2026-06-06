@@ -5,6 +5,7 @@ import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import { palette } from '@/theme';
+import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 const ORGANIZER_BACKGROUND = require('@/assets/backgrounds/organizer-background.png');
 
@@ -34,7 +35,7 @@ export function OrganizerAmbientBackground({
   const fallbackName = eventName ?? '808Tix';
 
   return (
-    <View pointerEvents="none" style={[styles.root, { height, width }, style]}>
+    <View style={[styles.root, platformPointerEventsNone(), { height, width }, style]}>
       {hasArtwork && artworkUri ? (
         <ArtworkEnvironment artworkUri={artworkUri} isUploaded />
       ) : eventName ? (

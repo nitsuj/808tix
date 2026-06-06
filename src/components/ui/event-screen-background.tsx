@@ -3,6 +3,7 @@ import { StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle }
 import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-background';
 import { resolveEventScreenBackgroundArtwork } from '@/lib/event-artwork-display';
+import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 type EventScreenBackgroundProps = {
   eventName: string;
@@ -23,7 +24,7 @@ export function EventScreenBackground({
   const frameStyle = { height, width };
 
   return (
-    <View pointerEvents="none" style={[styles.root, frameStyle, style]}>
+    <View style={[styles.root, platformPointerEventsNone(), frameStyle, style]}>
       {artwork.isUploaded ? (
         <ArtworkEnvironment
           artworkUri={artwork.uri}

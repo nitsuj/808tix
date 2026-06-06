@@ -1,6 +1,7 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { chrome, radius, shadows, spacing } from '@/theme';
+import { platformViewShadow } from '@/theme/platform-styles';
 
 type GlassCardProps = {
   children: React.ReactNode;
@@ -20,9 +21,10 @@ const styles = StyleSheet.create({
     gap: spacing.three,
     overflow: 'hidden',
     padding: spacing.four,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: 0.35,
-    shadowRadius: 24,
+    ...platformViewShadow({
+      ...shadows.walletCard,
+      shadowOpacity: 0.35,
+      shadowRadius: 24,
+    }),
   },
 });

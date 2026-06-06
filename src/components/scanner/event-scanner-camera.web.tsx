@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { resolveOrganizerArtworkUrl } from '@/lib/event-artwork-display';
 import { Radii } from '@/constants/theme';
 import { artwork, chrome, fan, organizer, palette, radius, scannerScreen, spacing, text } from '@/theme';
+import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
 
@@ -878,7 +879,7 @@ export function EventScannerCamera({
     );
   }
 
-  return <View pointerEvents="none" style={styles.hiddenHost} />;
+  return <View style={[styles.hiddenHost, platformPointerEventsNone()]} />;
 }
 
 const styles = StyleSheet.create({

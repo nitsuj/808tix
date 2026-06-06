@@ -18,6 +18,7 @@ import {
   type MarketingPhoneVariant,
 } from '@/components/marketing/marketing-phone-preview';
 import { fan, palette, spacing, text } from '@/theme';
+import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 const DOT_BACKGROUND = require('@/assets/backgrounds/organizer-background.png');
 const APP_ICON = require('@/assets/images/icon.png');
@@ -74,7 +75,7 @@ function DotMatrixBackdrop({ intensity = 'medium' }: { intensity?: 'light' | 'me
   const veilOpacity = intensity === 'light' ? 0.55 : intensity === 'strong' ? 0.25 : 0.4;
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <View style={[StyleSheet.absoluteFill, platformPointerEventsNone()]}>
       <Image contentFit="cover" source={DOT_BACKGROUND} style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(0, 0, 0, ${veilOpacity})` }]} />
       <View

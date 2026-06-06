@@ -1,4 +1,4 @@
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -55,10 +55,10 @@ import { prepareEventFormForSubmit } from '@/lib/event-form-submit';
 import type { Event } from '@/lib/database.types';
 import { uploadEventArtwork } from '@/lib/event-artwork-storage';
 import { validateEventArtworkFile } from '@/lib/event-artwork-validation';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import { supabase } from '@/lib/supabase';
 
 export default function EditEventScreen() {
-  const router = useRouter();
   const { eventId } = useLocalSearchParams<{ eventId: string }>();
   const authGate = useOrganizerAuthGate();
   const { event, issuedCount, isLoading, error, refetch } = useEventDetail(eventId);
@@ -111,7 +111,7 @@ type EditEventFormProps = {
 function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormProps) {
   const router = useRouter();
   const goToEventDetail = () => {
-    router.replace(`/events/${eventId}` as Href);
+    safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE);
   };
   const [eventName, setEventName] = useState(event.name);
   const [venueName, setVenueName] = useState(event.venue_name ?? '');

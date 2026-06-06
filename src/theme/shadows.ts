@@ -5,22 +5,39 @@
 import { Platform } from 'react-native';
 
 import { palette } from './colors';
+import { platformViewShadow, type PlatformShadowSpec } from './platform-styles';
+
+const walletCardSpec: PlatformShadowSpec = {
+  shadowColor: palette.pureBlack,
+  shadowOffset: { width: 0, height: 20 },
+  shadowOpacity: Platform.select({ web: 0.55, default: 0.45 }) ?? 0.45,
+  shadowRadius: 40,
+};
+
+const qrFrameSpec: PlatformShadowSpec = {
+  shadowColor: '#A25BFF',
+  shadowOffset: { width: 0, height: 0 },
+  shadowOpacity: 0.35,
+  shadowRadius: 12,
+};
+
+const opsPanelSpec: PlatformShadowSpec = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.35,
+  shadowRadius: 6,
+  elevation: 2,
+};
 
 export const shadows = {
-  /** Floating pass credential card over artwork environment. */
-  walletCard: {
-    shadowColor: palette.pureBlack,
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: Platform.select({ web: 0.55, default: 0.45 }) ?? 0.45,
-    shadowRadius: 40,
-  },
-  /** QR frame accent glow on pass screen. */
-  qrFrame: {
-    shadowColor: '#A25BFF',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-  },
+  /** Raw token values — prefer walletCardStyle / qrFrameStyle at use sites. */
+  walletCard: walletCardSpec,
+  qrFrame: qrFrameSpec,
+  opsPanel: opsPanelSpec,
+  /** Platform-safe styles for StyleSheet spreads. */
+  walletCardStyle: platformViewShadow(walletCardSpec),
+  qrFrameStyle: platformViewShadow(qrFrameSpec),
+  opsPanelStyle: platformViewShadow(opsPanelSpec),
 } as const;
 
 /** Web-only DOM shadow strings (scanner overlay). */

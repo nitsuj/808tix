@@ -256,10 +256,7 @@ const styles = StyleSheet.create({
     paddingBottom: passScreen.credential.paddingBottom,
     paddingHorizontal: passScreen.credential.paddingHorizontal,
     paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
+    ...shadows.walletCardStyle,
     width: '100%',
   },
   metaBlock: {

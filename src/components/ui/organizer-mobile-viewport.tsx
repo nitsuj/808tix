@@ -1,5 +1,7 @@
 import { Platform, StyleSheet, useWindowDimensions, View, type ReactNode } from 'react-native';
 
+import { platformPointerEventsNone } from '@/theme/platform-styles';
+
 export const ORGANIZER_MOBILE_VIEWPORT_WIDTH = 390;
 
 const webViewportMinHeight =
@@ -21,7 +23,7 @@ export function OrganizerMobileViewport({ children, background }: OrganizerMobil
   return (
     <View style={styles.viewportOuter}>
       {background ? (
-        <View pointerEvents="none" style={[styles.backgroundFrame, { height, width }]}>
+        <View style={[styles.backgroundFrame, platformPointerEventsNone(), { height, width }]}>
           {background}
         </View>
       ) : null}

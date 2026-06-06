@@ -22,6 +22,7 @@ import { Radii, Spacing } from '@/constants/theme';
 import { useAuth } from '@/contexts/auth-context';
 import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import {
   organizerProfileFromSources,
   saveOrganizerProfile,
@@ -29,7 +30,7 @@ import {
   type OrganizerProfileFieldErrors,
   type OrganizerProfileFormValues,
 } from '@/lib/organizer-profile';
-import { organizer, palette, semantic, text } from '@/theme';
+import { organizer, palette, semantic, text, shadows } from '@/theme';
 
 export default function OrganizerProfileScreen() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function OrganizerProfileScreen() {
       key={formKey}
       initialValues={initialValues}
       organizerId={authGate.organizerId}
-      onBack={() => router.back()}
+      onBack={() => safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE)}
       onSignOut={signOut}
       reloadProfile={reloadProfile}
       refreshSession={refreshSession}
@@ -396,13 +397,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: Radii.card,
     borderWidth: 1,
-    elevation: 2,
     gap: Spacing.three,
     padding: Spacing.three,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    ...shadows.opsPanelStyle,
   },
   readOnlyFieldGroup: {
     gap: Spacing.one,

@@ -47,6 +47,7 @@ import {
   type IssuePassFieldErrors,
 } from '@/lib/issue-pass-form';
 import { canIssuePassesForEvent, PUBLISH_BEFORE_ISSUE_MESSAGE } from '@/lib/event-status';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import { buildPassLinkUrl } from '@/lib/pass-link';
 import {
   formatPhoneNumberForDisplay,
@@ -148,6 +149,10 @@ export default function IssuePassScreen() {
       </OrganizerMobileViewport>
     );
   }
+
+  const handleIssueBack = () => {
+    safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE);
+  };
 
   const goToEventDetail = () => {
     router.replace(`/events/${eventId}?refreshStats=1` as Href);
@@ -281,7 +286,7 @@ export default function IssuePassScreen() {
       issuedCount={issuedCount}
       passType={passType}
       submitError={submitError}
-      onGoToEventDetail={goToEventDetail}
+      onIssueBack={handleIssueBack}
       onGuestEmailChange={setGuestEmail}
       onGuestFirstNameChange={setGuestFirstName}
       onGuestLastNameChange={setGuestLastName}
@@ -333,7 +338,7 @@ type IssuePassFormViewProps = {
   fieldErrors: IssuePassFieldErrors;
   submitError: string | null;
   isSubmitting: boolean;
-  onGoToEventDetail: () => void;
+  onIssueBack: () => void;
   onGuestFirstNameChange: (value: string) => void;
   onGuestLastNameChange: (value: string) => void;
   onPassTypeChange: (value: string) => void;
@@ -354,7 +359,7 @@ function IssuePassFormView({
   fieldErrors,
   submitError,
   isSubmitting,
-  onGoToEventDetail,
+  onIssueBack,
   onGuestFirstNameChange,
   onGuestLastNameChange,
   onPassTypeChange,
@@ -377,7 +382,7 @@ function IssuePassFormView({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
               <View style={styles.topBar}>
-                <Pressable onPress={onGoToEventDetail} style={styles.backHit}>
+                <Pressable onPress={onIssueBack} style={styles.backHit}>
                   <Text style={styles.backText}>← Event</Text>
                 </Pressable>
                 <View style={styles.topBarSpacer} />
@@ -679,10 +684,7 @@ const styles = StyleSheet.create({
     paddingBottom: passScreen.credential.paddingBottom,
     paddingHorizontal: passScreen.credential.paddingHorizontal,
     paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
+    ...shadows.walletCardStyle,
     width: '100%',
   },
   metaBlock: {

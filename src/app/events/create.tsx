@@ -1,4 +1,4 @@
-import { useRouter, type Href } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,17 +34,16 @@ import { prepareEventFormForSubmit } from '@/lib/event-form-submit';
 import { isEventDateTodayOrFuture } from '@/lib/event-form';
 import { formatVenueLine, shouldShowVenueLine } from '@/lib/event-display';
 import { generateUniqueEventSlug } from '@/lib/event-slug';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import { supabase } from '@/lib/supabase';
 import {
   fan,
   organizer,
   organizerOpsScreen,
-  palette,
   semantic,
 } from '@/theme';
 import { organizerEventTitleStyle } from '@/theme/organizer-event-title';
 
-const DASHBOARD_ROUTE = '/' as Href;
 const MOBILE_VIEWPORT_WIDTH = 390;
 const ARTWORK_UPLOAD_FAILED_PARAM = 'artworkUploadFailed';
 
@@ -240,7 +239,7 @@ export default function CreateEventScreen() {
               <View style={styles.topBar}>
                 <Pressable
                   disabled={isSubmitting}
-                  onPress={() => router.replace(DASHBOARD_ROUTE)}
+                  onPress={() => safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE)}
                   style={styles.backHit}>
                   <Text style={styles.backText}>← Dashboard</Text>
                 </Pressable>

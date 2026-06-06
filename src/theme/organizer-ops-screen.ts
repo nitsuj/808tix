@@ -1,5 +1,7 @@
 import { organizer, palette, text } from './colors';
+import { platformViewShadow } from './platform-styles';
 import { radius } from './radius';
+import { shadows } from './shadows';
 import { spacing } from './spacing';
 
 /**
@@ -21,11 +23,7 @@ export const organizerOpsScreen = {
     paddingBottom: spacing.four,
     paddingHorizontal: spacing.three,
     paddingTop: spacing.four,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 2,
+    ...shadows.opsPanelStyle,
   },
   backLink: {
     color: organizer.accent,
@@ -125,3 +123,6 @@ export const organizerOpsScreen = {
     maxWidth: 390,
   },
 } as const;
+
+/** Dashboard create-event CTA shadow (matches ops panel). */
+export const organizerOpsCardShadowStyle = platformViewShadow(shadows.opsPanel);

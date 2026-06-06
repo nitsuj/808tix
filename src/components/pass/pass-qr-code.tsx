@@ -3,6 +3,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 
 import { qrCode, spacing } from '@/theme';
+import { platformViewShadow } from '@/theme/platform-styles';
 
 type PassQrCodeProps = {
   secureToken: string;
@@ -58,10 +59,12 @@ const styles = StyleSheet.create({
     borderRadius: spacing.three,
     borderWidth: qrCode.borderWidth,
     padding: spacing.three,
-    shadowColor: qrCode.shadowColor,
-    shadowOffset: qrCode.shadowOffset,
-    shadowOpacity: qrCode.shadowOpacity,
-    shadowRadius: qrCode.shadowRadius,
+    ...platformViewShadow({
+      shadowColor: qrCode.shadowColor,
+      shadowOffset: qrCode.shadowOffset,
+      shadowOpacity: qrCode.shadowOpacity,
+      shadowRadius: qrCode.shadowRadius,
+    }),
   },
   frameDimmed: {
     opacity: qrCode.dimmedOpacity,

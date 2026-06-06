@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 
 import { fan, organizer, palette, spacing, text } from '@/theme';
+import { platformViewShadow } from '@/theme/platform-styles';
 
 export type MarketingPhoneVariant = 'dashboard' | 'issue' | 'scan';
 
@@ -73,11 +74,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingTop: 12,
     paddingBottom: 14,
-    shadowColor: fan.bright,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.22,
-    shadowRadius: 24,
     width: PHONE_WIDTH,
+    ...platformViewShadow({
+      shadowColor: fan.bright,
+      shadowOffset: { width: 0, height: 12 },
+      shadowOpacity: 0.22,
+      shadowRadius: 24,
+    }),
   },
   notch: {
     alignSelf: 'center',

@@ -15,6 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
 import { Radii } from '@/constants/theme';
 import { chrome, fan, organizer, radius, scannerScreen, spacing, text } from '@/theme';
+import { platformPointerEventsNone, platformTextShadow, platformViewShadow } from '@/theme/platform-styles';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
 
@@ -117,7 +118,7 @@ export function EventScannerCamera({
       {!hideArtworkBackground ? (
         <ScannerArtworkBackground eventName={eventName} imageUrl={imageUrl} />
       ) : null}
-      <View pointerEvents="none" style={styles.cameraScrim} />
+      <View style={[styles.cameraScrim, platformPointerEventsNone()]} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.uiLayer}>
         <View style={styles.topBar}>
@@ -151,15 +152,7 @@ export function EventScannerCamera({
               styles.frameGlowShell,
               { height: frameSize, width: frameSize },
               webFrameGlowStyle,
-              Platform.OS === 'ios'
-                ? {
-                    shadowColor: organizer.accent,
-                    shadowOffset: { width: 0, height: 0 },
-                    shadowOpacity: 0.45,
-                    shadowRadius: 18,
-                  }
-                : null,
-              Platform.OS === 'android' ? { elevation: 10 } : null,
+              nativeFrameGlowStyle,
             ]}>
             <View style={[styles.cameraShell, { height: frameSize, width: frameSize }]}>
               <CameraView
@@ -168,12 +161,12 @@ export function EventScannerCamera({
                 style={StyleSheet.absoluteFill}
                 onBarcodeScanned={isProcessing ? undefined : handleBarcodeScanned}
               />
-              <View pointerEvents="none" style={styles.frameInsetGlow} />
-              <View pointerEvents="none" style={styles.frameBorder} />
-              <View pointerEvents="none" style={styles.cornerTL} />
-              <View pointerEvents="none" style={styles.cornerTR} />
-              <View pointerEvents="none" style={styles.cornerBL} />
-              <View pointerEvents="none" style={styles.cornerBR} />
+              <View style={[styles.frameInsetGlow, platformPointerEventsNone()]} />
+              <View style={[styles.frameBorder, platformPointerEventsNone()]} />
+              <View style={[styles.cornerTL, platformPointerEventsNone()]} />
+              <View style={[styles.cornerTR, platformPointerEventsNone()]} />
+              <View style={[styles.cornerBL, platformPointerEventsNone()]} />
+              <View style={[styles.cornerBR, platformPointerEventsNone()]} />
             </View>
           </View>
 
@@ -202,14 +195,22 @@ export function EventScannerCamera({
 const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
 
-const overlayTextShadow =
+const overlayTextShadow = platformTextShadow({
+  textShadowColor: 'rgba(0, 0, 0, 0.9)',
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 6,
+});
+
+const nativeFrameGlowStyle =
   Platform.OS === 'web'
-    ? ({ textShadow: scannerScreen.frame.webTextShadow } as ViewStyle)
-    : ({
-        textShadowColor: 'rgba(0, 0, 0, 0.9)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 6,
-      } as ViewStyle);
+    ? null
+    : platformViewShadow({
+        shadowColor: organizer.accent,
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.45,
+        shadowRadius: 18,
+        elevation: 10,
+      });
 
 const styles = StyleSheet.create({
   root: {

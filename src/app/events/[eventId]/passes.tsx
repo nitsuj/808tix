@@ -1,4 +1,4 @@
-import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -46,6 +46,7 @@ import {
   parseEventPassFilter,
   type EventPassFilter,
 } from '@/lib/event-passes';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import type { Pass } from '@/lib/database.types';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
@@ -112,12 +113,8 @@ export default function EventPassesScreen() {
   );
 
   const goToEventDetail = useCallback(() => {
-    if (!eventId) {
-      return;
-    }
-
-    router.replace(`/events/${eventId}` as Href);
-  }, [eventId, router]);
+    safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE);
+  }, [router]);
 
   useOrganizerAuthRedirect(authGate.state);
 
@@ -391,10 +388,7 @@ const styles = StyleSheet.create({
     paddingBottom: passScreen.credential.paddingBottom,
     paddingHorizontal: passScreen.credential.paddingHorizontal,
     paddingTop: passScreen.credential.paddingTop,
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
+    ...shadows.walletCardStyle,
   },
   metaBlock: {
     alignItems: 'center',
@@ -491,10 +485,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginTop: Spacing.three,
     overflow: 'hidden',
-    shadowColor: shadows.walletCard.shadowColor,
-    shadowOffset: shadows.walletCard.shadowOffset,
-    shadowOpacity: shadows.walletCard.shadowOpacity,
-    shadowRadius: shadows.walletCard.shadowRadius,
+    ...shadows.walletCardStyle,
   },
   rowDivider: {
     backgroundColor: chrome.glass.border,

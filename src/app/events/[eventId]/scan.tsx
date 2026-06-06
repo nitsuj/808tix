@@ -1,4 +1,4 @@
-import { type Href, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,6 +18,7 @@ import { useOrganizerAuthGate } from '@/hooks/use-organizer-auth-gate';
 import { useOrganizerAuthRedirect } from '@/hooks/use-organizer-auth-redirect';
 import { canScanPassesForEvent, PUBLISH_BEFORE_SCAN_MESSAGE } from '@/lib/event-status';
 import { parseScannedSecureToken } from '@/lib/scan-payload';
+import { ORGANIZER_DASHBOARD_ROUTE, safeRouterBack } from '@/lib/safe-router-back';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
 import { validatePassScan } from '@/lib/validate-pass-scan';
 
@@ -54,12 +55,8 @@ export default function EventScannerScreen() {
   }, []);
 
   const handleCancel = useCallback(() => {
-    if (!eventId) {
-      return;
-    }
-
-    router.replace(`/events/${eventId}` as Href);
-  }, [eventId, router]);
+    safeRouterBack(router, ORGANIZER_DASHBOARD_ROUTE);
+  }, [router]);
 
   const handleBarcodeScanned = useCallback(
     async (rawData: string) => {

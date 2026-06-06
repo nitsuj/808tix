@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
 import { artwork, fan } from '@/theme';
+import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 const webBlurStyle =
   Platform.OS === 'web' ? ({ filter: `blur(${artwork.blurRadius}px)` } as ViewStyle) : null;
@@ -26,7 +27,7 @@ export function ArtworkEnvironment({
   const blurRadius = useBlur && Platform.OS !== 'web' ? artwork.blurRadius : 0;
 
   return (
-    <View pointerEvents="none" style={[styles.environment, style]}>
+    <View style={[styles.environment, platformPointerEventsNone(), style]}>
       {isUploaded ? (
         <>
           <Image

@@ -1,4 +1,4 @@
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ScannerArtworkBackground } from '@/components/scanner/scanner-artwork-background';
@@ -12,7 +12,14 @@ import {
 import { Radii } from '@/constants/theme';
 import { formatCheckedInAt } from '@/lib/check-in-display';
 import { fan, organizer, palette, radius, scanner, scannerScreen, spacing, text } from '@/theme';
+import { platformTextShadow, platformViewShadow } from '@/theme/platform-styles';
 import type { ScanValidationDisplay } from '@/lib/validate-pass-scan';
+
+const eventContextTextShadow = platformTextShadow({
+  textShadowColor: 'rgba(0, 0, 0, 0.45)',
+  textShadowOffset: { width: 0, height: 1 },
+  textShadowRadius: 4,
+});
 
 type ScanResultViewProps = {
   result: ScanValidationDisplay;
@@ -200,9 +207,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...eventContextTextShadow,
   },
   eventContextDate: {
     color: fan.badgeText,
@@ -210,9 +215,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 1,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...eventContextTextShadow,
   },
   eventContextVenue: {
     color: scannerScreen.overlay.textSecondary,
@@ -220,9 +223,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.4,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 0, 0, 0.45)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+    ...eventContextTextShadow,
   },
   content: {
     alignItems: 'center',
@@ -243,15 +244,13 @@ const styles = StyleSheet.create({
     backgroundColor: palette.pureBlack,
     borderColor: organizer.accent,
     borderWidth: 4,
-    ...(Platform.OS === 'ios'
-      ? {
-          shadowColor: organizer.accent,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.5,
-          shadowRadius: 20,
-        }
-      : null),
-    ...(Platform.OS === 'android' ? { elevation: 8 } : null),
+    ...platformViewShadow({
+      shadowColor: organizer.accent,
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0.5,
+      shadowRadius: 20,
+      elevation: 8,
+    }),
   },
   iconCircleWarning: {
     backgroundColor: 'rgba(0, 0, 0, 0.35)',

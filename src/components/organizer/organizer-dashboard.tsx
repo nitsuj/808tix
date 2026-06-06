@@ -16,7 +16,7 @@ import { OrganizerAmbientBackground } from '@/components/ui/organizer-ambient-ba
 import { EventArtwork } from '@/components/ui/event-artwork';
 import { organizerEventDisplayTitleStyle } from '@/theme/organizer-event-title';
 import { Radii, Spacing, semantic } from '@/constants/theme';
-import { organizer, palette, text } from '@/theme';
+import { organizer, palette, shadows, text } from '@/theme';
 import { useOrganizerEvents } from '@/hooks/use-organizer-events';
 import type { Event } from '@/lib/database.types';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
@@ -532,16 +532,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: Radii.card,
     borderWidth: 1,
-    elevation: 2,
     flexDirection: 'row',
     gap: Spacing.two + 2,
     overflow: 'hidden',
     paddingHorizontal: Spacing.two + 2,
     paddingVertical: Spacing.two,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
+    ...shadows.opsPanelStyle,
   },
   eventArtworkWrap: {
     borderRadius: 12,

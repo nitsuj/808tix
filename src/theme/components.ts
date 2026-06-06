@@ -25,7 +25,7 @@ export const passScreen = {
   credential: {
     ...credential,
     borderRadius: radius.walletCard,
-    ...shadows.walletCard,
+    ...shadows.walletCardStyle,
     paddingHorizontal: spacing.four,
     paddingTop: spacing.four + 4,
     paddingBottom: spacing.four,
