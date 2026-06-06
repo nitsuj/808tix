@@ -1,5 +1,14 @@
--- 808Tix MVP: capacity migration verification (run after db reset + auth_simulation)
--- Usage: set v_organizer_id, run in psql after creating a test user.
+-- 808Tix: capacity enforcement verification (run after db reset)
+--
+-- Prerequisites:
+--   1. supabase db reset
+--   2. Replace v_organizer_id with a test auth.users id (or insert one below)
+--
+-- Concurrency note:
+--   True parallel insert simulation is not run here. Capacity safety under
+--   concurrent issuers relies on prevent_pass_over_capacity locking the parent
+--   events row with SELECT ... FOR UPDATE before counting issued passes, so
+--   only one in-flight insert per event can pass the count check at a time.
 
 do $$
 declare
@@ -26,7 +35,7 @@ begin
     'Test Venue',
     current_date + 30,
     '20:00',
-    'draft',
+    'published',
     2
   )
   returning id into v_event_id;
@@ -45,6 +54,18 @@ begin
   if public.event_issued_pass_count(v_event_id) <> 2 then
     raise exception 'Expected 2 issued passes, got %', public.event_issued_pass_count(v_event_id);
   end if;
+
+  begin
+    insert into public.passes (event_id, guest_name, pass_type, secure_token)
+    values (v_event_id, 'Guest Three', 'GA', '');
+
+    raise exception 'Expected third pass insert at capacity to fail';
+  exception
+    when check_violation then
+      if sqlerrm not like '%Event is at capacity%' then
+        raise;
+      end if;
+  end;
 
   begin
     update public.events set capacity = 1 where id = v_event_id;
