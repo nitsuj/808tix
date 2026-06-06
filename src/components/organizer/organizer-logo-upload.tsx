@@ -43,13 +43,13 @@ export function OrganizerLogoUpload({
       return;
     }
 
+    // Square crop in the picker; CoverImageFrame applies circular center-crop on display.
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.85,
     });
-
     if (result.canceled || result.assets.length === 0) {
       return;
     }
