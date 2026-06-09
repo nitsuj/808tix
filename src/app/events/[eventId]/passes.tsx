@@ -294,12 +294,14 @@ function EventPassesContent({
 
             {listError ? <ThemedText style={styles.errorText}>{listError}</ThemedText> : null}
 
-            <View style={styles.listShell}>
-              {isLoading ? (
+            {isLoading ? (
+              <View style={styles.listShell}>
                 <View style={styles.loadingBlock}>
                   <ActivityIndicator color={fan.primary} size="large" />
                 </View>
-              ) : visiblePasses.length === 0 ? (
+              </View>
+            ) : visiblePasses.length === 0 ? (
+              <View style={styles.listShell}>
                 <View style={styles.emptyBlock}>
                   <ThemedText themeColor="textSecondary" style={styles.emptyText}>
                     {passes.length === 0
@@ -309,15 +311,16 @@ function EventPassesContent({
                       : 'No passes match your search.'}
                   </ThemedText>
                 </View>
-              ) : (
-                visiblePasses.map((pass, index) => (
-                  <View key={pass.id}>
-                    {index === 0 ? null : <View style={styles.rowDivider} />}
+              </View>
+            ) : (
+              <View style={styles.passList}>
+                {visiblePasses.map((pass) => (
+                  <View key={pass.id} style={styles.passRow}>
                     <EventPassListRow eventName={eventName} pass={pass} />
                   </View>
-                ))
-              )}
-            </View>
+                ))}
+              </View>
+            )}
           </ScrollView>
         </SafeAreaView>
       </View>
@@ -350,6 +353,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    gap: Spacing.three,
     paddingBottom: LAYOUT.panelBottomInset,
     paddingHorizontal: LAYOUT.horizontalPadding,
     paddingTop: LAYOUT.contentTopInset,
@@ -483,13 +487,19 @@ const styles = StyleSheet.create({
     borderColor: passScreen.credential.cardBorder,
     borderRadius: passScreen.credential.borderRadius,
     borderWidth: 1,
-    marginTop: Spacing.three,
     overflow: 'hidden',
     ...shadows.walletCardStyle,
   },
-  rowDivider: {
-    backgroundColor: chrome.glass.border,
-    height: StyleSheet.hairlineWidth,
+  passList: {
+    gap: Spacing.four,
+  },
+  passRow: {
+    backgroundColor: passScreen.credential.cardBackground,
+    borderColor: passScreen.credential.cardBorder,
+    borderRadius: passScreen.credential.borderRadius,
+    borderWidth: 1,
+    overflow: 'hidden',
+    ...shadows.walletCardStyle,
   },
   loadingBlock: {
     alignItems: 'center',

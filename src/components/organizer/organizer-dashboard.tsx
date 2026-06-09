@@ -294,7 +294,7 @@ function EventCard({
   onPress: () => void;
 }) {
   const dateLabel = formatEventDateTimeLong(event.event_date, event.start_time);
-  const saleLabel = isEventLive(event.status) ? 'On Sale' : getEventStatusPillLabel(event.status);
+  const saleLabel = getEventStatusPillLabel(event.status);
   const isLive = isEventLive(event.status);
   const isDraft = isEventDraft(event.status);
 

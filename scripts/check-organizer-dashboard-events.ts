@@ -101,7 +101,11 @@ assert(!dashboardSource.includes('Issue Pass'), 'dashboard has no issue pass act
 assert(!dashboardSource.includes('Scan Pass'), 'dashboard has no scan pass action');
 assert(!dashboardSource.includes('View Reports'), 'dashboard has no reports action');
 assert(!dashboardSource.includes('COMMAND CENTER'), 'dashboard has no command center label');
-assert(dashboardSource.includes('On Sale'), 'dashboard shows on sale badge for live events');
+assert(
+  dashboardSource.includes('getEventStatusPillLabel(event.status)'),
+  'dashboard event card uses shared status pill label helper',
+);
+assert(!dashboardSource.includes("'On Sale'"), 'dashboard does not use On Sale card label');
 assert(!dashboardSource.includes('View all'), 'dashboard has no view all control');
 assert(!dashboardSource.includes('showAllEvents'), 'dashboard has no expand/collapse list');
 assert(!dashboardSource.includes('bellIcon'), 'dashboard has no bell icon');

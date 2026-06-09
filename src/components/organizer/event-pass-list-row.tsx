@@ -1,8 +1,7 @@
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Linking,
-  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -15,7 +14,7 @@ import { chrome, fan, semantic } from '@/theme';
 import type { Pass, PassStatus } from '@/lib/database.types';
 import { formatPassTimestamp } from '@/lib/pass-datetime';
 import { formatPassStatusLabel } from '@/lib/pass-display';
-import { buildPassLinkUrl } from '@/lib/pass-link';
+import { buildPassLinkUrl, getPassRoute } from '@/lib/pass-link';
 import { formatPhoneNumberForDisplay } from '@/lib/phone-validation';
 import { sendPassSms } from '@/lib/send-pass-sms';
 
@@ -26,9 +25,10 @@ type EventPassListRowProps = {
 
 /**
  * TODO: Future organizer pass detail screen may centralize resend/share/void/transfer actions.
- * For now, "View Guest Pass" opens the existing public guest pass URL.
+ * "View Guest Pass" opens the in-app /pass route; share/SMS use the public pass URL helper.
  */
 export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
+  const router = useRouter();
   const [smsMessage, setSmsMessage] = useState<string | null>(null);
   const [smsError, setSmsError] = useState<string | null>(null);
   const [isSendingSms, setIsSendingSms] = useState(false);
@@ -44,17 +44,8 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
     : null;
   const contactLine = [pass.guest_email?.trim() || null, formattedPhone].filter(Boolean).join(' · ');
 
-  async function handleViewGuestPass() {
-    try {
-      if (Platform.OS === 'web') {
-        window.open(passUrl, '_blank', 'noopener,noreferrer');
-        return;
-      }
-
-      await Linking.openURL(passUrl);
-    } catch {
-      // Guest may dismiss — no action needed.
-    }
+  function handleViewGuestPass() {
+    router.push(getPassRoute(pass.secure_token));
   }
 
   async function handleSharePass() {
@@ -283,12 +274,19 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.two,
   },
   actionPrimary: {
-    paddingVertical: 2,
+    backgroundColor: 'rgba(162, 91, 255, 0.1)',
+    borderColor: 'rgba(162, 91, 255, 0.45)',
+    borderRadius: 6,
+    borderWidth: 1,
+    minWidth: 96,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.one + 2,
   },
   actionPrimaryText: {
     color: fan.primary,
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '800',
+    textAlign: 'center',
   },
   actionSecondary: {
     borderColor: chrome.glass.border,

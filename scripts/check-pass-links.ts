@@ -3,8 +3,12 @@
  * Validates pass link URL building (src/lib/pass-link.core.ts).
  * Run: npm run check:links
  */
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import {
   buildAbsolutePassLinkUrl,
+  buildPassRoutePath,
   normalizePassLinkBaseUrl,
 } from '../src/lib/pass-link.core';
 
@@ -81,6 +85,41 @@ if (resolvedRelative.includes('/events/') && resolvedRelative.includes('808tix.v
 const encoded = buildAbsolutePassLinkUrl('https://808tix.vercel.app', 'a b/c');
 
 assert(encoded === 'https://808tix.vercel.app/pass/a%20b%2Fc', 'encodes token in path segment');
+
+assert(
+  buildPassRoutePath('abc-123') === '/pass/abc-123',
+  'buildPassRoutePath returns in-app /pass/{token} route',
+);
+
+const passRowSource = readFileSync(
+  join(process.cwd(), 'src/components/organizer/event-pass-list-row.tsx'),
+  'utf8',
+);
+
+assert(
+  passRowSource.includes('getPassRoute'),
+  'View Guest Pass uses getPassRoute helper',
+);
+
+assert(
+  passRowSource.includes('router.push(getPassRoute(pass.secure_token))'),
+  'View Guest Pass navigates in-app via router.push',
+);
+
+assert(
+  !passRowSource.includes('Linking.openURL(passUrl)'),
+  'View Guest Pass does not open public pass URL via Linking',
+);
+
+assert(
+  !passRowSource.includes('808tix.vercel.app'),
+  'View Guest Pass row does not hardcode production pass origin',
+);
+
+assert(
+  passRowSource.includes('buildPassLinkUrl(pass.secure_token)'),
+  'share/SMS still uses centralized public pass URL helper',
+);
 
 if (failures > 0) {
   console.error(`\ncheck-pass-links: ${failures} failure(s)`);

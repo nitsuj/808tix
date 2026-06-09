@@ -3,10 +3,11 @@ import { Platform } from 'react-native';
 
 import {
   buildAbsolutePassLinkUrl,
+  buildPassRoutePath,
   normalizePassLinkBaseUrl,
 } from '@/lib/pass-link.core';
 
-export { normalizePassLinkBaseUrl } from '@/lib/pass-link.core';
+export { buildPassRoutePath, normalizePassLinkBaseUrl } from '@/lib/pass-link.core';
 
 /**
  * Guest pass URL for sharing (expo-router: /pass/[token]).
@@ -31,6 +32,21 @@ function resolvePassLinkBaseUrl(): string {
   } catch {
     return 'http://localhost:8081';
   }
+}
+
+/**
+ * In-app guest pass route for organizer "View Guest Pass" and local QA.
+ */
+export function getPassRoute(secureToken: string): string {
+  return buildPassRoutePath(secureToken);
+}
+
+/**
+ * Absolute public guest pass URL for share, SMS, and email.
+ * Uses EXPO_PUBLIC_PASS_LINK_BASE_URL when set (production: https://808tix.vercel.app).
+ */
+export function getPublicPassUrl(secureToken: string): string {
+  return buildPassLinkUrl(secureToken);
 }
 
 /**

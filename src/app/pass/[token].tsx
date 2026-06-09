@@ -1,5 +1,8 @@
+import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
+import QRCodeLib from 'qrcode';
 import { useEffect, useMemo, useState } from 'react';
+import QRCode from 'react-native-qrcode-svg';
 import {
   ActivityIndicator,
   Platform,
@@ -12,19 +15,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AddToAppleWallet } from '@/components/pass/add-to-apple-wallet';
 import { LegalFooterLinks } from '@/components/legal/legal-footer-links';
-import { PassQrCode } from '@/components/pass/pass-qr-code';
-import { ArtworkEnvironment } from '@/components/ui/artwork-environment';
 import { ThemedText } from '@/components/themed-text';
 import { getPassStatusBanner } from '@/lib/pass-display';
 import { formatEventDateTimeTicketUpper } from '@/lib/event-datetime-display';
 import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
+import { resolveEventArtworkPublicUrl } from '@/lib/event-artwork-storage';
 import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
-import { fan, organizer, palette, passScreen, shadows, spacing, text } from '@/theme';
+import { fan, organizer, palette, passScreen, spacing, text } from '@/theme';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
+const QR_SIZE = 220;
 
-/** Ticket Detail layout at 390×844 — typography + spacing. */
 const LAYOUT = {
   horizontalPadding: 24,
   cardTopInset: 112,
@@ -32,7 +34,6 @@ const LAYOUT = {
   dateToTitle: 8,
   titleToVenue: 6,
   metaToQr: 24,
-  qrSize: 220,
   qrBorderRadius: 12,
   qrPad: 14,
   qrToBadge: 16,
@@ -61,7 +62,16 @@ export default function GuestPassScreen() {
   const secureToken = typeof token === 'string' ? token.trim() : '';
 
   if (!secureToken) {
-    return <PassUnavailable message="Pass link is invalid." />;
+    return (
+      <PassScreenShell>
+        <View style={styles.messageRoot}>
+          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
+          <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
+            Pass link is invalid.
+          </ThemedText>
+        </View>
+      </PassScreenShell>
+    );
   }
 
   return <GuestPassContent secureToken={secureToken} />;
@@ -109,40 +119,72 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
     };
   }, [secureToken]);
 
+  const artworkUri = pass
+    ? resolvePassArtworkUri(pass.image_url, pass.event_name)
+    : null;
+
   if (isLoading) {
     return (
-      <MobileViewport>
-        <View style={styles.loadingRoot}>
+      <PassScreenShell artworkUri={artworkUri}>
+        <View style={styles.messageRoot}>
           <ActivityIndicator size="large" color={fan.primary} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
             Loading your pass…
           </ThemedText>
         </View>
-      </MobileViewport>
+      </PassScreenShell>
     );
   }
 
   if (error || !pass) {
-    return <PassUnavailable message={error ?? 'Pass not found.'} />;
+    return (
+      <PassScreenShell artworkUri={artworkUri}>
+        <View style={styles.messageRoot}>
+          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
+          <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
+            {error ?? 'Pass not found.'}
+          </ThemedText>
+        </View>
+      </PassScreenShell>
+    );
   }
 
-  return <TicketDetailView pass={pass} />;
+  const passToken = pass.secure_token?.trim();
+  if (!passToken) {
+    return (
+      <PassScreenShell artworkUri={artworkUri}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}>
+          <View style={styles.credentialCard}>
+            <Text style={styles.errorCardTitle}>Pass token missing — QR cannot be displayed.</Text>
+            <Text style={styles.errorCardBody}>
+              Please contact the organizer for a new pass link.
+            </Text>
+          </View>
+        </ScrollView>
+      </PassScreenShell>
+    );
+  }
+
+  return <TicketDetailView pass={pass} artworkUri={artworkUri} />;
 }
 
-function MobileViewport({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={styles.viewportOuter}>
-      <View style={styles.viewportInner}>{children}</View>
-    </View>
-  );
-}
+function TicketDetailView({
+  pass,
+  artworkUri,
+}: {
+  pass: PublicPassView;
+  artworkUri: string;
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [qrError, setQrError] = useState<string | null>(null);
 
-function TicketDetailView({ pass }: { pass: PublicPassView }) {
   const statusBanner = getPassStatusBanner(pass.status);
   const isEntryValid = pass.status === 'active';
   const passTypeLabel = formatPassTypeLabel(pass.pass_type);
   const hasUploadedArtwork = Boolean(pass.image_url?.trim());
-  const artworkUri = resolvePassArtworkUri(pass.image_url, pass.event_name);
 
   const dateTimeLine = useMemo(
     () => formatTicketDateTimeLine(pass.event_date, pass.start_time),
@@ -151,65 +193,145 @@ function TicketDetailView({ pass }: { pass: PublicPassView }) {
 
   const venueLine = pass.venue_name?.trim().toUpperCase() ?? null;
   const eventTitle = pass.event_name.trim().toUpperCase();
+  const guestName = pass.guest_name?.trim() ?? null;
+  const qrToken = pass.secure_token?.trim() ?? '';
+
+  useEffect(() => {
+    if (Platform.OS !== 'web') {
+      return;
+    }
+
+    const token = pass.secure_token?.trim();
+    if (!token) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void QRCodeLib.toDataURL(token, {
+      width: QR_SIZE,
+      margin: 0,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    })
+      .then((uri) => {
+        if (!cancelled) {
+          setQrDataUrl(uri);
+          setQrError(null);
+        }
+      })
+      .catch((err: unknown) => {
+        console.error('Guest pass QR generation failed:', err);
+        if (!cancelled) {
+          setQrDataUrl(null);
+          setQrError('QR failed to generate');
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pass.secure_token]);
 
   return (
-    <MobileViewport>
-      <View style={styles.screen}>
-        <ArtworkEnvironment artworkUri={artworkUri} isUploaded={hasUploadedArtwork} />
+    <PassScreenShell artworkUri={artworkUri} isUploaded={hasUploadedArtwork}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        style={styles.scrollView}>
+        <View style={styles.credentialCard}>
+          <View style={styles.metaBlock}>
+            {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
+            <Text style={styles.eventTitle}>{eventTitle}</Text>
+            {venueLine ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
+            {guestName ? <Text style={styles.guestLine}>{guestName}</Text> : null}
+          </View>
 
-        <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
-          <ScrollView
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}>
-            <View style={styles.credentialCard}>
-              <View style={styles.metaBlock}>
-                {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
-                <Text style={styles.eventTitle}>{eventTitle}</Text>
-                {venueLine ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
-              </View>
-
-              <View style={styles.qrBlock}>
-                <View style={[styles.qrShell, !isEntryValid && styles.qrShellDimmed]}>
-                  <PassQrCode bare secureToken={pass.secure_token} size={LAYOUT.qrSize} />
-                  <View style={styles.qrCenterMark}>
-                    <Text style={styles.qrCenterMarkText}>808</Text>
-                  </View>
-                </View>
-
-                <View style={styles.passTypeBadge}>
-                  <Text style={styles.passTypeBadgeText}>{passTypeLabel}</Text>
-                </View>
-
-                {statusBanner ? (
-                  <Text style={styles.statusLine}>{statusBanner.toUpperCase()}</Text>
-                ) : null}
-
-                <AddToAppleWallet disabled={!isEntryValid} secureToken={pass.secure_token} />
+          <View style={styles.qrBlock}>
+            <View style={[styles.qrShell, !isEntryValid && styles.qrShellDimmed]}>
+              {Platform.OS === 'web' ? (
+                qrDataUrl ? (
+                  <Image
+                    accessibilityLabel="Pass QR code"
+                    contentFit="fill"
+                    source={{ uri: qrDataUrl }}
+                    style={styles.qrImage}
+                  />
+                ) : qrError ? (
+                  <Text style={styles.qrErrorText}>{qrError}</Text>
+                ) : (
+                  <ActivityIndicator color="#000000" size="small" />
+                )
+              ) : (
+                <QRCode
+                  backgroundColor="#FFFFFF"
+                  color="#000000"
+                  quietZone={0}
+                  size={QR_SIZE}
+                  value={qrToken}
+                />
+              )}
+              <View style={styles.qrCenterMark}>
+                <Text style={styles.qrCenterMarkText}>808</Text>
               </View>
             </View>
 
-            <View style={styles.legalFooter}>
-              <LegalFooterLinks centered variant="fan" />
+            <View style={styles.passTypeBadge}>
+              <Text style={styles.passTypeBadgeText}>{passTypeLabel}</Text>
             </View>
-          </ScrollView>
-        </SafeAreaView>
-      </View>
-    </MobileViewport>
+
+            {statusBanner ? (
+              <Text style={styles.statusLine}>{statusBanner.toUpperCase()}</Text>
+            ) : null}
+
+            <AddToAppleWallet disabled={!isEntryValid} secureToken={pass.secure_token} />
+          </View>
+        </View>
+
+        <View style={styles.legalFooter}>
+          <LegalFooterLinks centered variant="fan" />
+        </View>
+      </ScrollView>
+    </PassScreenShell>
   );
 }
 
-function PassUnavailable({ message }: { message: string }) {
+function PassScreenShell({
+  artworkUri,
+  isUploaded = false,
+  children,
+}: {
+  artworkUri?: string | null;
+  isUploaded?: boolean;
+  children: React.ReactNode;
+}) {
+  const resolvedArtworkUri =
+    artworkUri && isUploaded
+      ? resolveEventArtworkPublicUrl(artworkUri) ?? artworkUri
+      : artworkUri;
+  const uploadedCachePolicy = Platform.OS === 'web' ? 'none' : 'memory-disk';
+
   return (
-    <MobileViewport>
-      <View style={styles.unavailableRoot}>
-        <SafeAreaView style={styles.unavailableInner}>
-          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
-          <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
-            {message}
-          </ThemedText>
-        </SafeAreaView>
+    <View style={styles.root}>
+      <View style={styles.backgroundLayer}>
+        {resolvedArtworkUri ? (
+          <Image
+            cachePolicy={isUploaded ? uploadedCachePolicy : 'memory-disk'}
+            contentFit="cover"
+            recyclingKey={resolvedArtworkUri}
+            source={{ uri: resolvedArtworkUri }}
+            style={styles.backgroundImage}
+          />
+        ) : null}
+        <View style={styles.backgroundScrim} />
       </View>
-    </MobileViewport>
+
+      <SafeAreaView edges={['top', 'bottom']} style={styles.foreground}>
+        {children}
+      </SafeAreaView>
+    </View>
   );
 }
 
@@ -217,51 +339,73 @@ const webViewportMinHeight =
   Platform.OS === 'web' ? ({ minHeight: '100dvh' } as const) : null;
 
 const styles = StyleSheet.create({
-  viewportOuter: {
-    alignItems: 'center',
+  root: {
     backgroundColor: palette.pureBlack,
     flex: 1,
+    position: 'relative',
+    ...webViewportMinHeight,
   },
-  viewportInner: {
-    backgroundColor: palette.pureBlack,
+  backgroundLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  backgroundImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  backgroundScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    zIndex: 1,
+  },
+  foreground: {
+    alignItems: 'center',
+    elevation: 2,
+    flex: 1,
+    position: 'relative',
+    width: '100%',
+    zIndex: 2,
+  },
+  scrollView: {
+    alignSelf: 'center',
     flex: 1,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
     width: '100%',
-    ...webViewportMinHeight,
-  },
-  screen: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  foreground: {
-    flex: 1,
-    zIndex: 1,
   },
   scrollContent: {
+    alignItems: 'center',
     flexGrow: 1,
     paddingBottom: LAYOUT.cardBottomInset,
     paddingHorizontal: LAYOUT.horizontalPadding,
     paddingTop: LAYOUT.cardTopInset,
+    width: '100%',
+  },
+  messageRoot: {
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+    justifyContent: 'center',
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
+    paddingHorizontal: LAYOUT.horizontalPadding,
+    width: '100%',
   },
   credentialCard: {
+    alignItems: 'center',
     alignSelf: 'center',
     backgroundColor: passScreen.credential.cardBackground,
     borderColor: passScreen.credential.cardBorder,
     borderRadius: passScreen.credential.borderRadius,
     borderWidth: 1,
     gap: spacing.three,
-    maxWidth: MOBILE_VIEWPORT_WIDTH - LAYOUT.horizontalPadding * 2,
+    maxWidth: MOBILE_VIEWPORT_WIDTH,
     paddingBottom: passScreen.credential.paddingBottom,
     paddingHorizontal: passScreen.credential.paddingHorizontal,
     paddingTop: passScreen.credential.paddingTop,
-    ...shadows.walletCardStyle,
     width: '100%',
   },
   metaBlock: {
     alignItems: 'center',
     gap: 0,
+    width: '100%',
   },
   dateLine: {
     color: fan.badgeText,
@@ -292,18 +436,41 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     textTransform: 'uppercase',
   },
+  guestLine: {
+    color: text.secondary,
+    fontSize: 14,
+    fontWeight: '600',
+    lineHeight: 18,
+    marginTop: spacing.one,
+    textAlign: 'center',
+  },
   qrBlock: {
     alignItems: 'center',
     marginTop: LAYOUT.metaToQr,
+    width: '100%',
   },
   qrShell: {
     alignItems: 'center',
     backgroundColor: palette.white,
     borderRadius: LAYOUT.qrBorderRadius,
+    height: QR_SIZE + LAYOUT.qrPad * 2,
     justifyContent: 'center',
-    overflow: 'hidden',
     padding: LAYOUT.qrPad,
     position: 'relative',
+    width: QR_SIZE + LAYOUT.qrPad * 2,
+  },
+  qrImage: {
+    alignSelf: 'center',
+    backgroundColor: palette.white,
+    height: QR_SIZE,
+    width: QR_SIZE,
+  },
+  qrErrorText: {
+    color: '#000000',
+    fontSize: 13,
+    fontWeight: '700',
+    paddingHorizontal: spacing.two,
+    textAlign: 'center',
   },
   qrShellDimmed: {
     opacity: 0.45,
@@ -356,35 +523,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: spacing.four,
     paddingBottom: spacing.two,
-  },
-  loadingRoot: {
-    alignItems: 'center',
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-    gap: 12,
-    justifyContent: 'center',
+    width: '100%',
   },
   loadingText: {
     fontSize: 15,
-  },
-  unavailableRoot: {
-    backgroundColor: palette.pureBlack,
-    flex: 1,
-  },
-  unavailableInner: {
-    flex: 1,
-    gap: 10,
-    justifyContent: 'center',
-    paddingHorizontal: LAYOUT.horizontalPadding,
   },
   unavailableTitle: {
     color: text.primary,
     fontSize: 32,
     fontWeight: '700',
     lineHeight: 38,
+    textAlign: 'center',
   },
   unavailableBody: {
     fontSize: 17,
     lineHeight: 24,
+    textAlign: 'center',
+  },
+  errorCardTitle: {
+    color: text.primary,
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+    textAlign: 'center',
+  },
+  errorCardBody: {
+    color: text.secondary,
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
   },
 });

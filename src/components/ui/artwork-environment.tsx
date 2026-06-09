@@ -1,7 +1,8 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { artwork, fan } from '@/theme';
+import { resolveEventArtworkPublicUrl } from '@/lib/event-artwork-storage';
+import { artwork, fan, palette } from '@/theme';
 import { platformPointerEventsNone } from '@/theme/platform-styles';
 
 const webBlurStyle =
@@ -15,42 +16,40 @@ type ArtworkEnvironmentProps = {
 };
 
 /**
- * Full-screen artwork — uploaded path mirrors EventArtwork (Command Center cards):
- * expo-image, source={{ uri }}, cachePolicy="none", contentFit="cover", StyleSheet.absoluteFill.
+ * Absolute-fill background artwork. Single cover image fills the frame; overlays sit above.
  */
 export function ArtworkEnvironment({
   artworkUri,
   isUploaded = false,
   style,
 }: ArtworkEnvironmentProps) {
+  const { width, height } = useWindowDimensions();
+  const resolvedArtworkUri = resolveEventArtworkPublicUrl(artworkUri) ?? artworkUri;
   const useBlur = !isUploaded;
   const blurRadius = useBlur && Platform.OS !== 'web' ? artwork.blurRadius : 0;
+  const uploadedCachePolicy = Platform.OS === 'web' ? 'none' : 'memory-disk';
 
   return (
     <View style={[styles.environment, platformPointerEventsNone(), style]}>
+      {resolvedArtworkUri ? (
+        <Image
+          blurRadius={blurRadius}
+          cachePolicy={isUploaded ? uploadedCachePolicy : 'memory-disk'}
+          contentFit="cover"
+          recyclingKey={resolvedArtworkUri}
+          source={{ uri: resolvedArtworkUri }}
+          style={[
+            styles.uploadedImage,
+            isUploaded && Platform.OS !== 'web' ? { height, width } : null,
+            useBlur && Platform.OS === 'web' ? webBlurStyle : null,
+          ]}
+        />
+      ) : null}
+
       {isUploaded ? (
-        <>
-          <Image
-            cachePolicy="none"
-            contentFit="cover"
-            recyclingKey={artworkUri}
-            source={{ uri: artworkUri }}
-            style={styles.uploadedImage}
-          />
-          <View style={styles.uploadedBottomFade} />
-        </>
+        <View style={styles.uploadedBottomFade} />
       ) : (
         <>
-          <View style={[styles.artLayer, styles.artLayerScaled]}>
-            <Image
-              blurRadius={blurRadius}
-              cachePolicy="memory-disk"
-              contentFit="cover"
-              recyclingKey={artworkUri}
-              source={{ uri: artworkUri }}
-              style={[StyleSheet.absoluteFill, useBlur && Platform.OS === 'web' ? webBlurStyle : null]}
-            />
-          </View>
           <View style={styles.fallbackTint} />
           <View style={styles.fallbackPurpleWash} />
           <View style={styles.fallbackBottomScrim} />
@@ -64,12 +63,12 @@ export function ArtworkEnvironment({
 
 const styles = StyleSheet.create({
   environment: {
-    height: '100%',
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: palette.pureBlack,
     overflow: 'hidden',
-    width: '100%',
   },
   uploadedImage: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
   },
   uploadedBottomFade: {
     backgroundColor: 'rgba(8, 8, 8, 0.55)',
@@ -80,37 +79,30 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 2,
   },
-  artLayer: {
-    ...StyleSheet.absoluteFill,
-    zIndex: 1,
-  },
-  artLayerScaled: {
-    transform: [{ scale: artwork.scale }],
-  },
   fallbackTint: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.fallbackTint,
     zIndex: 2,
   },
   fallbackPurpleWash: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: fan.purpleWash,
     zIndex: 2,
   },
   fallbackBottomScrim: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.fallbackBottomScrim,
     top: '62%',
     zIndex: 2,
   },
   fallbackVignetteTop: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.vignetteMedium,
     bottom: '70%',
     zIndex: 2,
   },
   fallbackVignetteBottom: {
-    ...StyleSheet.absoluteFill,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: artwork.vignetteStrong,
     top: '70%',
     zIndex: 2,

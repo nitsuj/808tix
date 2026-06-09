@@ -10,6 +10,7 @@ const ROOT = process.cwd();
 
 const FILES = {
   artworkDisplay: join(ROOT, 'src/lib/event-artwork-display.ts'),
+  eventArtworkStorage: join(ROOT, 'src/lib/event-artwork-storage.ts'),
   artworkEnvironment: join(ROOT, 'src/components/ui/artwork-environment.tsx'),
   eventArtwork: join(ROOT, 'src/components/ui/event-artwork.tsx'),
   eventScreenBackground: join(ROOT, 'src/components/ui/event-screen-background.tsx'),
@@ -28,6 +29,10 @@ const FILES = {
   indexScreen: join(ROOT, 'src/app/index.tsx'),
   profileScreen: join(ROOT, 'src/app/profile.tsx'),
   organizerEventTitle: join(ROOT, 'src/theme/organizer-event-title.ts'),
+  guestPass: join(ROOT, 'src/app/pass/[token].tsx'),
+  passQrCode: join(ROOT, 'src/components/pass/pass-qr-code.tsx'),
+  passQrCodeWeb: join(ROOT, 'src/components/pass/pass-qr-code.web.tsx'),
+  eventPasses: join(ROOT, 'src/app/events/[eventId]/passes.tsx'),
 } as const;
 
 let failures = 0;
@@ -72,6 +77,10 @@ const createEvent = read(FILES.createEvent);
 const indexScreen = read(FILES.indexScreen);
 const profileScreen = read(FILES.profileScreen);
 const organizerEventTitle = read(FILES.organizerEventTitle);
+const guestPass = read(FILES.guestPass);
+const passQrCode = read(FILES.passQrCode);
+const passQrCodeWeb = read(FILES.passQrCodeWeb);
+const eventPasses = read(FILES.eventPasses);
 
 assert(
   artworkDisplay.includes('resolveEventScreenBackgroundArtwork'),
@@ -108,35 +117,39 @@ assert(
   'Command Center EventArtwork uses uri source, cachePolicy none, absoluteFill',
 );
 assert(
-  artworkEnvironment.includes('source={{ uri: artworkUri }}') &&
-    artworkEnvironment.includes('cachePolicy="none"') &&
+  artworkEnvironment.includes('resolveEventArtworkPublicUrl') &&
+    artworkEnvironment.includes('source={{ uri: resolvedArtworkUri }}') &&
+    artworkEnvironment.includes("'none'") &&
     artworkEnvironment.includes('styles.uploadedImage'),
-  'uploaded full-screen artwork uses same uri source shape as Command Center',
+  'full-screen artwork normalizes uploaded URLs and uses native-safe uri source',
 );
 assert(
-  artworkEnvironment.match(/uploadedImage:[\s\S]*StyleSheet\.absoluteFill/) &&
-    !artworkEnvironment.includes('uploadedCoverScale'),
-  'uploaded full-screen image uses absoluteFill without overscan transform',
+  artworkEnvironment.match(/uploadedImage:[\s\S]*StyleSheet\.absoluteFillObject/) &&
+    artworkEnvironment.includes('contentFit="cover"'),
+  'full-screen artwork image uses absoluteFillObject with cover fit',
 );
 assert(
   !artworkEnvironment.includes('COVER_OVERSCAN_PERCENT') &&
     !artworkEnvironment.includes('coverImage'),
   'ArtworkEnvironment does not use broken percentage cover layout',
 );
+// Guest pass (/pass/[token]) renders ArtworkEnvironment before SafeAreaView. In-flow
+// height:'100%' / width:'100%' on the root steals flex space and collapses foreground
+// (event title, QR, Add to Wallet) while artwork remains visible.
 assert(
-  artworkEnvironment.includes("height: '100%'") &&
-    artworkEnvironment.includes("width: '100%'"),
-  'full-screen artwork environment has explicit percent dimensions',
+  artworkEnvironment.match(/environment:\s*\{[\s\S]*StyleSheet\.absoluteFillObject/) &&
+    !artworkEnvironment.match(/environment:\s*\{[\s\S]*height:\s*'100%'/),
+  'ArtworkEnvironment root uses absoluteFillObject background layer (not in-flow percent dimensions)',
 );
 assert(
   artworkEnvironment.includes('styles.uploadedBottomFade') &&
-    artworkEnvironment.match(/isUploaded \?[\s\S]*styles\.uploadedImage/),
-  'uploaded image renders before bottom fade overlay',
+    artworkEnvironment.match(/isUploaded \?[\s\S]*uploadedBottomFade/),
+  'uploaded artwork renders bottom fade overlay',
 );
 assert(
-  artworkEnvironment.includes('artLayerScaled') &&
-    artworkEnvironment.match(/isUploaded \?[\s\S]*: \([\s\S]*artLayerScaled/),
-  'cover scale transform applies only to fallback blur layer',
+  !artworkEnvironment.includes('artLayerScaled') &&
+    !artworkEnvironment.includes('uploadedArtLayerScaled'),
+  'artwork does not use transform overscale layers',
 );
 assert(
   eventScreenBackground.includes('artwork.uri') &&
@@ -281,6 +294,14 @@ assert(
   'resolver preserves image_url when event artwork exists',
 );
 
+const eventArtworkStorage = read(FILES.eventArtworkStorage);
+assert(
+  eventArtworkStorage.includes('resolveEventArtworkPublicUrl') &&
+    eventArtworkStorage.includes("'blob:'") &&
+    eventArtworkStorage.includes("'data:'"),
+  'uploaded artwork storage helper rejects ephemeral blob/data URLs',
+);
+
 assert(
   organizerEventTitle.includes("textTransform: 'none'") &&
     organizerEventTitle.includes("textTransform: 'uppercase'"),
@@ -309,6 +330,29 @@ assert(
   !dateField.includes('formField.inputBackground') ||
     !dateField.match(/iosModalSheet:[\s\S]*formField\.inputBackground/),
   'iOS date picker sheet is not styled with dark form input background',
+);
+
+// Guest pass — absolute background layer; SafeAreaView foreground stays in-flow above artwork.
+assert(
+  guestPass.includes('styles.backgroundLayer') &&
+    guestPass.includes('styles.foreground') &&
+    guestPass.includes('SafeAreaView') &&
+    guestPass.includes('secureToken={pass.secure_token}') &&
+    !guestPass.includes('credentialCardOuter'),
+  'guest pass uses layered background + SafeAreaView foreground with pass.secure_token',
+);
+assert(
+  passQrCode.includes('value={secureToken}') && !passQrCode.includes('secureToken.trim()'),
+  'native PassQrCode encodes secureToken directly',
+);
+assert(
+  passQrCodeWeb.includes('QRCodeLib.toDataURL') && passQrCodeWeb.includes('secureToken'),
+  'web PassQrCode renders PNG QR from secure token',
+);
+assert(
+  artworkEnvironment.includes('backgroundColor: palette.pureBlack') &&
+    !artworkEnvironment.includes("height: '100%'"),
+  'artwork environment fills frame with cover image over black base',
 );
 
 if (failures > 0) {

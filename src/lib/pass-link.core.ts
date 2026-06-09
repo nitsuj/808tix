@@ -27,6 +27,17 @@ export function normalizePassLinkBaseUrl(raw: string | undefined | null): string
   }
 }
 
+/** In-app expo-router path for organizer preview and local QA. */
+export function buildPassRoutePath(secureToken: string): string {
+  const token = secureToken.trim();
+
+  if (!token) {
+    throw new Error('buildPassRoutePath: secureToken is required.');
+  }
+
+  return `/pass/${encodeURIComponent(token)}`;
+}
+
 export function buildAbsolutePassLinkUrl(baseOrigin: string, secureToken: string): string {
   const token = secureToken.trim();
 

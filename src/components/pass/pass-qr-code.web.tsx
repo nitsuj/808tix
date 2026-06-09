@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { Image } from 'expo-image';
+import QRCodeLib from 'qrcode';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
 
 import { qrCode, spacing } from '@/theme';
 import { platformViewShadow } from '@/theme/platform-styles';
@@ -8,9 +9,7 @@ import { platformViewShadow } from '@/theme/platform-styles';
 type PassQrCodeProps = {
   secureToken: string;
   dimmed?: boolean;
-  /** Fixed QR module size (px). When set, ignores window-based sizing. */
   size?: number;
-  /** Render QR only — no outer frame (Ticket Detail mock supplies the shell). */
   bare?: boolean;
 };
 
@@ -19,6 +18,7 @@ const QR_MIN_SIZE = 240;
 
 export function PassQrCode({ secureToken, dimmed = false, size, bare = false }: PassQrCodeProps) {
   const { width } = useWindowDimensions();
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
 
   const qrSize = useMemo(() => {
     if (size != null) {
@@ -29,17 +29,40 @@ export function PassQrCode({ secureToken, dimmed = false, size, bare = false }: 
     return Math.max(QR_MIN_SIZE, Math.min(QR_MAX_SIZE, Math.floor(available)));
   }, [size, width]);
 
-  const code = (
-    <View style={[styles.qrCanvas, { height: qrSize, width: qrSize }]}>
-      <QRCode
-        backgroundColor="#FFFFFF"
-        color="#000000"
-        ecl="M"
-        quietZone={0}
-        size={qrSize}
-        value={secureToken}
-      />
-    </View>
+  useEffect(() => {
+    if (!secureToken.trim()) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void QRCodeLib.toDataURL(secureToken, {
+      width: qrSize,
+      margin: 0,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF',
+      },
+    }).then((uri) => {
+      if (!cancelled) {
+        setDataUrl(uri);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [secureToken, qrSize]);
+
+  const code = dataUrl ? (
+    <Image
+      accessibilityLabel="Pass QR code"
+      contentFit="fill"
+      source={{ uri: dataUrl }}
+      style={{ backgroundColor: '#FFFFFF', height: qrSize, width: qrSize }}
+    />
+  ) : (
+    <View style={[styles.placeholder, { height: qrSize, width: qrSize }]} />
   );
 
   if (bare) {
@@ -54,11 +77,11 @@ export function PassQrCode({ secureToken, dimmed = false, size, bare = false }: 
 }
 
 const styles = StyleSheet.create({
-  qrCanvas: {
-    alignItems: 'center',
+  bareDimmed: {
+    opacity: qrCode.dimmedOpacity,
+  },
+  placeholder: {
     backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
   frame: {
     alignItems: 'center',
@@ -76,9 +99,6 @@ const styles = StyleSheet.create({
     }),
   },
   frameDimmed: {
-    opacity: qrCode.dimmedOpacity,
-  },
-  bareDimmed: {
     opacity: qrCode.dimmedOpacity,
   },
   qrPad: {

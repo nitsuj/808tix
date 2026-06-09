@@ -38,7 +38,7 @@ export function AddToAppleWallet({ secureToken, disabled = false }: AddToAppleWa
     }
 
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.location.assign(walletUrl);
+      window.open(walletUrl, '_blank', 'noopener,noreferrer');
       return;
     }
 
