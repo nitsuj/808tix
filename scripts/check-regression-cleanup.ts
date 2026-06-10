@@ -81,6 +81,28 @@ assert(guestPass.includes('808TIX TICKET'), 'guest pass shows ticket brand label
 assert(guestPass.includes('Ticket holder'), 'guest pass shows ticket holder label');
 assert(guestPass.includes('Present this ticket at entry'), 'guest pass shows entry help copy');
 assert(
+  !guestPass.includes('posterPanel'),
+  'guest pass uses unified credential card instead of separate poster panel',
+);
+assert(!guestPass.includes('qrCenterMark'), 'guest pass does not reference qrCenterMark styles');
+assert(!guestPass.includes('qrCenterMarkOverlay'), 'guest pass does not reference qrCenterMarkOverlay');
+assert(!guestPass.includes('qrCenterMarkText'), 'guest pass does not reference qrCenterMarkText');
+assert(
+  !guestPass.includes('platformPointerEventsNone'),
+  'guest pass does not use platformPointerEventsNone',
+);
+assert(
+  !guestPass.includes('>808</Text>'),
+  'guest pass does not render standalone 808 text inside QR overlay',
+);
+assert(
+  guestPass.includes('styles.qrContent') &&
+    guestPass.includes('styles.qrShell') &&
+    guestPass.includes('alignItems: \'center\'') &&
+    guestPass.includes('justifyContent: \'center\''),
+  'guest pass centers QR inside white shell with flex layout',
+);
+assert(
   !walletButton.includes('window.location.assign'),
   'Add to Apple Wallet does not replace the guest pass page on web',
 );

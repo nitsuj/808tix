@@ -27,23 +27,28 @@ import { fan, organizer, palette, spacing, text } from '@/theme';
 const MOBILE_VIEWPORT_WIDTH = 390;
 const QR_SIZE = 220;
 
-const LAYOUT = {
-  horizontalPadding: 20,
-  topInset: 16,
-  bottomInset: 32,
-  posterToCard: 20,
-  qrBorderRadius: 12,
-  qrPad: 14,
-  qrToChip: 16,
-  qrCenterMarkSize: 36,
+const ELECTRIC = {
+  magenta: '#FF2BD6',
+  glow: 'rgba(255, 43, 214, 0.28)',
 } as const;
 
-const GLASS = {
-  posterBackground: 'rgba(0, 0, 0, 0.58)',
-  posterBorder: 'rgba(255, 255, 255, 0.14)',
-  cardBackground: 'rgba(8, 8, 14, 0.88)',
-  cardBorder: 'rgba(162, 91, 255, 0.32)',
-  chipBackground: 'rgba(162, 91, 255, 0.12)',
+const LAYOUT = {
+  horizontalPadding: 20,
+  topInset: 20,
+  bottomInset: 32,
+  qrBorderRadius: 12,
+  qrPad: 14,
+  lanyardSlotWidth: 56,
+  lanyardSlotHeight: 10,
+} as const;
+
+const CREDENTIAL = {
+  surface: 'rgba(5, 5, 10, 0.92)',
+  border: 'rgba(255, 43, 214, 0.38)',
+  header: 'rgba(255, 43, 214, 0.12)',
+  divider: 'rgba(255, 43, 214, 0.42)',
+  chipBackground: 'rgba(255, 43, 214, 0.14)',
+  chipBorder: 'rgba(255, 43, 214, 0.45)',
 } as const;
 
 function formatTicketDateTimeLine(
@@ -128,7 +133,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
     return (
       <PassScreenShell artworkUri={artworkUri}>
         <View style={styles.messageRoot}>
-          <ActivityIndicator size="large" color={fan.primary} />
+          <ActivityIndicator size="large" color={ELECTRIC.magenta} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
             Loading your ticket…
           </ThemedText>
@@ -242,25 +247,11 @@ function TicketDetailView({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
-        <View style={styles.posterPanel}>
-          <Text style={styles.ticketBrandLabel}>808TIX TICKET</Text>
-          <View style={styles.posterAccentLine} />
-          <Text style={styles.posterEventTitle}>{eventTitle}</Text>
-          {dateTimeLine ? <Text style={styles.posterDateLine}>{dateTimeLine}</Text> : null}
-          {venueLine ? <Text style={styles.posterVenueLine}>{venueLine}</Text> : null}
-        </View>
-
         <View style={styles.credentialCard}>
-          <View style={styles.holderBlock}>
-            <Text style={styles.fieldLabel}>Ticket holder</Text>
-            <Text style={styles.holderName}>{guestName}</Text>
-          </View>
+          <View style={styles.lanyardSlot} />
 
-          <View style={styles.ticketMetaRow}>
-            <View style={styles.ticketTypeChip}>
-              <Text style={styles.ticketTypeLabel}>Ticket type</Text>
-              <Text style={styles.ticketTypeValue}>{passTypeLabel}</Text>
-            </View>
+          <View style={styles.credentialHeader}>
+            <Text style={styles.ticketBrandLabel}>808TIX TICKET</Text>
             {statusBanner ? (
               <View
                 style={[
@@ -278,32 +269,49 @@ function TicketDetailView({
             ) : null}
           </View>
 
+          <View style={styles.eventBlock}>
+            <Text style={styles.eventTitle}>{eventTitle}</Text>
+            {dateTimeLine ? <Text style={styles.eventDateLine}>{dateTimeLine}</Text> : null}
+            {venueLine ? <Text style={styles.eventVenueLine}>{venueLine}</Text> : null}
+          </View>
+
+          <View style={styles.credentialDivider} />
+
+          <View style={styles.holderBlock}>
+            <Text style={styles.fieldLabel}>Ticket holder</Text>
+            <Text style={styles.holderName}>{guestName}</Text>
+          </View>
+
+          <View style={styles.ticketTypeRow}>
+            <Text style={styles.ticketTypeLabel}>Ticket type</Text>
+            <Text style={styles.ticketTypeValue}>{passTypeLabel}</Text>
+          </View>
+
           <View style={styles.qrBlock}>
             <View style={[styles.qrShell, !isEntryValid && styles.qrShellDimmed]}>
-              {Platform.OS === 'web' ? (
-                qrDataUrl ? (
-                  <Image
-                    accessibilityLabel="Ticket QR code"
-                    contentFit="fill"
-                    source={{ uri: qrDataUrl }}
-                    style={styles.qrImage}
-                  />
-                ) : qrError ? (
-                  <Text style={styles.qrErrorText}>{qrError}</Text>
+              <View style={styles.qrContent}>
+                {Platform.OS === 'web' ? (
+                  qrDataUrl ? (
+                    <Image
+                      accessibilityLabel="Ticket QR code"
+                      contentFit="fill"
+                      source={{ uri: qrDataUrl }}
+                      style={styles.qrImage}
+                    />
+                  ) : qrError ? (
+                    <Text style={styles.qrErrorText}>{qrError}</Text>
+                  ) : (
+                    <ActivityIndicator color="#000000" size="small" />
+                  )
                 ) : (
-                  <ActivityIndicator color="#000000" size="small" />
-                )
-              ) : (
-                <QRCode
-                  backgroundColor="#FFFFFF"
-                  color="#000000"
-                  quietZone={0}
-                  size={QR_SIZE}
-                  value={qrToken}
-                />
-              )}
-              <View style={styles.qrCenterMark}>
-                <Text style={styles.qrCenterMarkText}>808</Text>
+                  <QRCode
+                    backgroundColor="#FFFFFF"
+                    color="#000000"
+                    quietZone={0}
+                    size={QR_SIZE}
+                    value={qrToken}
+                  />
+                )}
               </View>
             </View>
 
@@ -379,7 +387,7 @@ const styles = StyleSheet.create({
   },
   backgroundScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.32)',
+    backgroundColor: 'rgba(0, 0, 0, 0.34)',
     zIndex: 1,
   },
   foreground: {
@@ -399,7 +407,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
-    gap: LAYOUT.posterToCard,
     paddingBottom: LAYOUT.bottomInset,
     paddingHorizontal: LAYOUT.horizontalPadding,
     paddingTop: LAYOUT.topInset,
@@ -414,136 +421,54 @@ const styles = StyleSheet.create({
     paddingHorizontal: LAYOUT.horizontalPadding,
     width: '100%',
   },
-  posterPanel: {
-    alignSelf: 'stretch',
-    backgroundColor: GLASS.posterBackground,
-    borderColor: GLASS.posterBorder,
-    borderRadius: 18,
-    borderWidth: 1,
-    gap: spacing.one,
-    paddingHorizontal: spacing.three,
-    paddingVertical: spacing.three,
-    width: '100%',
-  },
-  ticketBrandLabel: {
-    color: fan.primary,
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 2.4,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  posterAccentLine: {
-    alignSelf: 'center',
-    backgroundColor: fan.primary,
-    borderRadius: 2,
-    height: 3,
-    marginBottom: spacing.one,
-    marginTop: spacing.one,
-    width: 48,
-  },
-  posterEventTitle: {
-    color: text.primary,
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: 0.4,
-    lineHeight: 34,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  posterDateLine: {
-    color: fan.badgeText,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.1,
-    lineHeight: 16,
-    marginTop: spacing.one,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  posterVenueLine: {
-    color: text.secondary,
-    fontSize: 13,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    lineHeight: 18,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
   credentialCard: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: GLASS.cardBackground,
-    borderColor: GLASS.cardBorder,
-    borderRadius: 22,
+    backgroundColor: CREDENTIAL.surface,
+    borderColor: CREDENTIAL.border,
+    borderRadius: 24,
     borderWidth: 1,
     gap: spacing.three,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
     overflow: 'visible',
     paddingBottom: spacing.four,
     paddingHorizontal: spacing.three,
-    paddingTop: spacing.three,
+    paddingTop: spacing.two,
     width: '100%',
   },
-  holderBlock: {
+  lanyardSlot: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    borderColor: 'rgba(255, 43, 214, 0.35)',
+    borderRadius: 6,
+    borderWidth: 1,
+    height: LAYOUT.lanyardSlotHeight,
+    marginBottom: spacing.one,
+    width: LAYOUT.lanyardSlotWidth,
+  },
+  credentialHeader: {
     alignItems: 'center',
-    gap: 4,
-    width: '100%',
-  },
-  fieldLabel: {
-    color: fan.badgeText,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  holderName: {
-    color: text.primary,
-    fontSize: 20,
-    fontWeight: '800',
-    lineHeight: 26,
-    textAlign: 'center',
-  },
-  ticketMetaRow: {
-    alignItems: 'center',
+    backgroundColor: CREDENTIAL.header,
+    borderRadius: 14,
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.two,
     justifyContent: 'center',
+    paddingHorizontal: spacing.two,
+    paddingVertical: spacing.two,
     width: '100%',
   },
-  ticketTypeChip: {
-    alignItems: 'center',
-    backgroundColor: GLASS.chipBackground,
-    borderColor: 'rgba(162, 91, 255, 0.45)',
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 2,
-    minWidth: 140,
-    paddingHorizontal: spacing.two,
-    paddingVertical: spacing.one + 2,
-  },
-  ticketTypeLabel: {
-    color: fan.badgeText,
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-  },
-  ticketTypeValue: {
-    color: fan.primary,
-    fontSize: 12,
+  ticketBrandLabel: {
+    color: ELECTRIC.magenta,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 0.6,
-    textAlign: 'center',
+    letterSpacing: 2.2,
     textTransform: 'uppercase',
   },
   statusChip: {
     borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.two,
-    paddingVertical: spacing.one,
+    paddingVertical: 4,
   },
   statusChipValid: {
     backgroundColor: 'rgba(57, 255, 20, 0.12)',
@@ -565,6 +490,90 @@ const styles = StyleSheet.create({
   statusChipTextInactive: {
     color: text.secondary,
   },
+  eventBlock: {
+    alignItems: 'center',
+    gap: spacing.one,
+    width: '100%',
+  },
+  eventTitle: {
+    color: text.primary,
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    lineHeight: 32,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  eventDateLine: {
+    color: fan.badgeText,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1.1,
+    lineHeight: 16,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  eventVenueLine: {
+    color: text.secondary,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    lineHeight: 18,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  credentialDivider: {
+    alignSelf: 'stretch',
+    backgroundColor: CREDENTIAL.divider,
+    height: 1,
+    marginVertical: spacing.one,
+  },
+  holderBlock: {
+    alignItems: 'center',
+    gap: 4,
+    width: '100%',
+  },
+  fieldLabel: {
+    color: fan.badgeText,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  holderName: {
+    color: text.primary,
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 26,
+    textAlign: 'center',
+  },
+  ticketTypeRow: {
+    alignItems: 'center',
+    backgroundColor: CREDENTIAL.chipBackground,
+    borderColor: CREDENTIAL.chipBorder,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 2,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.one + 2,
+    width: '100%',
+  },
+  ticketTypeLabel: {
+    color: fan.badgeText,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  ticketTypeValue: {
+    color: ELECTRIC.magenta,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
   qrBlock: {
     alignItems: 'center',
     gap: spacing.two,
@@ -576,13 +585,17 @@ const styles = StyleSheet.create({
     borderRadius: LAYOUT.qrBorderRadius,
     height: QR_SIZE + LAYOUT.qrPad * 2,
     justifyContent: 'center',
-    overflow: 'visible',
-    padding: LAYOUT.qrPad,
-    position: 'relative',
+    overflow: 'hidden',
     width: QR_SIZE + LAYOUT.qrPad * 2,
   },
+  qrContent: {
+    alignItems: 'center',
+    backgroundColor: palette.white,
+    height: QR_SIZE,
+    justifyContent: 'center',
+    width: QR_SIZE,
+  },
   qrImage: {
-    alignSelf: 'center',
     backgroundColor: palette.white,
     height: QR_SIZE,
     width: QR_SIZE,
@@ -597,25 +610,6 @@ const styles = StyleSheet.create({
   qrShellDimmed: {
     opacity: 0.45,
   },
-  qrCenterMark: {
-    alignItems: 'center',
-    backgroundColor: palette.white,
-    borderRadius: 6,
-    height: LAYOUT.qrCenterMarkSize,
-    justifyContent: 'center',
-    left: '50%',
-    marginLeft: -LAYOUT.qrCenterMarkSize / 2,
-    marginTop: -LAYOUT.qrCenterMarkSize / 2,
-    position: 'absolute',
-    top: '50%',
-    width: LAYOUT.qrCenterMarkSize,
-  },
-  qrCenterMarkText: {
-    color: fan.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-  },
   entryHelpText: {
     color: organizer.accent,
     fontSize: 12,
@@ -626,6 +620,7 @@ const styles = StyleSheet.create({
   },
   legalFooter: {
     alignItems: 'center',
+    marginTop: spacing.three,
     paddingBottom: spacing.two,
     width: '100%',
   },
