@@ -22,27 +22,28 @@ import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
 import { resolveEventArtworkPublicUrl } from '@/lib/event-artwork-storage';
 import type { PublicPassView } from '@/lib/database.types';
 import { supabase } from '@/lib/supabase';
-import { fan, organizer, palette, passScreen, spacing, text } from '@/theme';
+import { fan, organizer, palette, spacing, text } from '@/theme';
 
 const MOBILE_VIEWPORT_WIDTH = 390;
 const QR_SIZE = 220;
 
 const LAYOUT = {
-  horizontalPadding: 24,
-  cardTopInset: 112,
-  cardBottomInset: 32,
-  dateToTitle: 8,
-  titleToVenue: 6,
-  metaToQr: 24,
+  horizontalPadding: 20,
+  topInset: 16,
+  bottomInset: 32,
+  posterToCard: 20,
   qrBorderRadius: 12,
   qrPad: 14,
-  qrToBadge: 16,
+  qrToChip: 16,
   qrCenterMarkSize: 36,
-  date: { fontSize: 11, lineHeight: 14, letterSpacing: 1.2 },
-  title: { fontSize: 28, lineHeight: 32, letterSpacing: 0.6 },
-  venue: { fontSize: 14, lineHeight: 18, letterSpacing: 0.8 },
-  badge: { fontSize: 11, lineHeight: 14, letterSpacing: 1.1, paddingH: 16, paddingV: 6 },
-  status: { fontSize: 11, lineHeight: 14, letterSpacing: 0.8, marginTop: 12 },
+} as const;
+
+const GLASS = {
+  posterBackground: 'rgba(0, 0, 0, 0.58)',
+  posterBorder: 'rgba(255, 255, 255, 0.14)',
+  cardBackground: 'rgba(8, 8, 14, 0.88)',
+  cardBorder: 'rgba(162, 91, 255, 0.32)',
+  chipBackground: 'rgba(162, 91, 255, 0.12)',
 } as const;
 
 function formatTicketDateTimeLine(
@@ -54,7 +55,7 @@ function formatTicketDateTimeLine(
 
 function formatPassTypeLabel(value: string): string {
   const trimmed = value.trim();
-  return (trimmed || 'GENERAL ADMISSION').toUpperCase();
+  return (trimmed || 'General Admission').toUpperCase();
 }
 
 export default function GuestPassScreen() {
@@ -65,9 +66,9 @@ export default function GuestPassScreen() {
     return (
       <PassScreenShell>
         <View style={styles.messageRoot}>
-          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
+          <Text style={styles.unavailableTitle}>Ticket unavailable</Text>
           <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
-            Pass link is invalid.
+            This ticket link is invalid.
           </ThemedText>
         </View>
       </PassScreenShell>
@@ -102,7 +103,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
       }
 
       if (!data) {
-        setError('Pass not found.');
+        setError('Ticket not found.');
         setPass(null);
         setIsLoading(false);
         return;
@@ -129,7 +130,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
         <View style={styles.messageRoot}>
           <ActivityIndicator size="large" color={fan.primary} />
           <ThemedText themeColor="textSecondary" style={styles.loadingText}>
-            Loading your pass…
+            Loading your ticket…
           </ThemedText>
         </View>
       </PassScreenShell>
@@ -140,9 +141,9 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
     return (
       <PassScreenShell artworkUri={artworkUri}>
         <View style={styles.messageRoot}>
-          <Text style={styles.unavailableTitle}>Pass unavailable</Text>
+          <Text style={styles.unavailableTitle}>Ticket unavailable</Text>
           <ThemedText themeColor="textSecondary" style={styles.unavailableBody}>
-            {error ?? 'Pass not found.'}
+            {error ?? 'Ticket not found.'}
           </ThemedText>
         </View>
       </PassScreenShell>
@@ -160,7 +161,7 @@ function GuestPassContent({ secureToken }: { secureToken: string }) {
           <View style={styles.credentialCard}>
             <Text style={styles.errorCardTitle}>Pass token missing — QR cannot be displayed.</Text>
             <Text style={styles.errorCardBody}>
-              Please contact the organizer for a new pass link.
+              Please contact the organizer for a new ticket link.
             </Text>
           </View>
         </ScrollView>
@@ -193,7 +194,7 @@ function TicketDetailView({
 
   const venueLine = pass.venue_name?.trim().toUpperCase() ?? null;
   const eventTitle = pass.event_name.trim().toUpperCase();
-  const guestName = pass.guest_name?.trim() ?? null;
+  const guestName = pass.guest_name?.trim() ?? 'Ticket holder';
   const qrToken = pass.secure_token?.trim() ?? '';
 
   useEffect(() => {
@@ -241,12 +242,40 @@ function TicketDetailView({
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         style={styles.scrollView}>
+        <View style={styles.posterPanel}>
+          <Text style={styles.ticketBrandLabel}>808TIX TICKET</Text>
+          <View style={styles.posterAccentLine} />
+          <Text style={styles.posterEventTitle}>{eventTitle}</Text>
+          {dateTimeLine ? <Text style={styles.posterDateLine}>{dateTimeLine}</Text> : null}
+          {venueLine ? <Text style={styles.posterVenueLine}>{venueLine}</Text> : null}
+        </View>
+
         <View style={styles.credentialCard}>
-          <View style={styles.metaBlock}>
-            {dateTimeLine ? <Text style={styles.dateLine}>{dateTimeLine}</Text> : null}
-            <Text style={styles.eventTitle}>{eventTitle}</Text>
-            {venueLine ? <Text style={styles.venueLine}>{venueLine}</Text> : null}
-            {guestName ? <Text style={styles.guestLine}>{guestName}</Text> : null}
+          <View style={styles.holderBlock}>
+            <Text style={styles.fieldLabel}>Ticket holder</Text>
+            <Text style={styles.holderName}>{guestName}</Text>
+          </View>
+
+          <View style={styles.ticketMetaRow}>
+            <View style={styles.ticketTypeChip}>
+              <Text style={styles.ticketTypeLabel}>Ticket type</Text>
+              <Text style={styles.ticketTypeValue}>{passTypeLabel}</Text>
+            </View>
+            {statusBanner ? (
+              <View
+                style={[
+                  styles.statusChip,
+                  isEntryValid ? styles.statusChipValid : styles.statusChipInactive,
+                ]}>
+                <Text
+                  style={[
+                    styles.statusChipText,
+                    isEntryValid ? styles.statusChipTextValid : styles.statusChipTextInactive,
+                  ]}>
+                  {statusBanner.toUpperCase()}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View style={styles.qrBlock}>
@@ -254,7 +283,7 @@ function TicketDetailView({
               {Platform.OS === 'web' ? (
                 qrDataUrl ? (
                   <Image
-                    accessibilityLabel="Pass QR code"
+                    accessibilityLabel="Ticket QR code"
                     contentFit="fill"
                     source={{ uri: qrDataUrl }}
                     style={styles.qrImage}
@@ -278,12 +307,8 @@ function TicketDetailView({
               </View>
             </View>
 
-            <View style={styles.passTypeBadge}>
-              <Text style={styles.passTypeBadgeText}>{passTypeLabel}</Text>
-            </View>
-
-            {statusBanner ? (
-              <Text style={styles.statusLine}>{statusBanner.toUpperCase()}</Text>
+            {isEntryValid ? (
+              <Text style={styles.entryHelpText}>Present this ticket at entry</Text>
             ) : null}
 
             <AddToAppleWallet disabled={!isEntryValid} secureToken={pass.secure_token} />
@@ -354,7 +379,7 @@ const styles = StyleSheet.create({
   },
   backgroundScrim: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.28)',
+    backgroundColor: 'rgba(0, 0, 0, 0.32)',
     zIndex: 1,
   },
   foreground: {
@@ -374,9 +399,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: 'center',
     flexGrow: 1,
-    paddingBottom: LAYOUT.cardBottomInset,
+    gap: LAYOUT.posterToCard,
+    paddingBottom: LAYOUT.bottomInset,
     paddingHorizontal: LAYOUT.horizontalPadding,
-    paddingTop: LAYOUT.cardTopInset,
+    paddingTop: LAYOUT.topInset,
     width: '100%',
   },
   messageRoot: {
@@ -388,65 +414,160 @@ const styles = StyleSheet.create({
     paddingHorizontal: LAYOUT.horizontalPadding,
     width: '100%',
   },
+  posterPanel: {
+    alignSelf: 'stretch',
+    backgroundColor: GLASS.posterBackground,
+    borderColor: GLASS.posterBorder,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: spacing.one,
+    paddingHorizontal: spacing.three,
+    paddingVertical: spacing.three,
+    width: '100%',
+  },
+  ticketBrandLabel: {
+    color: fan.primary,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 2.4,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  posterAccentLine: {
+    alignSelf: 'center',
+    backgroundColor: fan.primary,
+    borderRadius: 2,
+    height: 3,
+    marginBottom: spacing.one,
+    marginTop: spacing.one,
+    width: 48,
+  },
+  posterEventTitle: {
+    color: text.primary,
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+    lineHeight: 34,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  posterDateLine: {
+    color: fan.badgeText,
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 1.1,
+    lineHeight: 16,
+    marginTop: spacing.one,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
+  posterVenueLine: {
+    color: text.secondary,
+    fontSize: 13,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    lineHeight: 18,
+    textAlign: 'center',
+    textTransform: 'uppercase',
+  },
   credentialCard: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: passScreen.credential.cardBackground,
-    borderColor: passScreen.credential.cardBorder,
-    borderRadius: passScreen.credential.borderRadius,
+    backgroundColor: GLASS.cardBackground,
+    borderColor: GLASS.cardBorder,
+    borderRadius: 22,
     borderWidth: 1,
     gap: spacing.three,
     maxWidth: MOBILE_VIEWPORT_WIDTH,
-    paddingBottom: passScreen.credential.paddingBottom,
-    paddingHorizontal: passScreen.credential.paddingHorizontal,
-    paddingTop: passScreen.credential.paddingTop,
+    overflow: 'visible',
+    paddingBottom: spacing.four,
+    paddingHorizontal: spacing.three,
+    paddingTop: spacing.three,
     width: '100%',
   },
-  metaBlock: {
+  holderBlock: {
     alignItems: 'center',
-    gap: 0,
+    gap: 4,
     width: '100%',
   },
-  dateLine: {
+  fieldLabel: {
     color: fan.badgeText,
-    fontSize: LAYOUT.date.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.date.letterSpacing,
-    lineHeight: LAYOUT.date.lineHeight,
-    marginBottom: LAYOUT.dateToTitle,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.2,
     textAlign: 'center',
     textTransform: 'uppercase',
   },
-  eventTitle: {
+  holderName: {
     color: text.primary,
-    fontSize: LAYOUT.title.fontSize,
+    fontSize: 20,
     fontWeight: '800',
-    letterSpacing: LAYOUT.title.letterSpacing,
-    lineHeight: LAYOUT.title.lineHeight,
-    marginBottom: LAYOUT.titleToVenue,
+    lineHeight: 26,
+    textAlign: 'center',
+  },
+  ticketMetaRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.two,
+    justifyContent: 'center',
+    width: '100%',
+  },
+  ticketTypeChip: {
+    alignItems: 'center',
+    backgroundColor: GLASS.chipBackground,
+    borderColor: 'rgba(162, 91, 255, 0.45)',
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 2,
+    minWidth: 140,
+    paddingHorizontal: spacing.two,
+    paddingVertical: spacing.one + 2,
+  },
+  ticketTypeLabel: {
+    color: fan.badgeText,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  ticketTypeValue: {
+    color: fan.primary,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
     textAlign: 'center',
     textTransform: 'uppercase',
   },
-  venueLine: {
-    color: text.primary,
-    fontSize: LAYOUT.venue.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.venue.letterSpacing,
-    lineHeight: LAYOUT.venue.lineHeight,
-    textAlign: 'center',
+  statusChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: spacing.two,
+    paddingVertical: spacing.one,
+  },
+  statusChipValid: {
+    backgroundColor: 'rgba(57, 255, 20, 0.12)',
+    borderColor: 'rgba(57, 255, 20, 0.45)',
+  },
+  statusChipInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  statusChipText: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
-  guestLine: {
+  statusChipTextValid: {
+    color: organizer.accent,
+  },
+  statusChipTextInactive: {
     color: text.secondary,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 18,
-    marginTop: spacing.one,
-    textAlign: 'center',
   },
   qrBlock: {
     alignItems: 'center',
-    marginTop: LAYOUT.metaToQr,
+    gap: spacing.two,
     width: '100%',
   },
   qrShell: {
@@ -455,6 +576,7 @@ const styles = StyleSheet.create({
     borderRadius: LAYOUT.qrBorderRadius,
     height: QR_SIZE + LAYOUT.qrPad * 2,
     justifyContent: 'center',
+    overflow: 'visible',
     padding: LAYOUT.qrPad,
     position: 'relative',
     width: QR_SIZE + LAYOUT.qrPad * 2,
@@ -489,39 +611,21 @@ const styles = StyleSheet.create({
     width: LAYOUT.qrCenterMarkSize,
   },
   qrCenterMarkText: {
-    color: organizer.accent,
+    color: fan.primary,
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
-  passTypeBadge: {
-    borderColor: organizer.accent,
-    borderRadius: 999,
-    borderWidth: 1,
-    marginTop: LAYOUT.qrToBadge,
-    paddingHorizontal: LAYOUT.badge.paddingH,
-    paddingVertical: LAYOUT.badge.paddingV,
-  },
-  passTypeBadgeText: {
+  entryHelpText: {
     color: organizer.accent,
-    fontSize: LAYOUT.badge.fontSize,
+    fontSize: 12,
     fontWeight: '700',
-    letterSpacing: LAYOUT.badge.letterSpacing,
-    lineHeight: LAYOUT.badge.lineHeight,
-    textTransform: 'uppercase',
-  },
-  statusLine: {
-    color: fan.bright,
-    fontSize: LAYOUT.status.fontSize,
-    fontWeight: '600',
-    letterSpacing: LAYOUT.status.letterSpacing,
-    lineHeight: LAYOUT.status.lineHeight,
-    marginTop: LAYOUT.status.marginTop,
+    letterSpacing: 0.6,
     textAlign: 'center',
+    textTransform: 'uppercase',
   },
   legalFooter: {
     alignItems: 'center',
-    marginTop: spacing.four,
     paddingBottom: spacing.two,
     width: '100%',
   },

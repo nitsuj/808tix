@@ -77,6 +77,9 @@ assert(guestPass.includes('styles.backgroundLayer'), 'guest pass uses absolute b
 assert(guestPass.includes('styles.foreground'), 'guest pass uses foreground layer above background');
 assert(guestPass.includes('SafeAreaView'), 'guest pass foreground uses SafeAreaView');
 assert(!guestPass.includes('credentialCardOuter'), 'guest pass avoids credentialCardOuter experiment');
+assert(guestPass.includes('808TIX TICKET'), 'guest pass shows ticket brand label');
+assert(guestPass.includes('Ticket holder'), 'guest pass shows ticket holder label');
+assert(guestPass.includes('Present this ticket at entry'), 'guest pass shows entry help copy');
 assert(
   !walletButton.includes('window.location.assign'),
   'Add to Apple Wallet does not replace the guest pass page on web',
