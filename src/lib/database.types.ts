@@ -40,6 +40,51 @@ export type PaymentEventProcessingStatus = 'received' | 'processed' | 'failed';
 
 export type OrganizerPayoutStatus = 'pending' | 'paid' | 'withheld';
 
+export type CreatePendingOrderResult = {
+  order_id: string;
+  public_access_token: string;
+  status: OrderStatus;
+  subtotal_cents: number;
+  platform_fee_cents: number;
+  total_cents: number;
+  organizer_net_cents: number;
+  currency: string;
+  reserved_until: string;
+};
+
+export type FulfillPaidOrderPass = {
+  pass_id: string;
+  secure_token: string;
+  pass_type: string;
+  guest_name: string;
+  sequence: number;
+};
+
+export type FulfillPaidOrderResult = {
+  order_id: string;
+  status: OrderStatus;
+  already_fulfilled: boolean;
+  pass_count: number;
+  passes: FulfillPaidOrderPass[];
+};
+
+export type PublicOrderTicket = {
+  secure_token: string;
+  pass_type: string;
+  guest_name: string;
+};
+
+export type GetOrderByPublicTokenResult = {
+  status: OrderStatus;
+  event_name: string;
+  ticket_count: number;
+  tickets: PublicOrderTicket[] | null;
+};
+
+export type ExpireStaleOrdersResult = {
+  expired_count: number;
+};
+
 export type ValidatePassResponse = {
   result: CheckInResult;
   pass_id?: string;
@@ -322,6 +367,40 @@ export type Database = {
       generate_public_access_token: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      create_pending_order: {
+        Args: {
+          p_event_id: string;
+          p_buyer_email: string;
+          p_ticket_type_id: string;
+          p_quantity: number;
+          p_buyer_name?: string | null;
+          p_buyer_phone?: string | null;
+        };
+        Returns: CreatePendingOrderResult;
+      };
+      fulfill_paid_order: {
+        Args: {
+          p_order_id: string;
+          p_amount_cents: number;
+          p_currency: string;
+          p_stripe_checkout_session_id?: string | null;
+          p_stripe_payment_intent_id?: string | null;
+          p_stripe_charge_id?: string | null;
+          p_processor_fee_cents?: number | null;
+          p_net_cents?: number | null;
+        };
+        Returns: FulfillPaidOrderResult;
+      };
+      expire_stale_orders: {
+        Args: Record<string, never>;
+        Returns: ExpireStaleOrdersResult;
+      };
+      get_order_by_public_token: {
+        Args: {
+          p_public_access_token: string;
+        };
+        Returns: GetOrderByPublicTokenResult | null;
       };
     };
     Enums: Record<string, never>;
