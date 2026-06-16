@@ -23,6 +23,61 @@ Set in Supabase Dashboard → Edge Functions → Secrets, or locally in `supabas
 
 Do **not** put Stripe secrets in `EXPO_PUBLIC_*` or any `src/` file.
 
+## Local smoke test (automated)
+
+Three terminals:
+
+**Terminal A — Edge Functions**
+
+```bash
+supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env
+```
+
+**Terminal B — Stripe webhook forwarding**
+
+```bash
+stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhook
+```
+
+Copy the `whsec_...` signing secret from `stripe listen` into `supabase/functions/.env` as `STRIPE_WEBHOOK_SECRET`.
+
+**Terminal C — smoke automation**
+
+The smoke script bootstraps its own organizer/event/ticket type after `db reset` and parses `supabase db query` output in both table and JSON formats (no `psql` required).
+
+```bash
+npm run smoke:payments:local
+```
+
+The smoke script:
+
+- Verifies local Supabase, DB access, and function reachability
+- Bootstraps a smoke organizer (`auth.users` + `profiles`), paid event, and ticket type after `db reset`
+- Calls `create-checkout-session` with the local publishable/anon key
+- Verifies pre-payment `get_order_by_public_token` does not expose ticket tokens
+- Pauses for you to complete Stripe test payment (`4242 4242 4242 4242`)
+- Polls the database and asserts order paid, payment row, 2 paid passes, payout row, and buyer-safe lookup
+- Tracks the exact `order_public_access_token` from the current `create-checkout-session` response for all post-payment SQL (older `checkout_open` orders are ignored)
+
+**Re-verify an already-paid order** (skip bootstrap/checkout/manual payment):
+
+```bash
+SMOKE_VERIFY_TOKEN=<order_public_access_token> npm run smoke:payments:local
+```
+
+### `supabase/functions/.env` (local only)
+
+Use **test mode** Stripe keys only. Do not commit real secrets.
+
+```bash
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+Local Supabase may reserve `SUPABASE_*` env names inside the Edge runtime — the functions server injects `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` automatically. Your `.env` file only needs Stripe-specific secrets unless serving outside `supabase functions serve`.
+
+Do **not** use live mode keys (`sk_live_...`) for local smoke tests.
+
 ## Local setup
 
 1. Apply migrations (includes lifecycle RPCs + service_role grant):
