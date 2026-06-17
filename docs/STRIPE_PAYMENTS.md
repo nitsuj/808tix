@@ -23,6 +23,27 @@ Set in Supabase Dashboard → Edge Functions → Secrets, or locally in `supabas
 
 Do **not** put Stripe secrets in `EXPO_PUBLIC_*` or any `src/` file.
 
+## Validation after code changes
+
+After code changes, run:
+
+```bash
+npm run check:all
+```
+
+Targeted modes:
+
+```bash
+npm run check:all -- --fast      # preflight + lint only
+npm run check:all -- --payments  # payment-related checks only (no lint)
+```
+
+After payment changes that require a real Stripe checkout, also run:
+
+```bash
+npm run smoke:payments:local
+```
+
 ## Local smoke test (automated)
 
 Three terminals:
