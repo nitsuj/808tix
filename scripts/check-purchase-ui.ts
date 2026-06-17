@@ -173,8 +173,8 @@ assert(
   'inline QR ticket includes door instruction copy',
 );
 assert(
-  paidTicketCard.includes('Open full ticket') && paidTicketCard.includes('getPassRoute'),
-  'paid ticket card includes open full ticket action',
+  !paidTicketCard.includes('Open full ticket'),
+  'paid ticket card does not show redundant open full ticket action',
 );
 assert(
   !paidTicketCard.includes('Copy link'),

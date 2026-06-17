@@ -1,5 +1,4 @@
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -9,7 +8,7 @@ import { shareTicketLink } from '@/components/purchase/purchase-ticket-share';
 import type { PublicOrderTicket } from '@/lib/database.types';
 import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
 import { resolveEventArtworkPublicUrl } from '@/lib/event-artwork-storage';
-import { getPassRoute, getPublicPassUrl } from '@/lib/pass-link';
+import { getPublicPassUrl } from '@/lib/pass-link';
 import { fan } from '@/theme';
 
 export type PurchasePaidTicketEventContext = {
@@ -128,15 +127,6 @@ export function PurchasePaidTicketCard({
         />
 
         <View style={styles.actions}>
-          <View style={styles.centeredActionRow}>
-            <Link href={getPassRoute(ticket.secure_token)} asChild>
-              <Pressable
-                style={({ pressed }) => [styles.actionButton, pressed && styles.buttonPressed]}>
-                <Text style={styles.actionButtonText}>Open full ticket</Text>
-              </Pressable>
-            </Link>
-          </View>
-
           <AddToAppleWallet secureToken={ticket.secure_token} />
 
           <View style={styles.centeredActionRow}>
