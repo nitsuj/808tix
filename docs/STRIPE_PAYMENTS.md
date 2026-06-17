@@ -250,10 +250,10 @@ npx expo start --web
 
 3. Enter email, choose quantity, tap **Continue to payment**.
 4. Pay with Stripe test card `4242 4242 4242 4242`.
-5. Confirm redirect to `/purchase/success?order_token=...` with inline QR tickets per purchase (**Open full ticket**, **Copy link**, **Share** as secondary actions).
+5. Confirm redirect to `/purchase/success?order_token=...` with inline QR tickets per purchase (**Open full ticket**, **Add to Apple Wallet** on iOS, **Share** with clipboard fallback).
 6. Open each ticket and confirm QR works at `/pass/{secure_token}`.
 
-Paid success shows each ticket inline with a scannable QR code (same payload as `/pass/{token}`). Secondary actions copy/share the absolute pass URL. Add to Wallet remains on the full ticket screen — success cards only link users there with a note.
+Paid success shows each ticket inline with a scannable QR code (same payload as `/pass/{token}`). Share copies the pass URL when native share is unavailable. On web, share URLs use `window.location.origin` (local QA: `http://localhost:8081/pass/{token}`). Add to Apple Wallet reuses the same client component as `/pass/{token}`.
 
 `get_order_by_public_token` also returns event `venue_name`, `event_date`, `start_time`, and `image_url` for inline ticket artwork and details.
 

@@ -22,6 +22,7 @@ const CANCEL_ROUTE = join(SRC_DIR, 'app/purchase/cancel.tsx');
 const CREATE_CHECKOUT_HELPER = join(SRC_DIR, 'lib/create-checkout-session.ts');
 const GET_ORDER_HELPER = join(SRC_DIR, 'lib/get-order-by-public-token.ts');
 const PURCHASE_URLS = join(SRC_DIR, 'lib/purchase-urls.ts');
+const PASS_LINK = join(SRC_DIR, 'lib/pass-link.ts');
 const APP_BASE_URL = join(SRC_DIR, 'lib/app-base-url.ts');
 const ORDER_HOOK = join(SRC_DIR, 'hooks/use-order-confirmation.ts');
 
@@ -76,10 +77,12 @@ const cancelRoute = read(CANCEL_ROUTE);
 const createCheckoutHelper = read(CREATE_CHECKOUT_HELPER);
 const getOrderHelper = read(GET_ORDER_HELPER);
 const purchaseUrls = read(PURCHASE_URLS);
+const passLink = read(PASS_LINK);
 const paidTicketCard = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-card.tsx'));
 const paidTicketList = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-list.tsx'));
 const ticketShare = read(join(SRC_DIR, 'components/purchase/purchase-ticket-share.ts'));
 const passCredentialCard = read(join(SRC_DIR, 'components/pass/pass-ticket-credential-card.tsx'));
+const purchaseScreenShell = read(join(SRC_DIR, 'components/purchase/purchase-screen-shell.tsx'));
 
 assert(
   buyRoute.includes("from '@/lib/get-public-purchase-options'") &&
@@ -174,27 +177,45 @@ assert(
   'paid ticket card includes open full ticket action',
 );
 assert(
-  paidTicketCard.includes('Copy link') && paidTicketCard.includes('copyToClipboard'),
-  'paid ticket card includes copy link behavior',
+  !paidTicketCard.includes('Copy link'),
+  'paid ticket card does not show visible copy link action',
 );
 assert(
   paidTicketCard.includes('getPublicPassUrl'),
-  'paid ticket card copies absolute public ticket URL',
+  'paid ticket card uses absolute public ticket URL helper',
 );
 assert(
   (paidTicketCard.includes('shareTicketLink') || ticketShare.includes('navigator.share')) &&
     ticketShare.includes('copyToClipboard'),
-  'paid ticket card includes share behavior with clipboard fallback',
+  'share action keeps clipboard fallback when native share is unavailable',
+);
+assert(
+  paidTicketCard.includes('AddToAppleWallet') && !paidTicketCard.includes('buildWalletAppleUrl'),
+  'wallet uses existing AddToAppleWallet component without duplicating wallet URL builder',
+);
+assert(
+  (() => {
+    const resolveStart = passLink.indexOf('function resolvePassLinkBaseUrl');
+    const resolveEnd = passLink.indexOf('export function getPassRoute', resolveStart);
+    const resolveBody = passLink.slice(resolveStart, resolveEnd);
+
+    return (
+      resolveBody.includes('window.location.origin') &&
+      resolveBody.includes('EXPO_PUBLIC_PASS_LINK_BASE_URL') &&
+      resolveBody.indexOf('window.location.origin') <
+        resolveBody.indexOf('EXPO_PUBLIC_PASS_LINK_BASE_URL')
+    );
+  })(),
+  'pass URL helper prefers window.location.origin on web before env base URL',
 );
 assert(
   successRoute.includes('PurchasePaidTicketList') && cancelRoute.includes('PurchasePaidTicketList'),
   'success and cancel pages use shared paid ticket list component',
 );
 assert(
-  !paidTicketCard.includes('buildWalletAppleUrl') &&
-    !paidTicketCard.includes('Add to Wallet') &&
-    paidTicketCard.includes('Open the full ticket to add it to Apple Wallet'),
-  'wallet action is note-only on success ticket cards',
+  purchaseScreenShell.includes('LegalFooterLinks') &&
+    purchaseScreenShell.includes('styles.footer'),
+  'purchase shell centers legal footer links',
 );
 assert(
   !paidTicketCard.includes('console.log') &&

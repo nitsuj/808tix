@@ -20,7 +20,9 @@ export function PurchaseScreenShell({ children }: PurchaseScreenShellProps) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           {children}
-          <LegalFooterLinks />
+          <View style={styles.footer}>
+            <LegalFooterLinks centered variant="fan" />
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -44,5 +46,9 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 32,
     gap: 20,
+  },
+  footer: {
+    alignItems: 'center',
+    width: '100%',
   },
 });
