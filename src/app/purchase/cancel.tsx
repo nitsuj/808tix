@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PurchaseOrderStatus } from '@/components/purchase/purchase-order-status';
+import { PurchasePaidTicketList } from '@/components/purchase/purchase-paid-ticket-list';
 import { PurchaseScreenShell } from '@/components/purchase/purchase-screen-shell';
-import { PurchaseTicketLinkList } from '@/components/purchase/purchase-ticket-link-list';
 import type { GetOrderByPublicTokenResult } from '@/lib/database.types';
 import { getOrderByPublicToken } from '@/lib/get-order-by-public-token';
 import {
@@ -86,12 +86,12 @@ export default function PurchaseCancelScreen() {
     return (
       <PurchaseScreenShell>
         <View style={styles.header}>
+          <Text style={styles.confirmed}>Payment confirmed</Text>
           <Text style={styles.paidTitle}>You&apos;re in!</Text>
-          <Text style={styles.paidSubtitle}>
-            Payment completed for {order.event_name}. Your tickets are ready.
-          </Text>
+          <Text style={styles.paidSubtitle}>Your tickets are ready.</Text>
+          <Text style={styles.helper}>Open each ticket to show its QR code at the door.</Text>
         </View>
-        <PurchaseTicketLinkList tickets={order.tickets} />
+        <PurchasePaidTicketList eventName={order.event_name} tickets={order.tickets} />
         <Link href={buildPurchaseSuccessPathWithToken(orderToken)} asChild>
           <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
             <Text style={styles.secondaryText}>Open success page</Text>
@@ -129,6 +129,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  confirmed: {
+    color: '#7DFFB2',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   paidTitle: {
     color: fan.bright,
     fontSize: 28,
@@ -136,9 +143,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   paidSubtitle: {
-    color: text.secondary,
-    fontSize: 15,
+    color: text.primary,
+    fontSize: 17,
+    fontWeight: '700',
     lineHeight: 22,
+    textAlign: 'center',
+  },
+  helper: {
+    color: text.secondary,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   retryButton: {

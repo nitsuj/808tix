@@ -76,6 +76,9 @@ const cancelRoute = read(CANCEL_ROUTE);
 const createCheckoutHelper = read(CREATE_CHECKOUT_HELPER);
 const getOrderHelper = read(GET_ORDER_HELPER);
 const purchaseUrls = read(PURCHASE_URLS);
+const paidTicketCard = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-card.tsx'));
+const paidTicketList = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-list.tsx'));
+const ticketShare = read(join(SRC_DIR, 'components/purchase/purchase-ticket-share.ts'));
 
 assert(
   buyRoute.includes("from '@/lib/get-public-purchase-options'") &&
@@ -156,8 +159,37 @@ assert(
   'purchase URL helpers exist',
 );
 assert(
-  read(join(SRC_DIR, 'components/purchase/purchase-ticket-link-list.tsx')).includes('getPassRoute'),
-  'ticket links use existing pass route helper',
+  paidTicketCard.includes('Open QR ticket') && paidTicketCard.includes('getPassRoute'),
+  'paid ticket card opens QR ticket via pass route helper',
+);
+assert(
+  paidTicketCard.includes('Copy link') && paidTicketCard.includes('copyToClipboard'),
+  'paid ticket card includes copy link behavior',
+);
+assert(
+  paidTicketCard.includes('getPublicPassUrl'),
+  'paid ticket card copies absolute public ticket URL',
+);
+assert(
+  (paidTicketCard.includes('shareTicketLink') || ticketShare.includes('navigator.share')) &&
+    ticketShare.includes('copyToClipboard'),
+  'paid ticket card includes share behavior with clipboard fallback',
+);
+assert(
+  successRoute.includes('PurchasePaidTicketList') && cancelRoute.includes('PurchasePaidTicketList'),
+  'success and cancel pages use shared paid ticket list component',
+);
+assert(
+  !paidTicketCard.includes('buildWalletAppleUrl') &&
+    !paidTicketCard.includes('Add to Wallet') &&
+    paidTicketCard.includes('Open the ticket to add it to Apple Wallet'),
+  'wallet action is note-only on success ticket cards',
+);
+assert(
+  !paidTicketCard.includes('console.log') &&
+    !paidTicketList.includes('console.log') &&
+    !successRoute.includes('console.log'),
+  'purchase success UI does not log secure tokens',
 );
 
 const samplePayload = {

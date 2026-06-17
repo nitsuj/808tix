@@ -2,8 +2,8 @@ import { Link, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { PurchaseOrderStatus } from '@/components/purchase/purchase-order-status';
+import { PurchasePaidTicketList } from '@/components/purchase/purchase-paid-ticket-list';
 import { PurchaseScreenShell } from '@/components/purchase/purchase-screen-shell';
-import { PurchaseTicketLinkList } from '@/components/purchase/purchase-ticket-link-list';
 import { useOrderConfirmation } from '@/hooks/use-order-confirmation';
 import { fan, text } from '@/theme';
 
@@ -27,6 +27,7 @@ export default function PurchaseSuccessScreen() {
 
 function PurchaseSuccessContent({ orderToken }: { orderToken: string }) {
   const { phase, order, error, refresh } = useOrderConfirmation(orderToken, { poll: true });
+
   if (phase === 'loading' || phase === 'confirming') {
     return (
       <PurchaseScreenShell>
@@ -71,12 +72,12 @@ function PurchaseSuccessContent({ orderToken }: { orderToken: string }) {
     return (
       <PurchaseScreenShell>
         <View style={styles.header}>
+          <Text style={styles.confirmed}>Payment confirmed</Text>
           <Text style={styles.title}>You&apos;re in!</Text>
-          <Text style={styles.subtitle}>
-            {order.ticket_count} ticket{order.ticket_count === 1 ? '' : 's'} for {order.event_name}
-          </Text>
+          <Text style={styles.subtitle}>Your tickets are ready.</Text>
+          <Text style={styles.helper}>Open each ticket to show its QR code at the door.</Text>
         </View>
-        <PurchaseTicketLinkList tickets={order.tickets} />
+        <PurchasePaidTicketList eventName={order.event_name} tickets={order.tickets} />
       </PurchaseScreenShell>
     );
   }
@@ -105,6 +106,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
+  confirmed: {
+    color: '#7DFFB2',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   title: {
     color: fan.bright,
     fontSize: 32,
@@ -112,9 +120,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   subtitle: {
+    color: text.primary,
+    fontSize: 18,
+    fontWeight: '700',
+    lineHeight: 24,
+    textAlign: 'center',
+  },
+  helper: {
     color: text.secondary,
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
   },
   retryButton: {

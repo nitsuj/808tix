@@ -250,7 +250,10 @@ npx expo start --web
 
 3. Enter email, choose quantity, tap **Continue to payment**.
 4. Pay with Stripe test card `4242 4242 4242 4242`.
-5. Confirm redirect to `/purchase/success?order_token=...` and ticket links to `/pass/{secure_token}`.
+5. Confirm redirect to `/purchase/success?order_token=...` with ticket cards (**Open QR ticket**, **Copy link**, **Share** per ticket).
+6. Open each ticket and confirm QR works at `/pass/{secure_token}`.
+
+Paid success cards support per-ticket copy/share of the absolute pass URL. Add to Wallet remains on the ticket screen — success cards only link users there with a note.
 
 ### Automated smoke test (API + DB, no UI)
 
