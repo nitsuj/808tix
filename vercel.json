@@ -24,6 +24,18 @@
       "destination": "/events/[eventId].html"
     },
     {
+      "source": "/events/:eventId/buy",
+      "destination": "/events/[eventId]/buy.html"
+    },
+    {
+      "source": "/purchase/success",
+      "destination": "/purchase/success.html"
+    },
+    {
+      "source": "/purchase/cancel",
+      "destination": "/purchase/cancel.html"
+    },
+    {
       "source": "/pass/:token",
       "destination": "/pass/[token].html"
     }

@@ -185,3 +185,56 @@ select public.get_public_event_purchase_options('EVENT_UUID');
 Callable by `anon` and `authenticated`. Returns `null` when the event is not published, `sales_enabled` is false, or `ticketing_mode` is `comp_only`.
 
 Returns safe event fields (name, venue, date, fees) and active in-window ticket types with `quantity_available`. Does not expose organizer IDs, Stripe IDs, orders, or payments. Table RLS remains unchanged — no broad anon `SELECT` on `events` / `ticket_types`.
+
+## Buyer purchase UI
+
+Public Expo Router screens (no auth required):
+
+| Route | Purpose |
+|-------|---------|
+| `/events/{eventId}/buy?ticket_type_id={ticketTypeId}` | Purchase page — loads options RPC, quantity + email, starts checkout |
+| `/purchase/success?order_token={publicAccessToken}` | Post-payment confirmation — polls `get_order_by_public_token` |
+| `/purchase/cancel?order_token={publicAccessToken}` | Checkout canceled — optional retry when `event_id` + `ticket_type_id` are present |
+
+The UI never mints passes. Checkout uses `create-checkout-session`; tickets appear only after `stripe-webhook` → `fulfill_paid_order`.
+
+### Local buyer UI test (three terminals)
+
+**Terminal A — Edge Functions**
+
+```bash
+supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env
+```
+
+**Terminal B — Stripe webhook forwarding**
+
+```bash
+stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhook
+```
+
+Copy `whsec_...` from `stripe listen` into `supabase/functions/.env` as `STRIPE_WEBHOOK_SECRET`.
+
+**Terminal C — Expo web + manual checkout**
+
+```bash
+npx expo start --web
+```
+
+1. Ensure a published event with `sales_enabled = true`, `ticketing_mode` in (`paid`, `mixed`), and an active `ticket_types` row.
+2. Open:
+
+   ```
+   http://localhost:8081/events/{eventId}/buy?ticket_type_id={ticketTypeId}
+   ```
+
+3. Enter email, choose quantity, tap **Continue to payment**.
+4. Pay with Stripe test card `4242 4242 4242 4242`.
+5. Confirm redirect to `/purchase/success?order_token=...` and ticket links to `/pass/{secure_token}`.
+
+### Automated smoke test (API + DB, no UI)
+
+```bash
+npm run smoke:payments:local
+```
+
+Bootstraps organizer/event/ticket type, calls `create-checkout-session`, pauses for manual Stripe payment, then verifies paid order + passes in the database. Use `SMOKE_VERIFY_TOKEN=...` to re-verify an already-paid order without a new checkout.
