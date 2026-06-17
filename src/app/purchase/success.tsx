@@ -73,11 +73,17 @@ function PurchaseSuccessContent({ orderToken }: { orderToken: string }) {
       <PurchaseScreenShell>
         <View style={styles.header}>
           <Text style={styles.confirmed}>Payment confirmed</Text>
-          <Text style={styles.title}>You&apos;re in!</Text>
-          <Text style={styles.subtitle}>Your tickets are ready.</Text>
-          <Text style={styles.helper}>Open each ticket to show its QR code at the door.</Text>
+          <Text style={styles.title}>Your tickets are ready</Text>
+          <Text style={styles.helper}>Show each QR code at the door.</Text>
         </View>
-        <PurchasePaidTicketList eventName={order.event_name} tickets={order.tickets} />
+        <PurchasePaidTicketList
+          eventDate={order.event_date}
+          eventName={order.event_name}
+          imageUrl={order.image_url}
+          startTime={order.start_time}
+          tickets={order.tickets}
+          venueName={order.venue_name}
+        />
       </PurchaseScreenShell>
     );
   }
@@ -115,15 +121,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: fan.bright,
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: text.primary,
-    fontSize: 18,
-    fontWeight: '700',
-    lineHeight: 24,
     textAlign: 'center',
   },
   helper: {

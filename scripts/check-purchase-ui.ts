@@ -79,6 +79,7 @@ const purchaseUrls = read(PURCHASE_URLS);
 const paidTicketCard = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-card.tsx'));
 const paidTicketList = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-list.tsx'));
 const ticketShare = read(join(SRC_DIR, 'components/purchase/purchase-ticket-share.ts'));
+const passCredentialCard = read(join(SRC_DIR, 'components/pass/pass-ticket-credential-card.tsx'));
 
 assert(
   buyRoute.includes("from '@/lib/get-public-purchase-options'") &&
@@ -126,10 +127,6 @@ assert(
   'success page uses order confirmation flow',
 );
 assert(
-  successRoute.includes("order?.status === 'paid'"),
-  'success page guards ticket rendering behind status === paid',
-);
-assert(
   cancelRoute.includes('getOrderByPublicToken'),
   'cancel page calls get_order_by_public_token helper',
 );
@@ -159,8 +156,22 @@ assert(
   'purchase URL helpers exist',
 );
 assert(
-  paidTicketCard.includes('Open QR ticket') && paidTicketCard.includes('getPassRoute'),
-  'paid ticket card opens QR ticket via pass route helper',
+  successRoute.includes("order?.status === 'paid'") &&
+    !successRoute.includes('PassQrCode') &&
+    !successRoute.includes('PassTicketCredentialCard'),
+  'success page guards inline QR tickets behind status === paid without rendering QR directly',
+);
+assert(
+  paidTicketCard.includes('PassTicketCredentialCard') && passCredentialCard.includes('PassQrCode'),
+  'paid ticket card renders inline QR via shared pass credential component',
+);
+assert(
+  passCredentialCard.includes('Show this QR code at the door'),
+  'inline QR ticket includes door instruction copy',
+);
+assert(
+  paidTicketCard.includes('Open full ticket') && paidTicketCard.includes('getPassRoute'),
+  'paid ticket card includes open full ticket action',
 );
 assert(
   paidTicketCard.includes('Copy link') && paidTicketCard.includes('copyToClipboard'),
@@ -182,13 +193,14 @@ assert(
 assert(
   !paidTicketCard.includes('buildWalletAppleUrl') &&
     !paidTicketCard.includes('Add to Wallet') &&
-    paidTicketCard.includes('Open the ticket to add it to Apple Wallet'),
+    paidTicketCard.includes('Open the full ticket to add it to Apple Wallet'),
   'wallet action is note-only on success ticket cards',
 );
 assert(
   !paidTicketCard.includes('console.log') &&
     !paidTicketList.includes('console.log') &&
-    !successRoute.includes('console.log'),
+    !successRoute.includes('console.log') &&
+    !passCredentialCard.includes('console.log'),
   'purchase success UI does not log secure tokens',
 );
 

@@ -1,16 +1,27 @@
+import { Image } from 'expo-image';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PassTicketCredentialCard } from '@/components/pass/pass-ticket-credential-card';
 import { shareTicketLink } from '@/components/purchase/purchase-ticket-share';
 import type { PublicOrderTicket } from '@/lib/database.types';
 import { copyToClipboard } from '@/lib/copy-to-clipboard';
+import { resolvePassArtworkUri } from '@/lib/event-artwork-display';
+import { resolveEventArtworkPublicUrl } from '@/lib/event-artwork-storage';
 import { getPassRoute, getPublicPassUrl } from '@/lib/pass-link';
 import { fan, text } from '@/theme';
 
-type PurchasePaidTicketCardProps = {
-  ticket: PublicOrderTicket;
+export type PurchasePaidTicketEventContext = {
   eventName: string;
+  venueName?: string | null;
+  eventDate?: string | null;
+  startTime?: string | null;
+  imageUrl?: string | null;
+};
+
+type PurchasePaidTicketCardProps = PurchasePaidTicketEventContext & {
+  ticket: PublicOrderTicket;
   ticketNumber: number;
   ticketTotal: number;
 };
@@ -20,6 +31,10 @@ type SecondaryActionState = 'idle' | 'copied' | 'copy_failed' | 'share_copied';
 export function PurchasePaidTicketCard({
   ticket,
   eventName,
+  venueName,
+  eventDate,
+  startTime,
+  imageUrl,
   ticketNumber,
   ticketTotal,
 }: PurchasePaidTicketCardProps) {
@@ -29,9 +44,16 @@ export function PurchasePaidTicketCard({
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shareResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const holderName = ticket.guest_name?.trim() || 'Guest ticket';
+  const holderLabel = ticket.guest_name?.trim() || 'Guest ticket';
   const passType = ticket.pass_type?.trim() || 'General Admission';
   const ticketUrl = getPublicPassUrl(ticket.secure_token);
+  const hasUploadedArtwork = Boolean(imageUrl?.trim());
+  const artworkUri = resolvePassArtworkUri(imageUrl, eventName);
+  const resolvedArtworkUri =
+    artworkUri && hasUploadedArtwork
+      ? resolveEventArtworkPublicUrl(artworkUri) ?? artworkUri
+      : artworkUri;
+  const uploadedCachePolicy = Platform.OS === 'web' ? 'none' : 'memory-disk';
 
   const resetAfterDelay = useCallback(
     (setter: (value: SecondaryActionState) => void, timerRef: typeof copyResetTimer) => {
@@ -103,134 +125,125 @@ export function PurchasePaidTicketCard({
         : 'Share';
 
   return (
-    <View style={styles.card}>
-      <View style={styles.topRow}>
-        <Text style={styles.ticketNumber}>
-          Ticket {ticketNumber} of {ticketTotal}
-        </Text>
+    <View style={styles.panel}>
+      <View style={styles.artworkLayer}>
+        {resolvedArtworkUri ? (
+          <Image
+            cachePolicy={hasUploadedArtwork ? uploadedCachePolicy : 'memory-disk'}
+            contentFit="cover"
+            recyclingKey={resolvedArtworkUri}
+            source={{ uri: resolvedArtworkUri }}
+            style={styles.artworkImage}
+          />
+        ) : null}
+        <View style={styles.artworkScrim} />
       </View>
 
-      <View style={styles.meta}>
-        <Text style={styles.passType}>{passType}</Text>
-        <Text style={styles.holderName}>{holderName}</Text>
-        <Text style={styles.eventName}>{eventName}</Text>
-      </View>
+      <View style={styles.panelContent}>
+        <PassTicketCredentialCard
+          entryInstruction="Show this QR code at the door."
+          eventDate={eventDate}
+          eventName={eventName}
+          holderLabel={holderLabel}
+          passType={passType}
+          secureToken={ticket.secure_token}
+          startTime={startTime}
+          ticketNumberLabel={`Ticket ${ticketNumber} of ${ticketTotal}`}
+          venueName={venueName}
+        />
 
-      <Link href={getPassRoute(ticket.secure_token)} asChild>
-        <Pressable style={({ pressed }) => [styles.primaryButton, pressed && styles.buttonPressed]}>
-          <Text style={styles.primaryButtonText}>Open QR ticket</Text>
-        </Pressable>
-      </Link>
+        <View style={styles.actions}>
+          <Link href={getPassRoute(ticket.secure_token)} asChild>
+            <Pressable
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
+              <Text style={styles.secondaryButtonText}>Open full ticket</Text>
+            </Pressable>
+          </Link>
 
-      <View style={styles.secondaryRow}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void handleCopyLink()}
-          style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
-          <Text
-            style={[
-              styles.secondaryButtonText,
-              copyState === 'copied' && styles.secondaryButtonTextSuccess,
-              copyState === 'copy_failed' && styles.secondaryButtonTextError,
-            ]}>
-            {copyLabel}
-          </Text>
-        </Pressable>
+          <View style={styles.secondaryRow}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handleCopyLink()}
+              style={({ pressed }) => [styles.secondaryButton, pressed && styles.buttonPressed]}>
+              <Text
+                style={[
+                  styles.secondaryButtonText,
+                  copyState === 'copied' && styles.secondaryButtonTextSuccess,
+                  copyState === 'copy_failed' && styles.secondaryButtonTextError,
+                ]}>
+                {copyLabel}
+              </Text>
+            </Pressable>
 
-        <Pressable
-          accessibilityRole="button"
-          disabled={isSharing}
-          onPress={() => void handleShare()}
-          style={({ pressed }) => [
-            styles.secondaryButton,
-            (pressed || isSharing) && styles.buttonPressed,
-            isSharing && styles.secondaryButtonDisabled,
-          ]}>
-          {isSharing ? (
-            <ActivityIndicator color={fan.bright} size="small" />
-          ) : (
-            <Text
-              style={[
-                styles.secondaryButtonText,
-                shareState === 'share_copied' && styles.secondaryButtonTextSuccess,
-                shareState === 'copy_failed' && styles.secondaryButtonTextError,
+            <Pressable
+              accessibilityRole="button"
+              disabled={isSharing}
+              onPress={() => void handleShare()}
+              style={({ pressed }) => [
+                styles.secondaryButton,
+                (pressed || isSharing) && styles.buttonPressed,
+                isSharing && styles.secondaryButtonDisabled,
               ]}>
-              {shareLabel}
-            </Text>
-          )}
-        </Pressable>
-      </View>
+              {isSharing ? (
+                <ActivityIndicator color={fan.bright} size="small" />
+              ) : (
+                <Text
+                  style={[
+                    styles.secondaryButtonText,
+                    shareState === 'share_copied' && styles.secondaryButtonTextSuccess,
+                    shareState === 'copy_failed' && styles.secondaryButtonTextError,
+                  ]}>
+                  {shareLabel}
+                </Text>
+              )}
+            </Pressable>
+          </View>
 
-      <Text style={styles.walletNote}>Open the ticket to add it to Apple Wallet.</Text>
+          <Text style={styles.walletNote}>Open the full ticket to add it to Apple Wallet.</Text>
+        </View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderColor: 'rgba(255, 43, 214, 0.38)',
-    backgroundColor: 'rgba(5, 5, 10, 0.92)',
-    borderRadius: 16,
-    padding: 16,
+  panel: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    position: 'relative',
+    width: '100%',
+  },
+  artworkLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 0,
+  },
+  artworkImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  artworkScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.34)',
+  },
+  panelContent: {
     gap: 14,
+    padding: 12,
+    position: 'relative',
+    zIndex: 1,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  ticketNumber: {
-    color: fan.bright,
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    textTransform: 'uppercase',
-  },
-  meta: {
-    gap: 6,
-  },
-  passType: {
-    color: text.secondary,
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  holderName: {
-    color: text.primary,
-    fontSize: 20,
-    fontWeight: '700',
-    lineHeight: 24,
-  },
-  eventName: {
-    color: text.secondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  primaryButton: {
-    alignSelf: 'stretch',
-    borderRadius: 999,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    backgroundColor: fan.primary,
-    alignItems: 'center',
-  },
-  primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
+  actions: {
+    gap: 10,
   },
   secondaryRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
+    justifyContent: 'center',
   },
   secondaryButton: {
     borderRadius: 999,
     borderWidth: 1,
     borderColor: 'rgba(255, 43, 214, 0.35)',
-    backgroundColor: 'rgba(255, 43, 214, 0.08)',
+    backgroundColor: 'rgba(5, 5, 10, 0.88)',
     paddingHorizontal: 14,
     paddingVertical: 9,
     minWidth: 96,
@@ -258,5 +271,6 @@ const styles = StyleSheet.create({
     color: text.secondary,
     fontSize: 12,
     lineHeight: 17,
+    textAlign: 'center',
   },
 });

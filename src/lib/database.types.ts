@@ -77,6 +77,10 @@ export type PublicOrderTicket = {
 export type GetOrderByPublicTokenResult = {
   status: OrderStatus;
   event_name: string;
+  venue_name: string | null;
+  event_date: string | null;
+  start_time: string | null;
+  image_url: string | null;
   ticket_count: number;
   tickets: PublicOrderTicket[] | null;
 };

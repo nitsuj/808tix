@@ -87,11 +87,17 @@ export default function PurchaseCancelScreen() {
       <PurchaseScreenShell>
         <View style={styles.header}>
           <Text style={styles.confirmed}>Payment confirmed</Text>
-          <Text style={styles.paidTitle}>You&apos;re in!</Text>
-          <Text style={styles.paidSubtitle}>Your tickets are ready.</Text>
-          <Text style={styles.helper}>Open each ticket to show its QR code at the door.</Text>
+          <Text style={styles.paidTitle}>Your tickets are ready</Text>
+          <Text style={styles.helper}>Show each QR code at the door.</Text>
         </View>
-        <PurchasePaidTicketList eventName={order.event_name} tickets={order.tickets} />
+        <PurchasePaidTicketList
+          eventDate={order.event_date}
+          eventName={order.event_name}
+          imageUrl={order.image_url}
+          startTime={order.start_time}
+          tickets={order.tickets}
+          venueName={order.venue_name}
+        />
         <Link href={buildPurchaseSuccessPathWithToken(orderToken)} asChild>
           <Pressable style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
             <Text style={styles.secondaryText}>Open success page</Text>
@@ -140,13 +146,6 @@ const styles = StyleSheet.create({
     color: fan.bright,
     fontSize: 28,
     fontWeight: '800',
-    textAlign: 'center',
-  },
-  paidSubtitle: {
-    color: text.primary,
-    fontSize: 17,
-    fontWeight: '700',
-    lineHeight: 22,
     textAlign: 'center',
   },
   helper: {
