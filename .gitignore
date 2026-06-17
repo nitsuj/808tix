@@ -43,3 +43,5 @@ example
 /ios
 /android
 .vercel
+
+supabase/.temp/

@@ -29,6 +29,15 @@ declare
   v_row_count bigint;
   v_pass_count bigint;
   v_payout_count bigint;
+  v_po_event_id uuid;
+  v_po_draft_id uuid;
+  v_po_comp_id uuid;
+  v_po_tt_id uuid;
+  v_po_inactive_tt_id uuid;
+  v_po_future_tt_id uuid;
+  v_po_past_tt_id uuid;
+  v_po_order_id uuid;
+  v_po_qty integer;
 begin
   if v_organizer_id = '00000000-0000-0000-0000-000000000000'::uuid
      or v_other_organizer_id = '00000000-0000-0000-0000-000000000001'::uuid then
@@ -468,6 +477,187 @@ begin
   end if;
 
   perform dev.reset_auth();
+
+  -- ---------------------------------------------------------------------------
+  -- F. get_public_event_purchase_options
+  -- ---------------------------------------------------------------------------
+  insert into public.events (
+    organizer_id,
+    slug,
+    name,
+    status,
+    capacity,
+    ticketing_mode,
+    sales_enabled,
+    currency,
+    platform_fee_bps,
+    platform_fee_fixed_cents
+  )
+  values (
+    v_organizer_id,
+    'payments-verify-purchase-options',
+    'Purchase Options Show',
+    'published',
+    20,
+    'paid',
+    true,
+    'usd',
+    300,
+    50
+  )
+  returning id into v_po_event_id;
+
+  insert into public.ticket_types (event_id, name, price_cents, currency, capacity, sort_order)
+  values (v_po_event_id, 'General Admission', 2500, 'usd', 10, 0)
+  returning id into v_po_tt_id;
+
+  insert into public.ticket_types (event_id, name, price_cents, is_active, sort_order)
+  values (v_po_event_id, 'Inactive Tier', 1500, false, 1)
+  returning id into v_po_inactive_tt_id;
+
+  insert into public.ticket_types (
+    event_id, name, price_cents, sales_start_at, sort_order
+  )
+  values (
+    v_po_event_id,
+    'Future Tier',
+    1500,
+    now() + interval '1 day',
+    2
+  )
+  returning id into v_po_future_tt_id;
+
+  insert into public.ticket_types (
+    event_id, name, price_cents, sales_end_at, sort_order
+  )
+  values (
+    v_po_event_id,
+    'Past Tier',
+    1500,
+    now() - interval '1 day',
+    3
+  )
+  returning id into v_po_past_tt_id;
+
+  perform dev.reset_auth();
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'anon', true);
+  execute 'set local role anon';
+
+  v_lookup := public.get_public_event_purchase_options(v_po_event_id);
+
+  if v_lookup is null then
+    raise exception 'expected purchase options for published paid event';
+  end if;
+
+  if (v_lookup -> 'event' ->> 'name') <> 'Purchase Options Show' then
+    raise exception 'purchase options event name mismatch';
+  end if;
+
+  if jsonb_array_length(v_lookup -> 'ticket_types') <> 1 then
+    raise exception 'purchase options should return one active in-window ticket type';
+  end if;
+
+  if (v_lookup -> 'ticket_types' -> 0 ->> 'id')::uuid <> v_po_tt_id then
+    raise exception 'purchase options returned unexpected ticket type';
+  end if;
+
+  v_po_qty := (v_lookup -> 'ticket_types' -> 0 ->> 'quantity_available')::integer;
+
+  if v_po_qty <> 10 then
+    raise exception 'initial quantity_available expected 10, got %', v_po_qty;
+  end if;
+
+  if v_lookup::text ilike '%stripe%' then
+    raise exception 'purchase options leaked stripe field';
+  end if;
+
+  if v_lookup ? 'organizer_id' or v_lookup ? 'public_access_token' or v_lookup ? 'order_id' then
+    raise exception 'purchase options leaked internal order/payment field';
+  end if;
+
+  insert into public.events (
+    organizer_id, slug, name, status, capacity, ticketing_mode, sales_enabled
+  )
+  values (
+    v_organizer_id, 'payments-verify-po-draft', 'Draft PO', 'draft', 10, 'paid', true
+  )
+  returning id into v_po_draft_id;
+
+  if public.get_public_event_purchase_options(v_po_draft_id) is not null then
+    raise exception 'draft event should return null purchase options';
+  end if;
+
+  update public.events set sales_enabled = false where id = v_po_event_id;
+
+  if public.get_public_event_purchase_options(v_po_event_id) is not null then
+    raise exception 'sales_enabled=false should return null purchase options';
+  end if;
+
+  update public.events set sales_enabled = true where id = v_po_event_id;
+
+  insert into public.events (
+    organizer_id, slug, name, status, capacity, ticketing_mode, sales_enabled
+  )
+  values (
+    v_organizer_id, 'payments-verify-po-comp', 'Comp PO', 'published', 10, 'comp_only', true
+  )
+  returning id into v_po_comp_id;
+
+  if public.get_public_event_purchase_options(v_po_comp_id) is not null then
+    raise exception 'comp_only event should return null purchase options';
+  end if;
+
+  insert into public.passes (
+    event_id,
+    guest_name,
+    pass_type,
+    secure_token,
+    source,
+    ticket_type_id,
+    status
+  )
+  values (
+    v_po_event_id,
+    'Paid Guest',
+    'General Admission',
+    'po-paid-pass-token-0001',
+    'paid',
+    v_po_tt_id,
+    'active'
+  );
+
+  v_lookup := public.get_public_event_purchase_options(v_po_event_id);
+  v_po_qty := (v_lookup -> 'ticket_types' -> 0 ->> 'quantity_available')::integer;
+
+  if v_po_qty <> 9 then
+    raise exception 'quantity_available should decrease after paid pass, got %', v_po_qty;
+  end if;
+
+  v_result := public.create_pending_order(
+    v_po_event_id, 'reserve@808tix.test', v_po_tt_id, 2
+  );
+  v_po_order_id := (v_result ->> 'order_id')::uuid;
+
+  v_lookup := public.get_public_event_purchase_options(v_po_event_id);
+  v_po_qty := (v_lookup -> 'ticket_types' -> 0 ->> 'quantity_available')::integer;
+
+  if v_po_qty <> 7 then
+    raise exception 'quantity_available should count non-expired reservations, got %', v_po_qty;
+  end if;
+
+  update public.orders
+  set reserved_until = now() - interval '1 minute'
+  where id = v_po_order_id;
+
+  perform public.expire_stale_orders();
+
+  v_lookup := public.get_public_event_purchase_options(v_po_event_id);
+  v_po_qty := (v_lookup -> 'ticket_types' -> 0 ->> 'quantity_available')::integer;
+
+  if v_po_qty <> 9 then
+    raise exception 'expired reservations should not count against quantity_available, got %', v_po_qty;
+  end if;
 
   raise notice 'Payments Phase 1.5 lifecycle verification passed.';
 end;

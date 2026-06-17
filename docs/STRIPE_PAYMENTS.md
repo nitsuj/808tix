@@ -173,3 +173,15 @@ When Stripe Checkout expires (`checkout.session.expired`) or `expire_stale_order
 - Neither function inserts into `passes` directly.
 - All ticket minting goes through `fulfill_paid_order`.
 - Success URLs receive `order_token` query param only — they do not mint tickets.
+
+## Public purchase read RPC
+
+Buyer purchase UI loads display data via:
+
+```sql
+select public.get_public_event_purchase_options('EVENT_UUID');
+```
+
+Callable by `anon` and `authenticated`. Returns `null` when the event is not published, `sales_enabled` is false, or `ticketing_mode` is `comp_only`.
+
+Returns safe event fields (name, venue, date, fees) and active in-window ticket types with `quantity_available`. Does not expose organizer IDs, Stripe IDs, orders, or payments. Table RLS remains unchanged — no broad anon `SELECT` on `events` / `ticket_types`.

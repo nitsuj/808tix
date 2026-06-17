@@ -80,6 +80,7 @@
     "check:payments-schema": "tsx scripts/check-payments-schema.ts",
     "check:payments-lifecycle": "tsx scripts/check-payments-lifecycle.ts",
     "check:payments-stripe-functions": "tsx scripts/check-payments-stripe-functions.ts",
+    "check:public-purchase-options": "tsx scripts/check-public-purchase-options.ts",
     "check:organizer-dashboard": "tsx scripts/check-organizer-dashboard-events.ts",
     "check:organizer-profile": "tsx scripts/check-organizer-profile.ts",
     "check:organizer-avatar": "tsx scripts/check-organizer-avatar.ts",
@@ -90,7 +91,7 @@
     "check:native-env": "node scripts/check-native-env.mjs",
     "check:native-phase0": "npm run check:native-eas && npm run check:native-env",
     "smoke:payments:local": "tsx scripts/smoke-payments-local.ts",
-    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:phone-formatting && npm run check:dev-cleanup && npm run check:issue-pass && npm run check:issue-pass-screen && npm run check:scanner-screen && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:auth-session-recovery && npm run check:create-event && npm run check:edit-event && npm run check:event-date && npm run check:event-datetime-display && npm run check:event-slug-uniqueness && npm run check:event-form && npm run check:event-stats && npm run check:event-status && npm run check:event-status-backend && npm run check:pass-capacity-backend && npm run check:payments-schema && npm run check:payments-lifecycle && npm run check:payments-stripe-functions && npm run check:organizer-dashboard && npm run check:organizer-profile && npm run check:organizer-avatar && npm run check:organizer-auth-navigation && npm run check:organizer-ui-native && npm run check:homepage && npm run check:native-phase0"
+    "check:preflight": "npm run lint && npm run check:vercel && npm run check:export && npm run check:links && npm run check:phone-formatting && npm run check:dev-cleanup && npm run check:issue-pass && npm run check:issue-pass-screen && npm run check:scanner-screen && npm run check:pass-list && npm run check:organizer-auth && npm run check:auth-redirect && npm run check:auth-callback && npm run check:auth-session-recovery && npm run check:create-event && npm run check:edit-event && npm run check:event-date && npm run check:event-datetime-display && npm run check:event-slug-uniqueness && npm run check:event-form && npm run check:event-stats && npm run check:event-status && npm run check:event-status-backend && npm run check:pass-capacity-backend && npm run check:payments-schema && npm run check:payments-lifecycle && npm run check:payments-stripe-functions && npm run check:public-purchase-options && npm run check:organizer-dashboard && npm run check:organizer-profile && npm run check:organizer-avatar && npm run check:organizer-auth-navigation && npm run check:organizer-ui-native && npm run check:homepage && npm run check:native-phase0"
   },
   "private": true
 }

@@ -81,6 +81,40 @@ export type GetOrderByPublicTokenResult = {
   tickets: PublicOrderTicket[] | null;
 };
 
+export type PublicEventPurchaseOptionsEvent = {
+  id: string;
+  name: string;
+  venue_name: string | null;
+  event_date: string | null;
+  start_time: string | null;
+  description: string | null;
+  image_url: string | null;
+  currency: string;
+  capacity: number;
+  ticketing_mode: TicketingMode;
+  sales_enabled: boolean;
+  platform_fee_bps: number;
+  platform_fee_fixed_cents: number;
+};
+
+export type PublicEventPurchaseTicketType = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  currency: string;
+  capacity: number | null;
+  quantity_available: number | null;
+  sales_start_at: string | null;
+  sales_end_at: string | null;
+  sort_order: number;
+};
+
+export type GetPublicEventPurchaseOptionsResult = {
+  event: PublicEventPurchaseOptionsEvent;
+  ticket_types: PublicEventPurchaseTicketType[];
+};
+
 export type ExpireStaleOrdersResult = {
   expired_count: number;
 };
@@ -401,6 +435,12 @@ export type Database = {
           p_public_access_token: string;
         };
         Returns: GetOrderByPublicTokenResult | null;
+      };
+      get_public_event_purchase_options: {
+        Args: {
+          p_event_id: string;
+        };
+        Returns: GetPublicEventPurchaseOptionsResult | null;
       };
     };
     Enums: Record<string, never>;
