@@ -10,9 +10,12 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { chromium } from '@playwright/test';
+
 const ROOT = process.cwd();
 const SCREENSHOT_DIR = join(ROOT, 'qa/artifacts/screenshots/latest');
 const PLAYWRIGHT_RESULTS = join(ROOT, 'qa/artifacts/playwright-results.json');
+const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 
 const REQUIRED_ENV = [
   'QA_EVENT_ID',
@@ -20,6 +23,28 @@ const REQUIRED_ENV = [
   'QA_PAID_ORDER_TOKEN',
   'QA_PASS_TOKEN',
 ] as const;
+
+type QaFixturesFile = {
+  event_id: string;
+  ticket_type_id: string;
+  pending_order_token?: string;
+  paid_order_token: string;
+  pass_tokens: string[];
+  created_at?: string;
+};
+
+type FixtureSource = 'file' | 'env';
+
+let fixtureSource: FixtureSource = 'file';
+
+const LOCAL_SUPABASE_FIX_COMMANDS = `unset EXPO_PUBLIC_SUPABASE_URL
+unset EXPO_PUBLIC_SUPABASE_ANON_KEY
+
+export EXPO_PUBLIC_SUPABASE_URL="$(supabase status -o env | sed -n 's/^API_URL=//p' | tr -d '"')"
+export EXPO_PUBLIC_SUPABASE_ANON_KEY="$(supabase status -o env | sed -n 's/^ANON_KEY=//p' | tr -d '"')"
+
+npm run qa:seed
+npm run qa:web`;
 
 const SUMMARY_ROWS: Array<{
   testTitle: string;
@@ -93,59 +118,170 @@ function failEnv(message: string): never {
   console.error(`\n808Tix web QA: missing configuration\n`);
   console.error(message);
   console.error(`
-Obtain fixture values from a prior paid smoke run:
+Seed local fixtures, then run web QA:
 
-  npm run smoke:payments:local
+  npm run qa:seed
+  npm run qa:web
 
-After payment (or with an existing paid order):
+Or export env vars manually (env overrides qa/fixtures.json):
 
-  SMOKE_VERIFY_TOKEN=<order_public_access_token> npm run smoke:payments:local
-
-The smoke script prints:
-  - event_id
-  - ticket_type_id
-  - current_run_order_public_access_token  → QA_PAID_ORDER_TOKEN
-  - paid ticket tokens                     → QA_PASS_TOKEN
-
-For QA_PENDING_ORDER_TOKEN (optional cancel-page test), use a checkout_open order token
-from create-checkout-session before payment, or query local DB:
-
-  select public_access_token, status
-  from public.orders
-  where status in ('checkout_open', 'pending')
-  order by created_at desc
-  limit 5;
-
-Required env vars:
   QA_EVENT_ID
   QA_TICKET_TYPE_ID
   QA_PAID_ORDER_TOKEN
   QA_PASS_TOKEN
+  QA_PENDING_ORDER_TOKEN   (optional — cancel-page test)
 
-Optional:
-  QA_PENDING_ORDER_TOKEN
+Fixture values are also printed by:
+
+  npm run smoke:payments:local
+  SMOKE_VERIFY_TOKEN=<token> npm run smoke:payments:local
 `);
   process.exit(1);
 }
 
-function validateRequiredEnv(): void {
-  hydrateEnvFromDotEnv();
+function hasExplicitQaEnv(): boolean {
+  return REQUIRED_ENV.every((key) => Boolean(process.env[key]?.trim()));
+}
 
-  const missing = REQUIRED_ENV.filter((key) => !process.env[key]?.trim());
+function loadFixturesFile(): QaFixturesFile | null {
+  if (!existsSync(FIXTURES_PATH)) {
+    return null;
+  }
 
-  if (missing.length > 0) {
-    failEnv(`Missing required env var(s): ${missing.join(', ')}`);
+  try {
+    const parsed = JSON.parse(readFileSync(FIXTURES_PATH, 'utf8')) as QaFixturesFile;
+
+    if (
+      !parsed.event_id?.trim() ||
+      !parsed.ticket_type_id?.trim() ||
+      !parsed.paid_order_token?.trim() ||
+      !Array.isArray(parsed.pass_tokens) ||
+      parsed.pass_tokens.length === 0 ||
+      !parsed.pass_tokens[0]?.trim()
+    ) {
+      throw new Error('qa/fixtures.json is missing required fields');
+    }
+
+    return parsed;
+  } catch (error) {
+    failEnv(`Could not read qa/fixtures.json: ${String(error)}`);
   }
 }
 
-async function verifyLocalSupabaseEnv(): Promise<void> {
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+function applyFixtureEnv(fixtures: QaFixturesFile, source: FixtureSource): void {
+  fixtureSource = source;
 
-  if (!supabaseUrl) {
-    console.warn(
-      'WARN: EXPO_PUBLIC_SUPABASE_URL is not set. Ensure .env points Expo web at local Supabase.',
+  process.env.QA_EVENT_ID = process.env.QA_EVENT_ID?.trim() || fixtures.event_id;
+  process.env.QA_TICKET_TYPE_ID = process.env.QA_TICKET_TYPE_ID?.trim() || fixtures.ticket_type_id;
+  process.env.QA_PAID_ORDER_TOKEN =
+    process.env.QA_PAID_ORDER_TOKEN?.trim() || fixtures.paid_order_token;
+  process.env.QA_PASS_TOKEN = process.env.QA_PASS_TOKEN?.trim() || fixtures.pass_tokens[0];
+
+  if (!process.env.QA_PENDING_ORDER_TOKEN?.trim() && fixtures.pending_order_token?.trim()) {
+    process.env.QA_PENDING_ORDER_TOKEN = fixtures.pending_order_token;
+  }
+
+  console.log(`Fixture source: ${source}`);
+  console.log(`event_id: ${process.env.QA_EVENT_ID}`);
+  console.log(`ticket_type_id: ${process.env.QA_TICKET_TYPE_ID}`);
+  console.log(`paid_order_token: ${process.env.QA_PAID_ORDER_TOKEN?.slice(0, 12)}...`);
+  console.log(`pass_token: ${process.env.QA_PASS_TOKEN?.slice(0, 12)}...`);
+
+  if (process.env.QA_PENDING_ORDER_TOKEN?.trim()) {
+    console.log(`pending_order_token: ${process.env.QA_PENDING_ORDER_TOKEN.slice(0, 12)}...`);
+  }
+}
+
+function resolveFixtures(): void {
+  hydrateEnvFromDotEnv();
+
+  if (hasExplicitQaEnv()) {
+    applyFixtureEnv(
+      {
+        event_id: process.env.QA_EVENT_ID!.trim(),
+        ticket_type_id: process.env.QA_TICKET_TYPE_ID!.trim(),
+        paid_order_token: process.env.QA_PAID_ORDER_TOKEN!.trim(),
+        pass_tokens: [process.env.QA_PASS_TOKEN!.trim()],
+        pending_order_token: process.env.QA_PENDING_ORDER_TOKEN?.trim(),
+      },
+      'env',
     );
     return;
+  }
+
+  const partialEnv = REQUIRED_ENV.filter((key) => Boolean(process.env[key]?.trim()));
+  if (partialEnv.length > 0) {
+    failEnv(
+      `Incomplete QA env override. Provide all of: ${REQUIRED_ENV.join(', ')}\n` +
+        `Currently set: ${partialEnv.join(', ')}`,
+    );
+  }
+
+  const fixtures = loadFixturesFile();
+  if (!fixtures) {
+    failEnv('No qa/fixtures.json found and required QA_* env vars are not set.');
+  }
+
+  applyFixtureEnv(fixtures, 'file');
+}
+
+function validateRequiredEnv(): void {
+  resolveFixtures();
+
+  const missing = REQUIRED_ENV.filter((key) => !process.env[key]?.trim());
+  if (missing.length > 0) {
+    failEnv(`Missing required fixture value(s): ${missing.join(', ')}`);
+  }
+}
+
+function isLocalSupabaseHost(hostname: string): boolean {
+  return hostname === '127.0.0.1' || hostname === 'localhost';
+}
+
+function allowsRemoteSupabase(): boolean {
+  return process.env.QA_WEB_ALLOW_REMOTE === 'true';
+}
+
+function failRemoteSupabaseMismatch(supabaseUrl: string): never {
+  console.error('\n808Tix web QA: environment mismatch\n');
+  console.error('qa:web is using local fixtures, but Expo web is pointed at remote Supabase:');
+  console.error(`EXPO_PUBLIC_SUPABASE_URL=${supabaseUrl}\n`);
+  console.error('Run:\n');
+  console.error(LOCAL_SUPABASE_FIX_COMMANDS);
+  process.exit(1);
+}
+
+function failMissingLocalSupabaseUrl(): never {
+  console.error('\n808Tix web QA: missing local Supabase configuration\n');
+  console.error(
+    'qa:web uses local fixtures and requires EXPO_PUBLIC_SUPABASE_URL to point at local Supabase.',
+  );
+  console.error('\nRun:\n');
+  console.error(LOCAL_SUPABASE_FIX_COMMANDS);
+  process.exit(1);
+}
+
+function failMissingAnonKey(): never {
+  console.error('\n808Tix web QA: missing Supabase anon key\n');
+  console.error(
+    'EXPO_PUBLIC_SUPABASE_URL is local, but EXPO_PUBLIC_SUPABASE_ANON_KEY is not set.',
+  );
+  console.error('\nRun:\n');
+  console.error(LOCAL_SUPABASE_FIX_COMMANDS);
+  process.exit(1);
+}
+
+async function assertLocalExpoSupabaseEnv(): Promise<void> {
+  if (allowsRemoteSupabase()) {
+    console.log('QA_WEB_ALLOW_REMOTE=true — skipping local Supabase preflight.');
+    return;
+  }
+
+  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+  const anonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
+
+  if (!supabaseUrl) {
+    failMissingLocalSupabaseUrl();
   }
 
   let parsed: URL;
@@ -153,37 +289,62 @@ async function verifyLocalSupabaseEnv(): Promise<void> {
   try {
     parsed = new URL(supabaseUrl);
   } catch {
-    console.warn(`WARN: EXPO_PUBLIC_SUPABASE_URL is not a valid URL: ${supabaseUrl}`);
-    return;
+    console.error(`\n808Tix web QA: invalid EXPO_PUBLIC_SUPABASE_URL: ${supabaseUrl}`);
+    process.exit(1);
   }
 
-  const host = parsed.hostname;
-  const isLocal = host === '127.0.0.1' || host === 'localhost';
+  if (!isLocalSupabaseHost(parsed.hostname)) {
+    failRemoteSupabaseMismatch(supabaseUrl);
+  }
 
-  if (!isLocal) {
-    console.warn(
-      `WARN: EXPO_PUBLIC_SUPABASE_URL host is ${host} (expected local 127.0.0.1 or localhost).`,
-    );
-    return;
+  if (!anonKey) {
+    failMissingAnonKey();
   }
 
   try {
     const response = await fetch(`${supabaseUrl.replace(/\/+$/, '')}/rest/v1/`, {
       method: 'HEAD',
       headers: {
-        apikey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim() ?? '',
+        apikey: anonKey,
       },
     });
 
     if (!response.ok && response.status !== 401) {
-      console.warn(`WARN: Local Supabase REST probe returned HTTP ${response.status}.`);
-      return;
+      console.error(
+        `\n808Tix web QA: local Supabase REST probe failed with HTTP ${response.status} (${supabaseUrl})`,
+      );
+      console.error('Start local Supabase with: supabase start');
+      process.exit(1);
     }
 
     console.log(`Local Supabase probe OK (${supabaseUrl})`);
   } catch (error) {
-    console.warn(`WARN: Could not reach local Supabase at ${supabaseUrl}: ${String(error)}`);
-    console.warn('Start local Supabase with: supabase start');
+    console.error(`\n808Tix web QA: could not reach local Supabase at ${supabaseUrl}`);
+    console.error(String(error));
+    console.error('Start local Supabase with: supabase start');
+    process.exit(1);
+  }
+}
+
+async function assertPlaywrightChromiumInstalled(): Promise<void> {
+  try {
+    const browser = await chromium.launch({ headless: true });
+    await browser.close();
+  } catch (error) {
+    const message = String(error);
+    const looksLikeMissingBrowser =
+      /Executable doesn't exist|browserType\.launch|Failed to launch chromium|Please run the following command/i.test(
+        message,
+      );
+
+    if (looksLikeMissingBrowser) {
+      console.error('\nPlaywright Chromium is not installed.');
+      console.error('Run once:');
+      console.error('  npx playwright install chromium');
+      process.exit(1);
+    }
+
+    throw error;
   }
 }
 
@@ -311,7 +472,8 @@ function runPlaywright(forwardedArgs: string[]): Promise<number> {
 
 async function main(): Promise<void> {
   validateRequiredEnv();
-  await verifyLocalSupabaseEnv();
+  await assertLocalExpoSupabaseEnv();
+  await assertPlaywrightChromiumInstalled();
   prepareScreenshotDir();
 
   const forwardedArgs = process.argv.slice(2);

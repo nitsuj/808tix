@@ -48,5 +48,6 @@ supabase/.temp/
 
 # Playwright / web QA artifacts
 qa/artifacts/
+qa/fixtures.json
 playwright-report/
 test-results/
