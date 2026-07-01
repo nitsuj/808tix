@@ -38,6 +38,10 @@ export type PaymentStatus =
 
 export type PaymentEventProcessingStatus = 'received' | 'processed' | 'failed';
 
+export type OutboundMessageChannel = 'email' | 'sms';
+
+export type OutboundMessageStatus = 'pending' | 'sent' | 'failed' | 'skipped';
+
 export type OrganizerPayoutStatus = 'pending' | 'paid' | 'withheld';
 
 export type CreatePendingOrderResult = {
@@ -301,6 +305,24 @@ export type OrganizerPayout = {
   updated_at: string;
 };
 
+export type OutboundMessage = {
+  id: string;
+  order_id: string | null;
+  recipient: string;
+  channel: OutboundMessageChannel;
+  message_type: string;
+  status: OutboundMessageStatus;
+  provider: string | null;
+  provider_message_id: string | null;
+  error: string | null;
+  attempt_count: number;
+  idempotency_key: string;
+  payload_snapshot: Record<string, unknown> | null;
+  sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -369,6 +391,16 @@ export type Database = {
         Insert: Partial<OrganizerPayout> &
           Pick<OrganizerPayout, 'organizer_id' | 'order_id' | 'amount_cents'>;
         Update: Partial<OrganizerPayout>;
+        Relationships: [];
+      };
+      outbound_messages: {
+        Row: OutboundMessage;
+        Insert: Partial<OutboundMessage> &
+          Pick<
+            OutboundMessage,
+            'recipient' | 'channel' | 'message_type' | 'idempotency_key'
+          >;
+        Update: Partial<OutboundMessage>;
         Relationships: [];
       };
     };

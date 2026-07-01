@@ -15,6 +15,7 @@ const FULL_SUITE = [
   'check:payments-stripe-functions',
   'check:public-purchase-options',
   'check:purchase-ui',
+  'check:order-email',
   'check:preflight',
   'lint',
 ] as const;
@@ -27,6 +28,7 @@ const PAYMENTS_SUITE = [
   'check:payments-stripe-functions',
   'check:public-purchase-options',
   'check:purchase-ui',
+  'check:order-email',
 ] as const;
 
 type SuiteName = 'full' | 'fast' | 'payments';

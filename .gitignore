@@ -45,3 +45,8 @@ example
 .vercel
 
 supabase/.temp/
+
+# Playwright / web QA artifacts
+qa/artifacts/
+playwright-report/
+test-results/

@@ -264,3 +264,75 @@ npm run smoke:payments:local
 ```
 
 Bootstraps organizer/event/ticket type, calls `create-checkout-session`, pauses for manual Stripe payment, then verifies paid order + passes in the database. Use `SMOKE_VERIFY_TOKEN=...` to re-verify an already-paid order without a new checkout.
+
+## Email delivery foundation (Phase 1.6)
+
+Post-purchase buyer email is **not wired into `stripe-webhook` yet**. Phase B adds the provider wrapper and a manual test function.
+
+| Piece | Status |
+|-------|--------|
+| `public.outbound_messages` | Idempotency + audit log for email and future SMS |
+| `_shared/order-email.ts` | Email builder + Resend wrapper + outbound claim/update |
+| `_shared/pass-link-server.ts` | Server-side `PUBLIC_SITE_URL` pass/success links |
+| `send-order-confirmation-email` | Manual/local test only (service role required) |
+| `stripe-webhook` integration | **Not implemented** |
+
+**Idempotency key:** `order_confirmation:{order_id}`
+
+**Env vars** (Edge Functions / `supabase/functions/.env` only — never `EXPO_PUBLIC_*`):
+
+| Variable | Purpose |
+|----------|---------|
+| `PUBLIC_SITE_URL` | Absolute `/pass/{token}` and success-page links in email |
+| `RESEND_API_KEY` | Transactional email provider |
+| `EMAIL_FROM` | Verified sender address |
+| `EMAIL_DELIVERY_MODE` | `preview` (log only) or `send` |
+| `EMAIL_OVERRIDE_TO` | Local QA — redirect all mail to one inbox |
+
+### Preview / manual email test (Phase B)
+
+1. Apply migrations and complete a paid order (or use an existing paid `order_public_access_token`).
+2. Serve functions with email env vars:
+
+```bash
+supabase functions serve send-order-confirmation-email --env-file supabase/functions/.env
+```
+
+Recommended local `.env` values:
+
+```bash
+PUBLIC_SITE_URL=http://localhost:8081
+EMAIL_DELIVERY_MODE=preview
+EMAIL_OVERRIDE_TO=you@yourdomain.com
+# RESEND_API_KEY=   # omit for preview
+# EMAIL_FROM=Tickets <tickets@your-verified-domain>
+```
+
+3. Call the manual test function with **service role** auth:
+
+```bash
+curl -sS -X POST "http://127.0.0.1:54321/functions/v1/send-order-confirmation-email" \
+  -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"order_public_access_token":"YOUR_PAID_ORDER_TOKEN"}'
+```
+
+4. Inspect delivery log:
+
+```sql
+select id, order_id, recipient, status, provider, attempt_count, sent_at, error
+from public.outbound_messages
+order by created_at desc
+limit 5;
+```
+
+Preview mode logs subject/pass count to the function console and writes `outbound_messages` with `provider='preview'`. It does **not** call Resend.
+
+Verify the table locally after `supabase db reset`:
+
+```bash
+# SQL Editor or psql
+\i supabase/verification-outbound-messages.sql
+```
+
+Next phase: non-blocking `stripe-webhook` trigger after `fulfill_paid_order`.
