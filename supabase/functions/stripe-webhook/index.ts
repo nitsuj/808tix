@@ -1,4 +1,9 @@
 import {
+  maskRecipientEmail,
+  sendOrderConfirmationEmail,
+  type OrderConfirmationTicket,
+} from '../_shared/order-email.ts';
+import {
   fetchStripeChargeId,
   readPaymentIntentId,
   verifyStripeWebhookSignature,
@@ -24,6 +29,137 @@ function readMetadataString(metadata: unknown, key: string): string | null {
   }
 
   return value.trim();
+}
+
+type OrderLookupRow = {
+  status: string;
+  event_name: string | null;
+  venue_name: string | null;
+  event_date: string | null;
+  start_time: string | null;
+  tickets: Array<{
+    secure_token: string;
+    pass_type: string;
+    guest_name: string;
+  }> | null;
+};
+
+function mapOrderConfirmationTickets(
+  tickets: OrderLookupRow['tickets'],
+): OrderConfirmationTicket[] {
+  if (!Array.isArray(tickets)) {
+    return [];
+  }
+
+  return tickets.map((ticket, index) => ({
+    sequence: index + 1,
+    pass_type: ticket.pass_type,
+    guest_name: ticket.guest_name,
+    secure_token: ticket.secure_token,
+  }));
+}
+
+async function triggerOrderConfirmationEmail(orderId: string): Promise<void> {
+  try {
+    const supabase = createServiceClient();
+
+    const { data: orderRow, error: orderError } = await supabase
+      .from('orders')
+      .select('id, event_id, buyer_email, buyer_name, public_access_token, status')
+      .eq('id', orderId)
+      .maybeSingle();
+
+    if (orderError || !orderRow) {
+      console.error('[stripe-webhook] order confirmation email skipped: order row missing', {
+        order_id: orderId,
+        message: orderError?.message ?? 'order not found',
+      });
+      return;
+    }
+
+    if (orderRow.status !== 'paid') {
+      console.warn('[stripe-webhook] order confirmation email skipped: order not paid', {
+        order_id: orderId,
+        event_id: orderRow.event_id,
+        status: orderRow.status,
+      });
+      return;
+    }
+
+    const { data: lookup, error: lookupError } = await supabase.rpc('get_order_by_public_token', {
+      p_public_access_token: orderRow.public_access_token,
+    });
+
+    if (lookupError || !lookup) {
+      console.error('[stripe-webhook] order confirmation email skipped: order lookup failed', {
+        order_id: orderId,
+        event_id: orderRow.event_id,
+        message: lookupError?.message ?? 'lookup returned null',
+      });
+      return;
+    }
+
+    const orderLookup = lookup as OrderLookupRow;
+
+    if (orderLookup.status !== 'paid') {
+      console.warn('[stripe-webhook] order confirmation email skipped: lookup not paid', {
+        order_id: orderId,
+        event_id: orderRow.event_id,
+        status: orderLookup.status,
+      });
+      return;
+    }
+
+    const tickets = mapOrderConfirmationTickets(orderLookup.tickets);
+
+    if (tickets.length === 0) {
+      console.error('[stripe-webhook] order confirmation email skipped: no paid tickets', {
+        order_id: orderId,
+        event_id: orderRow.event_id,
+      });
+      return;
+    }
+
+    const sendResult = await sendOrderConfirmationEmail(supabase, {
+      order_id: orderRow.id,
+      public_access_token: orderRow.public_access_token,
+      buyer_email: orderRow.buyer_email,
+      buyer_name: orderRow.buyer_name,
+      event_name: orderLookup.event_name ?? 'your event',
+      venue_name: orderLookup.venue_name,
+      event_date: orderLookup.event_date,
+      start_time: orderLookup.start_time,
+      tickets,
+    });
+
+    if (sendResult.ok) {
+      console.log('[stripe-webhook] order confirmation email', {
+        order_id: orderId,
+        event_id: orderRow.event_id,
+        recipient: maskRecipientEmail(sendResult.recipient),
+        provider: sendResult.provider,
+        mode: sendResult.mode,
+        already_sent: sendResult.already_sent,
+        outbound_message_status: sendResult.outbound_message_status,
+        pass_count: sendResult.pass_count,
+        outbound_message_id: sendResult.outbound_message_id,
+      });
+      return;
+    }
+
+    console.error('[stripe-webhook] order confirmation email failed', {
+      order_id: orderId,
+      event_id: orderRow.event_id,
+      outbound_message_status: sendResult.outbound_message_status ?? 'failed',
+      error: sendResult.error,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[stripe-webhook] order confirmation email error', {
+      order_id: orderId,
+      message,
+    });
+  }
 }
 
 async function claimWebhookEvent(
@@ -140,6 +276,8 @@ async function handleCheckoutSessionCompleted(
   if (error) {
     throw new Error(`fulfill_paid_order failed: ${error.message}`);
   }
+
+  await triggerOrderConfirmationEmail(orderId);
 }
 
 async function handleCheckoutSessionExpired(session: Record<string, unknown>): Promise<void> {

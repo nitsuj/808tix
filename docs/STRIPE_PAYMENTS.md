@@ -265,31 +265,49 @@ npm run smoke:payments:local
 
 Bootstraps organizer/event/ticket type, calls `create-checkout-session`, pauses for manual Stripe payment, then verifies paid order + passes in the database. Use `SMOKE_VERIFY_TOKEN=...` to re-verify an already-paid order without a new checkout.
 
-## Email delivery foundation (Phase 1.6)
+## Email delivery (Phase 1.6 + webhook)
 
-Post-purchase buyer email is **not wired into `stripe-webhook` yet**. Phase B adds the provider wrapper and a manual test function.
+After Stripe payment fulfillment, buyers can receive an order confirmation email. Ticket minting via `fulfill_paid_order` remains the source of truth.
 
 | Piece | Status |
 |-------|--------|
 | `public.outbound_messages` | Idempotency + audit log for email and future SMS |
 | `_shared/order-email.ts` | Email builder + Resend wrapper + outbound claim/update |
 | `_shared/pass-link-server.ts` | Server-side `PUBLIC_SITE_URL` pass/success links |
-| `send-order-confirmation-email` | Manual/local test only (service role required) |
-| `stripe-webhook` integration | **Not implemented** |
+| `send-order-confirmation-email` | Manual/local test (service role required) |
+| `stripe-webhook` integration | **Implemented** — non-blocking after `fulfill_paid_order` |
 
-**Idempotency key:** `order_confirmation:{order_id}`
+**Webhook flow (`checkout.session.completed`, `payment_status=paid`):**
+
+1. Verify Stripe signature
+2. Claim `payment_events` (idempotent)
+3. Call `fulfill_paid_order`
+4. Trigger `sendOrderConfirmationEmail` (errors caught/logged; webhook still returns success)
+5. Mark webhook processed
+
+**Email failure is non-blocking:** if fulfillment succeeds but email fails, Stripe still receives `200` from `stripe-webhook`. Failures are recorded in `outbound_messages` and function logs. Paid passes are already minted.
+
+**Idempotency key:** `order_confirmation:{order_id}` — duplicate webhook/email attempts do not resend when already `sent`/`skipped`.
 
 **Env vars** (Edge Functions / `supabase/functions/.env` only — never `EXPO_PUBLIC_*`):
 
 | Variable | Purpose |
 |----------|---------|
 | `PUBLIC_SITE_URL` | Absolute `/pass/{token}` and success-page links in email |
-| `RESEND_API_KEY` | Transactional email provider |
-| `EMAIL_FROM` | Verified sender address |
+| `RESEND_API_KEY` | Transactional email provider (send mode) |
+| `EMAIL_FROM` | Verified sender address (send mode) |
 | `EMAIL_DELIVERY_MODE` | `preview` (log only) or `send` |
 | `EMAIL_OVERRIDE_TO` | Local QA — redirect all mail to one inbox |
 
-### Preview / manual email test (Phase B)
+Serve **both** payment functions with the same env file when testing email via webhook:
+
+```bash
+supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env
+```
+
+### Preview / manual email test
+
+#### Option A — manual function (no Stripe payment)
 
 1. Apply migrations and complete a paid order (or use an existing paid `order_public_access_token`).
 2. Serve functions with email env vars:
@@ -317,16 +335,46 @@ curl -sS -X POST "http://127.0.0.1:54321/functions/v1/send-order-confirmation-em
   -d '{"order_public_access_token":"YOUR_PAID_ORDER_TOKEN"}'
 ```
 
-4. Inspect delivery log:
+#### Option B — preview via Stripe webhook (full checkout path)
+
+1. Set email env vars in `supabase/functions/.env` (preview recommended locally):
+
+```bash
+PUBLIC_SITE_URL=http://localhost:8081
+EMAIL_DELIVERY_MODE=preview
+EMAIL_OVERRIDE_TO=you@yourdomain.com
+```
+
+2. Serve payment functions:
+
+```bash
+supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env
+```
+
+3. In another terminal, forward Stripe webhooks:
+
+```bash
+stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhook
+```
+
+4. Run the payments smoke test and complete Checkout manually:
+
+```bash
+npm run smoke:payments:local
+```
+
+5. Inspect delivery log:
 
 ```sql
-select id, order_id, recipient, status, provider, attempt_count, sent_at, error
+select status, provider, recipient, message_type, attempt_count, error, payload_snapshot, created_at
 from public.outbound_messages
 order by created_at desc
 limit 5;
 ```
 
 Preview mode logs subject/pass count to the function console and writes `outbound_messages` with `provider='preview'`. It does **not** call Resend.
+
+**Send mode** requires `EMAIL_DELIVERY_MODE=send`, verified `EMAIL_FROM`, and `RESEND_API_KEY` with a verified Resend domain. Real delivery is separate from local preview/webhook testing.
 
 Verify the table locally after `supabase db reset`:
 
@@ -335,4 +383,4 @@ Verify the table locally after `supabase db reset`:
 \i supabase/verification-outbound-messages.sql
 ```
 
-Next phase: non-blocking `stripe-webhook` trigger after `fulfill_paid_order`.
+**Stripe smoke remains separate:** `npm run smoke:payments:local` is still the integration check for checkout → webhook → fulfillment. Run it after webhook changes.

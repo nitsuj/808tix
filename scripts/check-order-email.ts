@@ -128,11 +128,66 @@ assert(
 );
 
 assert(
-  !stripeWebhook.includes('order-email') &&
-    !stripeWebhook.includes('sendOrderConfirmationEmail') &&
-    !stripeWebhook.includes('outbound_messages'),
-  'stripe-webhook is not wired for email delivery yet',
+  stripeWebhook.includes("from '../_shared/order-email.ts'") ||
+    stripeWebhook.includes('from "../_shared/order-email.ts"'),
+  'stripe-webhook imports order-email shared helper',
 );
+
+assert(
+  stripeWebhook.includes('sendOrderConfirmationEmail'),
+  'stripe-webhook calls sendOrderConfirmationEmail',
+);
+
+assert(
+  stripeWebhook.includes('await triggerOrderConfirmationEmail(orderId)'),
+  'stripe-webhook triggers order confirmation email after fulfillment',
+);
+
+const checkoutHandlerStart = stripeWebhook.indexOf('async function handleCheckoutSessionCompleted');
+const checkoutHandlerEnd = stripeWebhook.indexOf('async function handleCheckoutSessionExpired');
+const checkoutHandlerBody = stripeWebhook.slice(checkoutHandlerStart, checkoutHandlerEnd);
+
+assert(
+  checkoutHandlerBody.includes('fulfill_paid_order') &&
+    checkoutHandlerBody.includes('triggerOrderConfirmationEmail') &&
+    checkoutHandlerBody.indexOf('fulfill_paid_order') <
+      checkoutHandlerBody.indexOf('triggerOrderConfirmationEmail'),
+  'stripe-webhook sends email after fulfill_paid_order in checkout handler',
+);
+
+assert(
+  stripeWebhook.includes('triggerOrderConfirmationEmail'),
+  'stripe-webhook isolates order confirmation email in helper',
+);
+
+assert(
+  stripeWebhook.includes('try {') && stripeWebhook.includes('catch (error)'),
+  'stripe-webhook catches email errors without failing fulfillment',
+);
+
+assert(
+  stripeWebhook.includes('maskRecipientEmail'),
+  'stripe-webhook masks recipient email in logs',
+);
+
+const webhookLogLines = stripeWebhook
+  .split('\n')
+  .filter(
+    (line) =>
+      line.includes('console.log') || line.includes('console.error') || line.includes('console.warn'),
+  );
+
+for (const line of webhookLogLines) {
+  assert(
+    !line.includes('secure_token'),
+    'stripe-webhook logs must not include secure_token',
+  );
+  assert(!line.includes('pass_url'), 'stripe-webhook logs must not include pass_url');
+  assert(
+    !line.includes('public_access_token'),
+    'stripe-webhook logs must not include public_access_token',
+  );
+}
 
 assert(
   !checkoutFn.includes('order-email') && !checkoutFn.includes('sendOrderConfirmationEmail'),
@@ -216,8 +271,14 @@ assert(
 
 assert(
   stripePaymentsDoc.includes('outbound_messages') &&
-    stripePaymentsDoc.includes('send-order-confirmation-email'),
-  'STRIPE_PAYMENTS.md documents manual email test flow',
+    stripePaymentsDoc.includes('send-order-confirmation-email') &&
+    stripePaymentsDoc.includes('stripe-webhook'),
+  'STRIPE_PAYMENTS.md documents email delivery including webhook integration',
+);
+
+assert(
+  stripePaymentsDoc.includes('non-blocking') || stripePaymentsDoc.includes('non blocking'),
+  'STRIPE_PAYMENTS.md documents non-blocking email behavior',
 );
 
 function walkTsFiles(dir: string): string[] {
