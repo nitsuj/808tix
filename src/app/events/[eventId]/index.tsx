@@ -19,7 +19,6 @@ import {
   fan,
   organizer,
   organizerOpsScreen,
-  palette,
   semantic,
   text,
 } from '@/theme';

@@ -23,26 +23,6 @@ type SendPassSmsResponse = {
 
 const SMS_FUNCTION_NAME = 'send-pass-sms';
 
-function resolveInvokeStatus(error: unknown, response?: unknown): number | string {
-  if (response instanceof Response) {
-    return response.status;
-  }
-
-  if (error && typeof error === 'object' && 'context' in error) {
-    const context = (error as { context: unknown }).context;
-
-    if (context instanceof Response) {
-      return context.status;
-    }
-  }
-
-  if (!error) {
-    return 200;
-  }
-
-  return 'unknown';
-}
-
 export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsResult> {
   const phone = normalizePhoneNumber(input.phone);
 
@@ -60,8 +40,6 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
   });
 
   const { data, error } = invokeResult;
-  const response = 'response' in invokeResult ? invokeResult.response : undefined;
-  const invokeStatus = resolveInvokeStatus(error, response);
 
   if (error) {
     return { ok: false, error: error.message || 'Could not send SMS.' };

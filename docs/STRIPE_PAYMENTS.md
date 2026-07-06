@@ -337,6 +337,30 @@ curl -sS -X POST "http://127.0.0.1:54321/functions/v1/send-order-confirmation-em
 
 #### Option B — preview via Stripe webhook (full checkout path)
 
+**One command (recommended):**
+
+```bash
+npm run smoke:payments:preview
+```
+
+This orchestrator (local only):
+
+- Verifies local Supabase and Stripe CLI
+- Starts or reuses Expo web at `http://localhost:8081` (Stripe success/cancel redirects require this)
+- Starts `stripe listen` and captures the `whsec_...` signing secret for `stripe-webhook`
+- Serves `create-checkout-session` and `stripe-webhook` with preview email env (`PUBLIC_SITE_URL=http://localhost:8081`, `EMAIL_DELIVERY_MODE=preview`, default `EMAIL_OVERRIDE_TO=preview@example.test`)
+- Runs `npm run smoke:payments:local`
+- Queries `outbound_messages` for a preview `order_confirmation` row (`provider='preview'`, `status='sent'`)
+- Writes prefixed logs to `qa/artifacts/smoke-preview/latest.log` (`[stripe]`, `[functions]`, `[web]`, `[smoke]`)
+
+**Card entry stays manual:** complete Stripe Checkout in the browser when the smoke script prints the URL. The command automates local services, not provider-hosted card entry.
+
+If Expo web is already running on port 8081, the orchestrator reuses it and does not stop it on exit.
+
+Safety defaults: refuses non-local Supabase unless `SMOKE_ALLOW_REMOTE=true`; refuses `sk_live_...` unless `SMOKE_ALLOW_LIVE_STRIPE=true`; forces preview email unless `SMOKE_EMAIL_SEND=true`.
+
+**Three-terminal fallback (debug):**
+
 1. Set email env vars in `supabase/functions/.env` (preview recommended locally):
 
 ```bash
@@ -368,6 +392,7 @@ npm run smoke:payments:local
 ```sql
 select status, provider, recipient, message_type, attempt_count, error, payload_snapshot, created_at
 from public.outbound_messages
+where message_type = 'order_confirmation'
 order by created_at desc
 limit 5;
 ```
@@ -383,4 +408,4 @@ Verify the table locally after `supabase db reset`:
 \i supabase/verification-outbound-messages.sql
 ```
 
-**Stripe smoke remains separate:** `npm run smoke:payments:local` is still the integration check for checkout → webhook → fulfillment. Run it after webhook changes.
+**Stripe smoke:** `npm run smoke:payments:preview` is the one-command local preview path (checkout + webhook + email preview). `npm run smoke:payments:local` remains the lower-level smoke script when you run services yourself.

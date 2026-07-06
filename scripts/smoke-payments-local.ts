@@ -547,16 +547,28 @@ async function checkPrerequisites(): Promise<{
   }
 
   const functionsEnv = parseEnvFile(FUNCTIONS_ENV_PATH);
-  const stripeSecretConfigured = !isPlaceholderSecret(functionsEnv.STRIPE_SECRET_KEY);
-  const webhookSecretConfigured = !isPlaceholderSecret(functionsEnv.STRIPE_WEBHOOK_SECRET);
+  const stripeSecretValue =
+    process.env.STRIPE_SECRET_KEY?.trim() || functionsEnv.STRIPE_SECRET_KEY;
+  const webhookSecretValue =
+    process.env.STRIPE_WEBHOOK_SECRET?.trim() || functionsEnv.STRIPE_WEBHOOK_SECRET;
+  const stripeSecretConfigured = !isPlaceholderSecret(stripeSecretValue);
+  const webhookSecretConfigured = !isPlaceholderSecret(webhookSecretValue);
 
-  logCheck('STRIPE_SECRET_KEY in supabase/functions/.env', {
+  logCheck('STRIPE_SECRET_KEY for smoke prerequisites', {
     ok: stripeSecretConfigured,
-    detail: stripeSecretConfigured ? 'present' : 'missing or placeholder',
+    detail: stripeSecretConfigured
+      ? process.env.STRIPE_SECRET_KEY?.trim()
+        ? 'present (process env)'
+        : 'present (supabase/functions/.env)'
+      : 'missing or placeholder',
   });
-  logCheck('STRIPE_WEBHOOK_SECRET in supabase/functions/.env', {
+  logCheck('STRIPE_WEBHOOK_SECRET for smoke prerequisites', {
     ok: webhookSecretConfigured,
-    detail: webhookSecretConfigured ? 'present' : 'missing or placeholder',
+    detail: webhookSecretConfigured
+      ? process.env.STRIPE_WEBHOOK_SECRET?.trim()
+        ? 'present (process env)'
+        : 'present (supabase/functions/.env)'
+      : 'missing or placeholder',
   });
 
   if (!stripeSecretConfigured || !webhookSecretConfigured) {

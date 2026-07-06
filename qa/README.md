@@ -12,9 +12,13 @@ npx playwright install chromium   # one-time
 Point Expo web at **local** Supabase in your shell (see below), then:
 
 ```bash
+npm run qa:env
+# copy/paste the printed exports into your terminal, then:
 npm run qa:seed
 npm run qa:web
 ```
+
+`qa:env` reads `supabase status -o env` and prints copy-pasteable `export` commands. npm cannot modify your parent shell — paste or eval the output in the terminal where you run QA.
 
 `qa:seed` writes `qa/fixtures.json` (gitignored). `qa:web` loads those fixtures automatically.
 
@@ -23,6 +27,30 @@ npm run qa:web
 `qa:seed` writes fixture data to **local** Supabase (`http://127.0.0.1:54321`). `qa:web` runs Expo web in the browser, which reads `EXPO_PUBLIC_SUPABASE_URL` from your environment (often via `.env`).
 
 If Expo web points at hosted Supabase while fixtures are local, browser tests will fail. **`qa:web` now refuses that mismatch** and exits before Playwright starts.
+
+### `npm run qa:env`
+
+Prints local Expo Supabase exports from `supabase status -o env` (fails if Supabase is not running). Does **not** print the service role key.
+
+```bash
+npm run qa:env
+```
+
+Copy/paste the printed `unset` / `export` lines into your current terminal, then run `npm run qa:seed` and `npm run qa:web`.
+
+One-liner (eval-safe):
+
+```bash
+eval "$(npm run -s qa:env -- --exports-only)"
+```
+
+Or print eval instructions only:
+
+```bash
+npm run qa:env -- --eval
+```
+
+### Manual exports (fallback)
 
 In the same terminal session where you run QA:
 

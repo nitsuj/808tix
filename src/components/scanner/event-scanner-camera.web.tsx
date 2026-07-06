@@ -665,6 +665,12 @@ export function EventScannerCamera({
     videoRef.current = null;
   }, [stopStream]);
 
+  useEffect(() => {
+    if (status === 'permission' || status === 'error') {
+      teardownCamera();
+    }
+  }, [status, teardownCamera]);
+
   const startDecodeLoop = useCallback(() => {
     if (!canvasRef.current) {
       canvasRef.current = document.createElement('canvas');
@@ -716,10 +722,6 @@ export function EventScannerCamera({
   }, []);
 
   useEffect(() => {
-    if (status === 'permission' || status === 'error') {
-      return;
-    }
-
     let cancelled = false;
     let rafId: number | null = null;
     let video: HTMLVideoElement | null = null;

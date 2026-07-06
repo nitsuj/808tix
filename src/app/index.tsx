@@ -35,7 +35,6 @@ import {
   organizer,
   semantic,
   spacing,
-  surface,
   text,
   typeScale,
 } from '@/theme';

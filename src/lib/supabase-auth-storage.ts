@@ -8,16 +8,6 @@ type AuthStorage = {
 
 const memoryStore = new Map<string, string>();
 
-const memoryStorage: AuthStorage = {
-  getItem: (key) => memoryStore.get(key) ?? null,
-  setItem: (key, value) => {
-    memoryStore.set(key, value);
-  },
-  removeItem: (key) => {
-    memoryStore.delete(key);
-  },
-};
-
 /**
  * Web auth storage must read/write localStorage at call time.
  * Caching memory storage during SSR/static export broke login (sessions never persisted).
