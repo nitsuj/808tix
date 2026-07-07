@@ -2,6 +2,8 @@
 
 Server-side Stripe Checkout and webhook handling for paid ticketing. Ticket minting happens only in the database via `fulfill_paid_order`.
 
+**Event day:** See [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) for operator checklist, recovery playbook, and go/no-go criteria.
+
 ## Edge Functions
 
 | Function | Purpose | JWT required |

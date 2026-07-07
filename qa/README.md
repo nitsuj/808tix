@@ -163,6 +163,7 @@ Cleared before each `qa:web` run. Gitignored.
 
 ## Related commands
 
+- [EVENT_DAY_RUNBOOK.md](../docs/EVENT_DAY_RUNBOOK.md) — event-day operator runbook, rehearsal, go/no-go
 - `npm run check:all` — static validation (does not include `qa:seed` or `qa:web`)
 - `npm run check:env` — environment readiness (Supabase, Expo env, Stripe/email/wallet secrets)
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
