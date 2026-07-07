@@ -340,6 +340,13 @@ curl -sS -X POST "http://127.0.0.1:54321/functions/v1/send-order-confirmation-em
 **One command (recommended):**
 
 ```bash
+npm run check:env
+npm run smoke:payments:preview
+```
+
+`check:env` verifies local Supabase, Expo env, schema/RPC readiness, Stripe/email env (secrets masked), and fixture compatibility before you start services.
+
+```bash
 npm run smoke:payments:preview
 ```
 

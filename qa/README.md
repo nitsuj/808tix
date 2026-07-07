@@ -14,6 +14,8 @@ Point Expo web at **local** Supabase in your shell (see below), then:
 ```bash
 npm run qa:env
 # copy/paste the printed exports into your terminal, then:
+eval "$(npm run -s qa:env -- --exports-only)"
+npm run check:env
 npm run qa:seed
 npm run qa:web
 ```
@@ -162,6 +164,7 @@ Cleared before each `qa:web` run. Gitignored.
 ## Related commands
 
 - `npm run check:all` — static validation (does not include `qa:seed` or `qa:web`)
+- `npm run check:env` — environment readiness (Supabase, Expo env, Stripe/email/wallet secrets)
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
 - `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
 - `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
