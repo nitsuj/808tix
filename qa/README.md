@@ -163,3 +163,23 @@ Cleared before each `qa:web` run. Gitignored.
 
 - `npm run check:all` — static validation (does not include `qa:seed` or `qa:web`)
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
+- `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
+- `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
+
+### Check-in smoke (`npm run smoke:checkin`)
+
+Proves scanner backend behavior via the same `validate_pass` RPC the app uses. No camera or browser required.
+
+```bash
+npm run qa:seed
+npm run smoke:checkin
+```
+
+Uses `qa/fixtures.json` passes and signs in as the deterministic QA organizer (`qa-purchase-organizer@808tix.test`). Covers valid check-in, duplicate scan, invalid token, wrong event, and a second fresh pass.
+
+**Rerun:** passes are mutated (checked in). Reseed before rerunning:
+
+```bash
+npm run qa:seed
+npm run smoke:checkin
+```

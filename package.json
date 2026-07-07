@@ -95,6 +95,7 @@
     "check:native-phase0": "npm run check:native-eas && npm run check:native-env",
     "smoke:payments:local": "tsx scripts/smoke-payments-local.ts",
     "smoke:payments:preview": "tsx scripts/smoke-payments-preview.ts",
+    "smoke:checkin": "tsx scripts/smoke-checkin.ts",
     "qa:env": "tsx scripts/print-local-expo-env.ts",
     "qa:web": "tsx scripts/qa-web.ts",
     "qa:purchase": "tsx scripts/qa-web.ts -- --grep purchase",
