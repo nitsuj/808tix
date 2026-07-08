@@ -59,7 +59,10 @@ npm run qa:web
 npm run smoke:payments:preview    # manual Stripe Checkout card entry required
 npm run qa:seed                   # reset passes after payment smoke
 npm run smoke:checkin
+npm run rehearsal:local          # phone URLs + scanner login (after qa:seed)
 ```
+
+**Phone rehearsal:** After `qa:seed`, run `npm run rehearsal:local` for LAN-accessible pass/scanner URLs. See [qa/README.md](../qa/README.md#physical-device-rehearsal-npm-run-rehearsallocal).
 
 **Notes:**
 
@@ -321,7 +324,7 @@ Run **once** in the target environment (staging or production) before selling re
 | 2 | Complete **one paid test Checkout** (real card or test card per env) | ☐ |
 | 3 | Confirm **success page** shows inline QR ticket(s) | ☐ |
 | 4 | Confirm **email** preview row (local) or real send (staging/prod) | ☐ |
-| 5 | Open **pass page** on physical phone | ☐ |
+| 5 | Open **pass page** on physical phone (`npm run rehearsal:local` for LAN URL) | ☐ |
 | 6 | **Add to Wallet** if available on test iPhone | ☐ |
 | 7 | **Scan / check in** test paid pass → valid | ☐ |
 | 8 | **Rescan** same pass → already used | ☐ |
@@ -345,6 +348,7 @@ Record test event ID, order token (masked), and pass tokens in your operator not
 | `npm run smoke:payments:preview` PASS | **Yes** if paid checkout | ☐ |
 | `npm run smoke:checkin` PASS | Yes | ☐ |
 | **One physical scan test** on venue Wi-Fi | **Yes** | ☐ |
+| `npm run rehearsal:local` run for LAN phone URLs (local only) | Recommended local | ☐ |
 | Event page reviewed on phone | Yes | ☐ |
 | Operator has printed/shared this recovery playbook | Yes | ☐ |
 | Stripe live vs test keys verified for environment | Yes | ☐ |

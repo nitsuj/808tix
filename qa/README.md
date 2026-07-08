@@ -18,6 +18,7 @@ eval "$(npm run -s qa:env -- --exports-only)"
 npm run check:env
 npm run qa:seed
 npm run qa:web
+npm run rehearsal:local   # LAN URLs + scanner login for phone testing
 ```
 
 `qa:env` reads `supabase status -o env` and prints copy-pasteable `export` commands. npm cannot modify your parent shell — paste or eval the output in the terminal where you run QA.
@@ -159,7 +160,28 @@ Cleared before each `qa:web` run. Gitignored.
 - Apple Wallet on real iOS Safari
 - Real Resend email delivery and domain verification
 - SMS / Twilio
-- Scanner camera behavior on physical devices
+- Scanner camera behavior on physical devices — use `npm run rehearsal:local` for LAN URLs and QA scanner login
+
+## Physical device rehearsal (`npm run rehearsal:local`)
+
+`127.0.0.1` and `localhost` work on the Mac only. Phones need your Mac's **LAN IP**.
+
+```bash
+eval "$(npm run -s qa:env -- --exports-only)"
+npm run qa:seed
+npm run rehearsal:local
+```
+
+The script prints:
+
+- Primary LAN IP (prefers macOS `en0`)
+- Expo start command: `npx expo start --web --host lan --port 8081`
+- `EXPO_PUBLIC_SUPABASE_URL` override for phone (`http://LAN_IP:54321`)
+- Full buyer/pass/purchase/scanner URLs from `qa/fixtures.json`
+- QA organizer scanner login (`qa-purchase-organizer@808tix.test`)
+- Physical rehearsal checklist
+
+Then start Expo with the printed commands and open URLs on your phone.
 
 ## Related commands
 
@@ -169,6 +191,7 @@ Cleared before each `qa:web` run. Gitignored.
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
 - `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
 - `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
+- `npm run rehearsal:local` — LAN URLs + QA scanner login for phone/device testing
 
 ### Check-in smoke (`npm run smoke:checkin`)
 
