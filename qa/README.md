@@ -160,11 +160,11 @@ Cleared before each `qa:web` run. Gitignored.
 - Apple Wallet on real iOS Safari
 - Real Resend email delivery and domain verification
 - SMS / Twilio
-- Scanner camera behavior on physical devices — use `npm run rehearsal:local` for LAN URLs and QA scanner login
+- Scanner camera behavior on physical devices — see `npm run rehearsal:local` (LAN pass pages; camera needs HTTPS)
 
 ## Physical device rehearsal (`npm run rehearsal:local`)
 
-`127.0.0.1` and `localhost` work on the Mac only. Phones need your Mac's **LAN IP**.
+`127.0.0.1` and `localhost` work on the Mac only. Phones need your Mac's **LAN IP** for pass pages.
 
 ```bash
 eval "$(npm run -s qa:env -- --exports-only)"
@@ -172,16 +172,35 @@ npm run qa:seed
 npm run rehearsal:local
 ```
 
+### What LAN HTTP is good for
+
+- **Pass pages on phone** — open `/pass/{token}` over `http://LAN_IP:8081`, confirm QR and layout
+- **Buyer page spot-checks** — purchase/success/cancel URLs (optional)
+- **Scanner login/layout** — confirm organizer auth and scanner route loads
+
+### iOS Safari camera limitation (important)
+
+`getUserMedia` requires a **secure context** (HTTPS or `localhost`). `http://LAN_IP:8081` is **not** secure on iPhone Safari.
+
+If the scanner shows *"Camera access not supported in this browser"*, that is **expected** for LAN HTTP — **not** a scanner product bug.
+
+For **real camera scan rehearsal**:
+
+- Use your **deployed HTTPS** URL (staging/production), or
+- Use a **native/dev build** with camera permissions
+
+Backend check-in without camera: `npm run qa:seed && npm run smoke:checkin`.
+
 The script prints:
 
 - Primary LAN IP (prefers macOS `en0`)
-- Expo start command: `npx expo start --web --host lan --port 8081`
-- `EXPO_PUBLIC_SUPABASE_URL` override for phone (`http://LAN_IP:54321`)
-- Full buyer/pass/purchase/scanner URLs from `qa/fixtures.json`
-- QA organizer scanner login (`qa-purchase-organizer@808tix.test`)
-- Physical rehearsal checklist
+- Step 1: Expo start command (`npx expo start --web --host lan --port 8081`)
+- Step 2: Pass URLs for phone
+- Step 3: Scanner options + secure-context warning
+- Step 4: Optional buyer spot-check URLs
+- QA organizer credentials (deterministic local rehearsal)
 
-Then start Expo with the printed commands and open URLs on your phone.
+Then start Expo with the printed commands and open pass URLs on your phone.
 
 ## Related commands
 

@@ -62,7 +62,7 @@ npm run smoke:checkin
 npm run rehearsal:local          # phone URLs + scanner login (after qa:seed)
 ```
 
-**Phone rehearsal:** After `qa:seed`, run `npm run rehearsal:local` for LAN-accessible pass/scanner URLs. See [qa/README.md](../qa/README.md#physical-device-rehearsal-npm-run-rehearsallocal).
+**Phone rehearsal:** After `qa:seed`, run `npm run rehearsal:local` for LAN pass URLs on phone. **LAN HTTP pass pages are valid rehearsal.** iOS Safari camera scanner requires HTTPS (or native/dev build)—`http://LAN_IP` camera failure is expected, not a product bug. See [qa/README.md](../qa/README.md#physical-device-rehearsal-npm-run-rehearsallocal).
 
 **Notes:**
 
@@ -146,7 +146,7 @@ For guests not going through Stripe Checkout:
 
 1. Organizer (or delegated staff on organizer account) opens event.
 2. Tap **Scan** / open scanner for **this event only**.
-3. Grant **camera permission** when prompted (HTTPS or localhost required on web).
+3. Grant **camera permission** when prompted (**HTTPS or localhost required on web**; LAN `http://` on iOS Safari will not provide camera access)
 
 ### Expected validation states
 
@@ -325,6 +325,7 @@ Run **once** in the target environment (staging or production) before selling re
 | 3 | Confirm **success page** shows inline QR ticket(s) | ☐ |
 | 4 | Confirm **email** preview row (local) or real send (staging/prod) | ☐ |
 | 5 | Open **pass page** on physical phone (`npm run rehearsal:local` for LAN URL) | ☐ |
+| 5b | **Camera scan** on HTTPS deploy or native build (LAN HTTP iOS Safari camera not supported) | ☐ |
 | 6 | **Add to Wallet** if available on test iPhone | ☐ |
 | 7 | **Scan / check in** test paid pass → valid | ☐ |
 | 8 | **Rescan** same pass → already used | ☐ |
@@ -348,7 +349,8 @@ Record test event ID, order token (masked), and pass tokens in your operator not
 | `npm run smoke:payments:preview` PASS | **Yes** if paid checkout | ☐ |
 | `npm run smoke:checkin` PASS | Yes | ☐ |
 | **One physical scan test** on venue Wi-Fi | **Yes** | ☐ |
-| `npm run rehearsal:local` run for LAN phone URLs (local only) | Recommended local | ☐ |
+| `npm run rehearsal:local` run for LAN phone pass URLs (local only) | Recommended local | ☐ |
+| Physical **camera** scan tested on HTTPS or native (not LAN HTTP iOS Safari) | **Yes** for door ops | ☐ |
 | Event page reviewed on phone | Yes | ☐ |
 | Operator has printed/shared this recovery playbook | Yes | ☐ |
 | Stripe live vs test keys verified for environment | Yes | ☐ |
