@@ -17,7 +17,8 @@ const ROOT = process.cwd();
 const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 
 const QA_ORGANIZER_ID = 'a1000001-0000-4000-8000-000000000001';
-const QA_ORGANIZER_EMAIL = 'qa-purchase-organizer@808tix.test';
+const QA_ORGANIZER_EMAIL = 'qa@808tix.test';
+const QA_ORGANIZER_PASSWORD = 'qa';
 const QA_EVENT_ID = 'a1000001-0000-4000-8000-000000000002';
 const QA_TICKET_TYPE_ID = 'a1000001-0000-4000-8000-000000000003';
 const QA_EVENT_SLUG = 'qa-paid-event';
@@ -415,7 +416,7 @@ async function bootstrapOrganizer(): Promise<void> {
       'authenticated',
       'authenticated',
       ${sqlLiteral(QA_ORGANIZER_EMAIL)},
-      crypt('qa-purchase-local-password', gen_salt('bf')),
+      crypt(${sqlLiteral(QA_ORGANIZER_PASSWORD)}, gen_salt('bf')),
       now(),
       now(),
       now(),
@@ -423,7 +424,9 @@ async function bootstrapOrganizer(): Promise<void> {
       '{}'::jsonb
     )
     on conflict (id) do update
-    set email = excluded.email
+    set
+      email = excluded.email,
+      encrypted_password = excluded.encrypted_password
     returning json_build_object('organizer_id', id::text)::text as result;
   `,
     'bootstrapOrganizer',

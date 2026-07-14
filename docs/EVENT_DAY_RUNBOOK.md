@@ -62,7 +62,14 @@ npm run smoke:checkin
 npm run rehearsal:local          # phone URLs + scanner login (after qa:seed)
 ```
 
-**Phone rehearsal:** After `qa:seed`, run `npm run rehearsal:local` for LAN pass URLs on phone. **LAN HTTP pass pages are valid rehearsal.** iOS Safari camera scanner requires HTTPS (or native/dev build)—`http://LAN_IP` camera failure is expected, not a product bug. See [qa/README.md](../qa/README.md#physical-device-rehearsal-npm-run-rehearsallocal).
+**Phone rehearsal:** After `qa:seed`, run `npm run rehearsal:local`.
+
+- Phone: open pass on `http://LAN_IP:8081/pass/...`
+- Laptop: open scanner on `http://localhost:8081/events/{event_id}/scan` (camera works on localhost)
+- QA login: `qa@808tix.test` / `qa`
+- Phone-as-scanner camera on iPhone/Safari needs deployed HTTPS or native/dev build — LAN HTTP camera failure is expected, not a product bug
+
+See [qa/README.md](../qa/README.md#physical-device-rehearsal-npm-run-rehearsallocal).
 
 **Notes:**
 
@@ -146,7 +153,7 @@ For guests not going through Stripe Checkout:
 
 1. Organizer (or delegated staff on organizer account) opens event.
 2. Tap **Scan** / open scanner for **this event only**.
-3. Grant **camera permission** when prompted (**HTTPS or localhost required on web**; LAN `http://` on iOS Safari will not provide camera access)
+3. Grant **camera permission** when prompted (**HTTPS or localhost required on web**; phone-as-scanner on LAN `http://` will not provide camera on iOS Safari — use laptop localhost for local camera rehearsal)
 
 ### Expected validation states
 
@@ -324,8 +331,9 @@ Run **once** in the target environment (staging or production) before selling re
 | 2 | Complete **one paid test Checkout** (real card or test card per env) | ☐ |
 | 3 | Confirm **success page** shows inline QR ticket(s) | ☐ |
 | 4 | Confirm **email** preview row (local) or real send (staging/prod) | ☐ |
-| 5 | Open **pass page** on physical phone (`npm run rehearsal:local` for LAN URL) | ☐ |
-| 5b | **Camera scan** on HTTPS deploy or native build (LAN HTTP iOS Safari camera not supported) | ☐ |
+| 5 | Open **pass page** on physical phone (`npm run rehearsal:local` LAN URL) | ☐ |
+| 5b | Scan phone QR from **laptop localhost** scanner (`qa@808tix.test` / `qa`) | ☐ |
+| 5c | **Phone-as-scanner** camera on HTTPS deploy or native build (LAN HTTP iOS Safari not supported) | ☐ |
 | 6 | **Add to Wallet** if available on test iPhone | ☐ |
 | 7 | **Scan / check in** test paid pass → valid | ☐ |
 | 8 | **Rescan** same pass → already used | ☐ |
@@ -349,8 +357,8 @@ Record test event ID, order token (masked), and pass tokens in your operator not
 | `npm run smoke:payments:preview` PASS | **Yes** if paid checkout | ☐ |
 | `npm run smoke:checkin` PASS | Yes | ☐ |
 | **One physical scan test** on venue Wi-Fi | **Yes** | ☐ |
-| `npm run rehearsal:local` run for LAN phone pass URLs (local only) | Recommended local | ☐ |
-| Physical **camera** scan tested on HTTPS or native (not LAN HTTP iOS Safari) | **Yes** for door ops | ☐ |
+| `npm run rehearsal:local` run (phone LAN pass + laptop localhost scanner) | Recommended local | ☐ |
+| Physical **camera** scan: laptop localhost local path, or HTTPS/native for phone-as-scanner | **Yes** for door ops | ☐ |
 | Event page reviewed on phone | Yes | ☐ |
 | Operator has printed/shared this recovery playbook | Yes | ☐ |
 | Stripe live vs test keys verified for environment | Yes | ☐ |

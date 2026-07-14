@@ -160,11 +160,15 @@ Cleared before each `qa:web` run. Gitignored.
 - Apple Wallet on real iOS Safari
 - Real Resend email delivery and domain verification
 - SMS / Twilio
-- Scanner camera behavior on physical devices — see `npm run rehearsal:local` (LAN pass pages; camera needs HTTPS)
+- Scanner camera behavior on physical devices — see `npm run rehearsal:local` (phone LAN pass + laptop localhost scanner)
 
 ## Physical device rehearsal (`npm run rehearsal:local`)
 
-`127.0.0.1` and `localhost` work on the Mac only. Phones need your Mac's **LAN IP** for pass pages.
+Confirmed local physical path:
+
+- **Phone** opens pass pages over your Mac's **LAN IP** (`http://LAN_IP:8081/pass/...`)
+- **Laptop** opens the scanner on **localhost** (`http://localhost:8081/events/{event_id}/scan`) so camera works
+- Scan the phone QR from the laptop scanner
 
 ```bash
 eval "$(npm run -s qa:env -- --exports-only)"
@@ -172,35 +176,41 @@ npm run qa:seed
 npm run rehearsal:local
 ```
 
-### What LAN HTTP is good for
+### Why this split?
 
-- **Pass pages on phone** — open `/pass/{token}` over `http://LAN_IP:8081`, confirm QR and layout
-- **Buyer page spot-checks** — purchase/success/cancel URLs (optional)
-- **Scanner login/layout** — confirm organizer auth and scanner route loads
+- On a phone, `localhost` means the phone — so tickets must use `http://LAN_IP:8081`
+- Laptop browser camera (`getUserMedia`) works on `localhost` (secure context)
+- `http://LAN_IP:8081` scanner on iPhone Safari is **not** a secure context; camera failure there is expected — not a scanner product bug
 
-### iOS Safari camera limitation (important)
+### QA login (deterministic local)
 
-`getUserMedia` requires a **secure context** (HTTPS or `localhost`). `http://LAN_IP:8081` is **not** secure on iPhone Safari.
+| Field | Value |
+|-------|-------|
+| Email | `qa@808tix.test` |
+| Password | `qa` |
 
-If the scanner shows *"Camera access not supported in this browser"*, that is **expected** for LAN HTTP — **not** a scanner product bug.
+### Real phone-as-scanner camera rehearsal
 
-For **real camera scan rehearsal**:
+For scanning **from** an iPhone/Safari camera:
 
-- Use your **deployed HTTPS** URL (staging/production), or
-- Use a **native/dev build** with camera permissions
+- Use **deployed HTTPS** staging/production, or
+- Use a **native/dev build**
+
+### Optional buyer page spot-checks
+
+Purchase/success/cancel LAN URLs are printed under secondary/optional steps only.
 
 Backend check-in without camera: `npm run qa:seed && npm run smoke:checkin`.
 
 The script prints:
 
-- Primary LAN IP (prefers macOS `en0`)
-- Step 1: Expo start command (`npx expo start --web --host lan --port 8081`)
-- Step 2: Pass URLs for phone
-- Step 3: Scanner options + secure-context warning
+- Primary LAN IP
+- Step 1: Expo start command
+- Step 2: Phone pass URLs (LAN)
+- Step 3: Laptop localhost scanner URL + short QA credentials
 - Step 4: Optional buyer spot-check URLs
-- QA organizer credentials (deterministic local rehearsal)
 
-Then start Expo with the printed commands and open pass URLs on your phone.
+Then start Expo with the printed commands, open a pass on your phone, and scan from the laptop.
 
 ## Related commands
 
@@ -221,7 +231,7 @@ npm run qa:seed
 npm run smoke:checkin
 ```
 
-Uses `qa/fixtures.json` passes and signs in as the deterministic QA organizer (`qa-purchase-organizer@808tix.test`). Covers valid check-in, duplicate scan, invalid token, wrong event, and a second fresh pass.
+Uses `qa/fixtures.json` passes and signs in as the deterministic QA organizer (`qa@808tix.test` / `qa`). Covers valid check-in, duplicate scan, invalid token, wrong event, and a second fresh pass.
 
 **Rerun:** passes are mutated (checked in). Reseed before rerunning:
 

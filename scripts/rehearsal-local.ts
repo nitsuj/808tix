@@ -2,7 +2,9 @@
 /**
  * Local physical-device rehearsal helper.
  *
- * Prints LAN-accessible URLs and scanner login steps for qa/fixtures.json passes.
+ * Confirmed local flow:
+ * - Phone displays passes via LAN IP
+ * - Laptop scanner uses localhost (camera works on localhost secure context)
  *
  * Usage:
  *   npm run rehearsal:local
@@ -15,8 +17,8 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 
-const QA_ORGANIZER_EMAIL = 'qa-purchase-organizer@808tix.test';
-const QA_ORGANIZER_PASSWORD = 'qa-purchase-local-password';
+const QA_ORGANIZER_EMAIL = 'qa@808tix.test';
+const QA_ORGANIZER_PASSWORD = 'qa';
 const QA_EVENT_NAME = 'QA Paid Event';
 
 type QaFixtures = {
@@ -122,10 +124,13 @@ function printUrl(label: string, url: string, tokenForMask?: string): void {
 function main(): void {
   const fixtures = loadFixtures();
   const { primary: lanIp, candidates } = detectLanIps();
-  const baseUrl = `http://${lanIp}:8081`;
-  const scannerUrl = `${baseUrl}/events/${fixtures.event_id}/scan`;
+  const phoneBaseUrl = `http://${lanIp}:8081`;
+  const laptopBaseUrl = 'http://localhost:8081';
+  const laptopScannerUrl = `${laptopBaseUrl}/events/${fixtures.event_id}/scan`;
+  const lanScannerUrl = `${phoneBaseUrl}/events/${fixtures.event_id}/scan`;
 
   console.log('808Tix local physical rehearsal helper\n');
+  console.log('Confirmed local flow: phone shows pass (LAN IP) + laptop scanner (localhost).');
   console.log('Summary');
   console.log(`  event_id: ${fixtures.event_id}`);
   console.log(`  event_name: ${QA_EVENT_NAME}`);
@@ -141,21 +146,21 @@ function main(): void {
   }
 
   console.log('\n=== Step 1 — Start local web on LAN ===\n');
-  console.log('127.0.0.1 works only on the Mac. Your phone must use the LAN IP below.');
-  console.log('Supabase API calls from the phone also need the LAN host, not 127.0.0.1.\n');
+  console.log('Phone cannot use localhost/127.0.0.1 (those mean the phone itself).');
+  console.log('Laptop scanner should use localhost so camera getUserMedia works.\n');
   console.log('eval "$(npm run -s qa:env -- --exports-only)"');
   console.log(`export EXPO_PUBLIC_SUPABASE_URL="http://${lanIp}:54321"`);
   console.log('npx expo start --web --host lan --port 8081');
   console.log('\nKeep local Supabase running: supabase start');
   console.log('Allow macOS firewall incoming connections for ports 8081 and 54321 if prompted.');
 
-  console.log('\n=== Step 2 — Open pass on phone ===\n');
-  console.log('LAN HTTP pass pages are valid local rehearsal on iPhone/Android.');
+  console.log('\n=== Step 2 — Phone ticket/pass (LAN IP) ===\n');
+  console.log('Open these on the phone:');
 
-  printUrl('Pass 1 URL:', `${baseUrl}/pass/${fixtures.pass_tokens[0]}`, fixtures.pass_tokens[0]);
+  printUrl('Pass 1 URL:', `${phoneBaseUrl}/pass/${fixtures.pass_tokens[0]}`, fixtures.pass_tokens[0]);
 
   if (fixtures.pass_tokens[1]) {
-    printUrl('Pass 2 URL:', `${baseUrl}/pass/${fixtures.pass_tokens[1]}`, fixtures.pass_tokens[1]);
+    printUrl('Pass 2 URL:', `${phoneBaseUrl}/pass/${fixtures.pass_tokens[1]}`, fixtures.pass_tokens[1]);
   }
 
   console.log('\nChecklist:');
@@ -163,62 +168,62 @@ function main(): void {
   console.log('- Confirm QR visible and guest name looks correct.');
   console.log('- If the page does not load, confirm Mac and phone are on the same Wi-Fi.');
 
-  console.log('\n=== Step 3 — Scanner testing options ===\n');
-  console.log('iOS Safari camera limitation (secure context):');
-  console.log('- getUserMedia requires HTTPS or localhost.');
-  console.log('- http://LAN_IP:8081 is NOT a secure context on iPhone Safari.');
-  console.log('- You may see: "Camera access not supported in this browser".');
-  console.log('- That is expected for LAN HTTP — not a scanner product failure.\n');
-  console.log('For real camera scan rehearsal:');
-  console.log('- Use your deployed HTTPS URL (staging/production), or');
-  console.log('- Use a native/dev build with camera permissions.\n');
-  console.log('LAN HTTP scanner is still useful for:');
-  console.log('- Organizer login flow');
-  console.log('- Scanner page layout and navigation');
-  console.log('- Confirming the correct seeded event opens\n');
-  console.log('TODO: QA credentials are intentionally deterministic for local rehearsal.');
-  console.log('Credentials (from scripts/seed-qa-purchase-fixtures.ts / scripts/smoke-checkin.ts):');
+  console.log('\n=== Step 3 — Laptop scanner (localhost) ===\n');
+  console.log('Primary local camera path: phone QR + laptop scanner on localhost.');
+  console.log('- localhost is a secure context → camera works on laptop browser');
+  console.log('- http://LAN_IP scanner is layout-only / not reliable for camera (not secure context)\n');
+  console.log('QA credentials are intentionally deterministic for local rehearsal:');
   console.log(`  email: ${QA_ORGANIZER_EMAIL}`);
   console.log(`  password: ${QA_ORGANIZER_PASSWORD}`);
-  console.log('\nScanner page/layout URL — camera may be unavailable over LAN HTTP on iOS Safari:');
-  console.log(`  ${scannerUrl}`);
+  console.log('\nLaptop scanner URL (use this for camera):');
+  console.log(`  ${laptopScannerUrl}`);
   console.log('\nSteps:');
-  console.log(`  1. Open ${baseUrl}`);
+  console.log(`  1. On the laptop, open ${laptopBaseUrl}`);
   console.log('  2. Sign in with the QA organizer email/password above.');
   console.log(`  3. Open event "${QA_EVENT_NAME}" (${fixtures.event_id.slice(0, 8)}...).`);
-  console.log(`  4. Open the scanner URL above (layout/login check; camera may not work on iOS Safari).`);
+  console.log(`  4. Open scanner: ${laptopScannerUrl}`);
+  console.log('  5. Scan the phone pass QR → expect valid, then already_used on rescan.');
+  console.log('\nLAN scanner URL (layout/login only — camera may fail on iOS Safari / non-localhost HTTP):');
+  console.log(`  ${lanScannerUrl}`);
+  console.log('\nFor phone-as-scanner camera rehearsal:');
+  console.log('- Use deployed HTTPS staging/production, or a native/dev build.');
+  console.log('- Do not treat LAN HTTP camera failure as a scanner product bug.');
   console.log('\nBackend check-in without camera: npm run qa:seed && npm run smoke:checkin');
 
   console.log('\n=== Step 4 — Optional buyer page spot-check URLs ===');
 
   printUrl(
     'Purchase page:',
-    `${baseUrl}/events/${fixtures.event_id}/buy?ticket_type_id=${fixtures.ticket_type_id}`,
+    `${phoneBaseUrl}/events/${fixtures.event_id}/buy?ticket_type_id=${fixtures.ticket_type_id}`,
   );
 
   printUrl(
     'Success page:',
-    `${baseUrl}/purchase/success?order_token=${fixtures.paid_order_token}`,
+    `${phoneBaseUrl}/purchase/success?order_token=${fixtures.paid_order_token}`,
     fixtures.paid_order_token,
   );
 
   if (fixtures.pending_order_token) {
     printUrl(
       'Cancel page:',
-      `${baseUrl}/purchase/cancel?order_token=${fixtures.pending_order_token}&event_id=${fixtures.event_id}&ticket_type_id=${fixtures.ticket_type_id}`,
+      `${phoneBaseUrl}/purchase/cancel?order_token=${fixtures.pending_order_token}&event_id=${fixtures.event_id}&ticket_type_id=${fixtures.ticket_type_id}`,
       fixtures.pending_order_token,
     );
   }
 
   console.log('\n=== Physical rehearsal checklist ===\n');
   console.log('- Step 1: Start Expo web using the LAN command above.');
-  console.log('- Step 2: Open pass URL on phone; confirm QR visible.');
-  console.log('- Step 3: For camera scans, use HTTPS deploy or native/dev build — not LAN HTTP on iOS Safari.');
-  console.log('- Step 3 (LAN): Optional scanner page/login/layout check at the labeled scanner URL.');
+  console.log('- Step 2: Open pass URL on phone (LAN IP); confirm QR visible.');
+  console.log('- Step 3: On laptop, open localhost scanner and sign in as qa@808tix.test / qa.');
+  console.log('- Scan phone QR from laptop → valid check-in.');
+  console.log('- Rescan same pass → already used.');
+  if (fixtures.pass_tokens[1]) {
+    console.log('- Scan Pass 2 → valid check-in.');
+  }
   console.log('- Backend: npm run smoke:checkin proves validate_pass without camera.');
   console.log('- If passes were already checked in, rerun: npm run qa:seed');
 
-  console.log('\nDone. Pass URLs are the primary LAN rehearsal target on phone.');
+  console.log('\nDone. Primary path: phone pass (LAN) + laptop scanner (localhost).');
 }
 
 main();

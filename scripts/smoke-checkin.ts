@@ -19,8 +19,8 @@ const execFileAsync = promisify(execFile);
 const ROOT = process.cwd();
 const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 
-const QA_ORGANIZER_EMAIL = 'qa-purchase-organizer@808tix.test';
-const QA_ORGANIZER_PASSWORD = 'qa-purchase-local-password';
+const QA_ORGANIZER_EMAIL = 'qa@808tix.test';
+const QA_ORGANIZER_PASSWORD = 'qa';
 const QA_ORGANIZER_ID = 'a1000001-0000-4000-8000-000000000001';
 const WRONG_EVENT_ID = 'a1000001-0000-4000-8000-000000000004';
 
