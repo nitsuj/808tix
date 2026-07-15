@@ -51,11 +51,11 @@ export function getScannerResultSubtitle(result: ScanValidationDisplay): string 
       return 'Previously checked in — do not admit again';
     }
 
-    return 'This pass was already scanned — investigate';
+    return 'This ticket was already scanned — investigate';
   }
 
   if (result.clientReason === 'not_808tix_pass') {
-    return 'Not an 808Tix pass';
+    return 'Not an 808Tickets ticket';
   }
 
   if (result.clientReason === 'event_not_live') {
@@ -66,9 +66,9 @@ export function getScannerResultSubtitle(result: ScanValidationDisplay): string 
     case 'wrong_event':
       return 'Wrong event';
     case 'voided':
-      return 'Voided pass';
+      return 'Voided ticket';
     case 'invalid':
-      return 'Invalid pass';
+      return 'Invalid ticket';
     default:
       return 'Do not admit';
   }

@@ -51,7 +51,7 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
   async function handleSharePass() {
     try {
       await Share.share({
-        message: `Your pass for ${eventName}: ${passUrl}`,
+        message: `Your ticket for ${eventName}: ${passUrl}`,
         url: passUrl,
         title: `${pass.guest_name} — ${eventName}`,
       });
@@ -130,7 +130,7 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
         <Pressable
           onPress={handleViewGuestPass}
           style={({ pressed }) => [styles.actionPrimary, pressed && styles.pressed]}>
-          <ThemedText style={styles.actionPrimaryText}>View Guest Pass</ThemedText>
+          <ThemedText style={styles.actionPrimaryText}>View Guest Ticket</ThemedText>
         </Pressable>
 
         {hasMultipleSendActions ? (
@@ -145,7 +145,7 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
           <Pressable
             onPress={handleSharePass}
             style={({ pressed }) => [styles.actionSecondary, pressed && styles.pressed]}>
-            <ThemedText style={styles.actionSecondaryText}>Send Pass</ThemedText>
+            <ThemedText style={styles.actionSecondaryText}>Send Ticket</ThemedText>
           </Pressable>
         )}
       </View>
@@ -155,7 +155,7 @@ export function EventPassListRow({ pass, eventName }: EventPassListRowProps) {
           <Pressable
             onPress={handleSharePass}
             style={({ pressed }) => [styles.actionChip, pressed && styles.pressed]}>
-            <ThemedText style={styles.actionChipText}>Share Pass</ThemedText>
+            <ThemedText style={styles.actionChipText}>Share Ticket</ThemedText>
           </Pressable>
 
           {hasPhone ? (

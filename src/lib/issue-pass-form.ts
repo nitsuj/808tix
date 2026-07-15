@@ -3,7 +3,7 @@ import { validateGuestPhone } from '@/lib/phone-validation';
 export const DEFAULT_PASS_TYPE = 'General Admission';
 
 export const CONTACT_REQUIRED_MESSAGE =
-  'Add a phone number or email before issuing this pass.';
+  'Add a phone number or email before issuing this ticket.';
 
 export type IssuePassFormValues = {
   guestFirstName: string;
@@ -34,7 +34,7 @@ export function validateIssuePassForm(values: IssuePassFormValues): IssuePassFie
   }
 
   if (!values.passType.trim()) {
-    errors.passType = 'Pass type is required.';
+    errors.passType = 'Ticket type is required.';
   }
 
   const email = values.guestEmail.trim();

@@ -32,7 +32,7 @@ export function OrganizerAmbientBackground({
   const { width, height } = useWindowDimensions();
   const artworkUri = resolveOrganizerArtworkUrl(imageUrl);
   const hasArtwork = Boolean(artworkUri);
-  const fallbackName = eventName ?? '808Tix';
+  const fallbackName = eventName ?? '808Tickets';
 
   return (
     <View style={[styles.root, platformPointerEventsNone(), { height, width }, style]}>

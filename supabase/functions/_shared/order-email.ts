@@ -165,7 +165,7 @@ export function buildOrderConfirmationEmail(
     '',
     `View all tickets: ${successUrl}`,
     '',
-    'Transactional email from 808Tix.',
+    'Transactional email from 808Tickets.',
   );
 
   const htmlParts = [
@@ -186,7 +186,7 @@ export function buildOrderConfirmationEmail(
     `<ul>${ticketLines.map((line) => line.html).join('')}</ul>`,
     '<p>On iPhone, open a ticket link and tap <strong>Add to Apple Wallet</strong>.</p>',
     `<p><a href="${escapeHtml(successUrl)}">View all tickets</a></p>`,
-    '<p style="color:#666;font-size:12px;">Transactional email from 808Tix.</p>',
+    '<p style="color:#666;font-size:12px;">Transactional email from 808Tickets.</p>',
   );
 
   return {

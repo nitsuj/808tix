@@ -47,13 +47,13 @@ const eventNameIndex = layoutSource.indexOf('label="Event Name"');
 const venueIndex = layoutSource.indexOf('label="Venue"');
 const dateIndex = layoutSource.indexOf('<EventDateFormField');
 const startTimeIndex = layoutSource.indexOf('label="Start Time"');
-const maxPassesIndex = layoutSource.indexOf('label="Max Passes"');
+const maxPassesIndex = layoutSource.indexOf('label="Max tickets"');
 
 assert(artworkIndex > -1 && artworkIndex < eventNameIndex, 'artwork field appears before Event Name');
 assert(eventNameIndex < venueIndex, 'Event Name before Venue');
 assert(venueIndex < dateIndex, 'Venue before Date');
 assert(dateIndex < startTimeIndex, 'Date before Start Time');
-assert(startTimeIndex < maxPassesIndex, 'Start Time before Max Passes');
+assert(startTimeIndex < maxPassesIndex, 'Start Time before Max tickets');
 
 assert(
   source.includes('artworkUploadFailed'),

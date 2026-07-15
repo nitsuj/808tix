@@ -21,7 +21,7 @@ const EAS_PROJECT_SLUG = '808Tix';
 const NATIVE_BUNDLE_NAME = 'Tix808';
 
 /** Home screen / launcher label (branding). */
-const DISPLAY_NAME = '808Tix';
+const DISPLAY_NAME = '808Tickets';
 
 const VALID_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
 const SWIFT_SAFE_BUNDLE_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/;
@@ -142,11 +142,11 @@ assert(
 
 assert(
   locales.ios?.CFBundleDisplayName === DISPLAY_NAME,
-  'locales/en.json sets iOS CFBundleDisplayName to 808Tix',
+  'locales/en.json sets iOS CFBundleDisplayName to 808Tickets',
 );
 assert(
   locales.android?.app_name === DISPLAY_NAME,
-  'locales/en.json sets Android app_name to 808Tix',
+  'locales/en.json sets Android app_name to 808Tickets',
 );
 
 const devClientScheme = getDevClientSchemeFromSlug(slug);

@@ -314,10 +314,10 @@ function EventDetailContent({
 
                     <View style={styles.disabledActionsGroup}>
                       <View style={[styles.actionButton, styles.actionDisabledButton]}>
-                        <Text style={styles.actionDisabledText}>Issue Pass</Text>
+                        <Text style={styles.actionDisabledText}>Issue Ticket</Text>
                       </View>
                       <View style={[styles.actionButton, styles.actionDisabledButton]}>
-                        <Text style={styles.actionDisabledText}>Scan Passes</Text>
+                        <Text style={styles.actionDisabledText}>Scan Tickets</Text>
                       </View>
                     </View>
                   </>
@@ -330,7 +330,7 @@ function EventDetailContent({
                         styles.actionPrimary,
                         pressed && styles.pressed,
                       ]}>
-                      <Text style={styles.actionPrimaryText}>Issue Pass</Text>
+                      <Text style={styles.actionPrimaryText}>Issue Ticket</Text>
                     </Pressable>
 
                     <Pressable
@@ -340,7 +340,7 @@ function EventDetailContent({
                         styles.actionSecondary,
                         pressed && styles.pressed,
                       ]}>
-                      <Text style={styles.actionSecondaryText}>Scan Passes</Text>
+                      <Text style={styles.actionSecondaryText}>Scan Tickets</Text>
                     </Pressable>
 
                     <Pressable

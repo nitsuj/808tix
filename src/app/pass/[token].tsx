@@ -251,7 +251,7 @@ function TicketDetailView({
           <View style={styles.lanyardSlot} />
 
           <View style={styles.credentialHeader}>
-            <Text style={styles.ticketBrandLabel}>808TIX TICKET</Text>
+            <Text style={styles.ticketBrandLabel}>808TICKETS</Text>
             {statusBanner ? (
               <View
                 style={[

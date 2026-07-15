@@ -35,13 +35,13 @@ const HOW_IT_WORKS_STEPS: {
   {
     step: '1',
     title: 'Create Event',
-    body: 'Set up your event in minutes — name, venue, date, passes, and artwork.',
+    body: 'Set up your event in minutes — name, venue, date, tickets, and artwork.',
     variant: 'dashboard',
   },
   {
     step: '2',
-    title: 'Sell / Send Passes',
-    body: 'Issue passes and share links by text or email. No complicated setup.',
+    title: 'Sell / Send Tickets',
+    body: 'Issue tickets and share links by text or email. No complicated setup.',
     variant: 'issue',
   },
   {
@@ -63,7 +63,7 @@ const WHY_ITEMS = [
   },
   {
     title: 'Direct Distribution',
-    body: 'Send pass links by SMS or email so guests open tickets on mobile.',
+    body: 'Send ticket links by SMS or email so guests open tickets on mobile.',
   },
   {
     title: 'Independent Friendly',
@@ -93,7 +93,7 @@ function MarketingWordmark() {
     <View style={styles.wordmarkRow}>
       <Image contentFit="contain" source={APP_ICON} style={styles.wordmarkIcon} />
       <Text style={styles.wordmarkText}>
-        808<Text style={styles.wordmarkAccent}>TIX</Text>
+        808<Text style={styles.wordmarkAccent}>Tickets</Text>
       </Text>
     </View>
   );
@@ -151,10 +151,10 @@ export function MarketingHomepage({
         <DotMatrixBackdrop intensity="medium" />
         <View style={[styles.sectionInner, isDesktop && styles.heroRow]}>
           <View style={[styles.heroCopy, isDesktop && styles.heroCopyDesktop]}>
-            <Text style={styles.heroBrand}>808Tix</Text>
+            <Text style={styles.heroBrand}>808Tickets</Text>
             <Text style={styles.heroHeadline}>Ticketing built for independent events.</Text>
             <Text style={styles.heroSubheadline}>
-              Create events. Sell tickets. Issue passes. Scan guests.
+              Create events. Sell tickets. Issue tickets. Scan guests.
             </Text>
             <Text style={styles.heroSupport}>
               Share links by text or email. No complicated setup. No bloated enterprise tools.
@@ -190,12 +190,12 @@ export function MarketingHomepage({
             <Text style={styles.sectionEyebrow}>BUILT FOR ORGANIZERS</Text>
             <Text style={styles.sectionTitle}>
               Eventbrite is built for everyone.{' '}
-              <Text style={styles.sectionTitleAccent}>808Tix</Text> is built for you.
+              <Text style={styles.sectionTitleAccent}>808Tickets</Text> is built for you.
             </Text>
             <Text style={styles.sectionBody}>
               Whether you are running concerts, breweries, festivals, nightlife, or community
-              events — 808Tix helps you create events, sell tickets, issue passes, and scan guests
-              from your phone.
+              events — 808Tickets helps you create events, sell tickets, issue tickets, and scan
+              guests from your phone.
             </Text>
           </View>
         </View>
@@ -221,7 +221,7 @@ export function MarketingHomepage({
 
       <View style={styles.section}>
         <View style={styles.sectionInner}>
-          <Text style={[styles.sectionEyebrow, styles.sectionEyebrowCentered]}>WHY 808TIX</Text>
+          <Text style={[styles.sectionEyebrow, styles.sectionEyebrowCentered]}>WHY 808TICKETS</Text>
           <View style={[styles.whyGrid, isDesktop && styles.whyGridDesktop]}>
             {WHY_ITEMS.map((item) => (
               <View key={item.title} style={styles.whyCard}>

@@ -16,7 +16,7 @@ export default function TermsOfServiceScreen() {
         </LegalParagraph>
         <LegalParagraph>
           These terms apply to organizers who create accounts and manage events, and to guests who
-          receive and use digital passes. This document is an MVP implementation and is not legal
+          receive and use digital tickets. This document is an MVP implementation and is not legal
           advice.
         </LegalParagraph>
       </LegalSection>
@@ -24,8 +24,8 @@ export default function TermsOfServiceScreen() {
       <LegalSection heading="Service description">
         <LegalParagraph>
           {LEGAL_COMPANY_NAME} provides tools for independent event organizers to create events,
-          issue digital passes, share pass links, optionally deliver passes via SMS or Apple Wallet,
-          and validate entry using QR scanning at the door.
+          issue digital tickets, share ticket links, optionally deliver tickets via SMS or Apple
+          Wallet, and validate entry using QR scanning at the door.
         </LegalParagraph>
         <LegalParagraph>
           The service is provided on an as-available basis during the MVP period. Features may
@@ -38,7 +38,7 @@ export default function TermsOfServiceScreen() {
         <LegalBulletList
           items={[
             'Provide accurate event information and maintain control of your account credentials.',
-            'Issue passes only to guests you are authorized to admit.',
+            'Issue tickets only to guests you are authorized to admit.',
             'Obtain any required consent before collecting guest email or phone numbers.',
             'Comply with applicable laws for your events, venues, and messaging (including SMS and privacy laws).',
             'Use the scanner and check-in tools responsibly and only for your events.',
@@ -47,22 +47,23 @@ export default function TermsOfServiceScreen() {
         />
       </LegalSection>
 
-      <LegalSection heading="Ticket and pass delivery">
+      <LegalSection heading="Ticket delivery">
         <LegalParagraph>
-          Passes are delivered electronically via shareable links, SMS (when enabled), or Apple
+          Tickets are delivered electronically via shareable links, SMS (when enabled), or Apple
           Wallet (when supported). Delivery depends on guest devices, carriers, and third-party
           services outside our control.
         </LegalParagraph>
         <LegalParagraph>
-          {LEGAL_COMPANY_NAME} does not guarantee that every guest will receive or open a pass link.
-          Organizers are responsible for confirming guest contact details before sending SMS.
+          {LEGAL_COMPANY_NAME} does not guarantee that every guest will receive or open a ticket
+          link. Organizers are responsible for confirming guest contact details before sending SMS.
         </LegalParagraph>
       </LegalSection>
 
       <LegalSection heading="Scanner validation">
         <LegalParagraph>
-          QR validation determines whether a pass is accepted for entry based on pass status, event
-          match, and prior check-in state. Scan results are provided for operational use at the door.
+          QR validation determines whether a ticket is accepted for entry based on ticket status,
+          event match, and prior check-in state. Scan results are provided for operational use at
+          the door.
         </LegalParagraph>
         <LegalParagraph>
           Organizers are responsible for door operations and final admission decisions at their
@@ -74,7 +75,7 @@ export default function TermsOfServiceScreen() {
         <LegalParagraph>You may not:</LegalParagraph>
         <LegalBulletList
           items={[
-            'Reverse engineer, abuse, or attempt to bypass pass security or rate limits.',
+            'Reverse engineer, abuse, or attempt to bypass ticket security or rate limits.',
             'Use the service to send spam, unsolicited marketing SMS, or harassing messages.',
             'Upload unlawful content or impersonate others.',
             'Resell or sublicense the service without permission.',

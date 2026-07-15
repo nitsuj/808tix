@@ -11,9 +11,9 @@ export default function PrivacyPolicyScreen() {
     <LegalDocumentScreen title="Privacy Policy">
       <LegalSection heading="Overview">
         <LegalParagraph>
-          {LEGAL_COMPANY_NAME} helps independent event organizers issue digital passes, deliver them
-          to guests, and validate entry at the door. This Privacy Policy describes how we collect,
-          use, and share information when you use our services.
+          {LEGAL_COMPANY_NAME} helps independent event organizers issue digital tickets, deliver
+          them to guests, and validate entry at the door. This Privacy Policy describes how we
+          collect, use, and share information when you use our services.
         </LegalParagraph>
         <LegalParagraph>
           This document is provided for MVP launch and SMS compliance. It is not legal advice.
@@ -26,8 +26,8 @@ export default function PrivacyPolicyScreen() {
         <LegalBulletList
           items={[
             'Organizer account information — email address, password (stored by our auth provider), and profile identifiers used to sign in and manage events.',
-            'Guest pass information — guest first and last name (stored as a combined name), pass type, pass status, and secure pass token used for QR validation.',
-            'Contact details for pass delivery — guest email address and/or phone number when an organizer issues a pass.',
+            'Guest ticket information — guest first and last name (stored as a combined name), ticket type, ticket status, and secure ticket token used for QR validation.',
+            'Contact details for ticket delivery — guest email address and/or phone number when an organizer issues a ticket.',
             'Event information — event name, venue, date, time, description, and artwork you provide as an organizer.',
             'Check-in records — scan results, timestamps, and the organizer account that performed validation.',
             'Technical data — device/browser type, IP address, and service logs collected by our hosting and messaging providers.',
@@ -40,10 +40,10 @@ export default function PrivacyPolicyScreen() {
         <LegalBulletList
           items={[
             'Provide account access and authenticate organizers.',
-            'Enable event creation, pass issuance, and pass list management.',
-            'Display guest passes on mobile web and generate Apple Wallet passes when requested.',
-            'Deliver pass links and notifications, including SMS messages sent on behalf of organizers.',
-            'Validate passes at entry using QR codes and prevent duplicate check-ins.',
+            'Enable event creation, ticket issuance, and guest list management.',
+            'Display guest tickets on mobile web and generate Apple Wallet passes when requested.',
+            'Deliver ticket links and notifications, including SMS messages sent on behalf of organizers.',
+            'Validate tickets at entry using QR codes and prevent duplicate check-ins.',
             'Operate, secure, and improve the service.',
             'Comply with legal obligations and respond to support requests.',
           ]}
@@ -52,7 +52,7 @@ export default function PrivacyPolicyScreen() {
 
       <LegalSection heading="SMS messaging">
         <LegalParagraph>
-          When an organizer sends a pass link by SMS, the message is delivered through our SMS
+          When an organizer sends a ticket link by SMS, the message is delivered through our SMS
           provider on behalf of the organizer. Message and data rates may apply.
         </LegalParagraph>
         <LegalParagraph>
@@ -60,8 +60,8 @@ export default function PrivacyPolicyScreen() {
           Reply HELP for assistance.
         </LegalParagraph>
         <LegalParagraph>
-          SMS is used for transactional pass delivery, not marketing, unless you separately obtain
-          appropriate consent for promotional messages.
+          SMS is used for transactional ticket delivery, not marketing, unless you separately
+          obtain appropriate consent for promotional messages.
         </LegalParagraph>
       </LegalSection>
 
@@ -72,10 +72,10 @@ export default function PrivacyPolicyScreen() {
         <LegalBulletList
           items={[
             'Supabase — authentication, database, file storage, and serverless functions.',
-            'Twilio — SMS delivery for pass links when configured by an organizer.',
-            'Apple Wallet — generation of signed .pkpass files when a guest adds a pass to Wallet (Apple platform terms apply).',
+            'Twilio — SMS delivery for ticket links when configured by an organizer.',
+            'Apple Wallet — generation of signed .pkpass files when a guest adds a ticket to Wallet (Apple platform terms apply).',
             'Stripe (future) — payment processing if and when ticketing payments are enabled.',
-            'Vercel — web hosting for the public guest pass experience.',
+            'Web hosting — hosting for the public guest ticket experience.',
           ]}
         />
         <LegalParagraph>

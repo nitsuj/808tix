@@ -54,7 +54,7 @@ export function MarketingPhonePreview({ variant, style }: MarketingPhonePreviewP
         </View>
         <View style={[styles.cta, { backgroundColor: copy.accent ?? fan.primary }]}>
           <Text style={styles.ctaText}>
-            {variant === 'dashboard' ? 'Create Event' : variant === 'issue' ? 'Issue Pass' : 'Scanning…'}
+            {variant === 'dashboard' ? 'Create Event' : variant === 'issue' ? 'Issue Ticket' : 'Scanning…'}
           </Text>
         </View>
       </View>

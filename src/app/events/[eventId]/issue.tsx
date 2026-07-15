@@ -217,7 +217,7 @@ export default function IssuePassScreen() {
 
     try {
       await Share.share({
-        message: `Your pass for ${activeEvent.name}: ${passUrl}`,
+        message: `Your ticket for ${activeEvent.name}: ${passUrl}`,
         url: passUrl,
         title: `${createdPass.guest_name} — ${activeEvent.name}`,
       });
@@ -400,7 +400,7 @@ function IssuePassFormView({
 
                 {atCapacity ? (
                   <ThemedText style={styles.errorText}>
-                    At capacity — raise max passes on the event to issue more.
+                    At capacity — raise max tickets on the event to issue more.
                   </ThemedText>
                 ) : null}
 
@@ -423,7 +423,7 @@ function IssuePassFormView({
                   />
                   <EventFormField
                     error={fieldErrors.passType}
-                    label="Pass Type"
+                    label="Ticket type"
                     placeholder={DEFAULT_PASS_TYPE}
                     value={passType}
                     onChangeText={onPassTypeChange}
@@ -442,7 +442,7 @@ function IssuePassFormView({
                   />
                   <EventFormField
                     error={fieldErrors.guestEmail}
-                    hint="Share pass link by email if no phone"
+                    hint="Share ticket link by email if no phone"
                     keyboardType="default"
                     label="Guest Email"
                     placeholder="alex@example.com"
@@ -465,7 +465,7 @@ function IssuePassFormView({
                   {isSubmitting ? (
                     <ActivityIndicator color={chrome.white} />
                   ) : (
-                    <Text style={styles.actionPrimaryText}>Issue Pass</Text>
+                    <Text style={styles.actionPrimaryText}>Issue Ticket</Text>
                   )}
                 </Pressable>
               </View>
@@ -525,14 +525,16 @@ function IssuePassSuccessView({
 
             <View style={styles.commandPanel}>
               <EventContextMeta event={activeEvent} />
-              <Text style={styles.screenEyebrow}>PASS ISSUED</Text>
+              <Text style={styles.screenEyebrow}>TICKET ISSUED</Text>
               <ThemedText themeColor="textSecondary" style={styles.successHint}>
-                {canSendSms ? 'Send the pass to your guest by SMS.' : 'Share the pass link with your guest.'}
+                {canSendSms
+                  ? 'Send the ticket to your guest by SMS.'
+                  : 'Share the ticket link with your guest.'}
               </ThemedText>
 
               <View style={styles.summaryBlock}>
                 <SummaryRow label="Guest" value={createdPass.guest_name} />
-                <SummaryRow label="Pass type" value={createdPass.pass_type} />
+                <SummaryRow label="Ticket type" value={createdPass.pass_type} />
                 {createdPass.guest_email ? (
                   <SummaryRow label="Email" value={createdPass.guest_email} />
                 ) : null}
@@ -580,7 +582,7 @@ function IssuePassSuccessView({
                     styles.actionPrimary,
                     pressed && styles.pressed,
                   ]}>
-                  <Text style={styles.actionPrimaryText}>Share Pass</Text>
+                  <Text style={styles.actionPrimaryText}>Share Ticket</Text>
                 </Pressable>
               )}
 
@@ -592,7 +594,7 @@ function IssuePassSuccessView({
                     styles.actionSecondary,
                     pressed && styles.pressed,
                   ]}>
-                  <Text style={styles.actionSecondaryText}>Share Pass</Text>
+                  <Text style={styles.actionSecondaryText}>Share Ticket</Text>
                 </Pressable>
               ) : null}
 
@@ -605,7 +607,7 @@ function IssuePassSuccessView({
                   pressed && styles.pressed,
                   atCapacity && styles.disabled,
                 ]}>
-                <Text style={styles.actionSecondaryText}>Issue Another Pass</Text>
+                <Text style={styles.actionSecondaryText}>Issue Another Ticket</Text>
               </Pressable>
 
               {atCapacity ? (

@@ -1,9 +1,9 @@
 import type { EventStatus } from '@/lib/database.types';
 
-export const PUBLISH_BEFORE_ISSUE_MESSAGE = 'Publish this event before issuing passes.';
+export const PUBLISH_BEFORE_ISSUE_MESSAGE = 'Publish this event before issuing tickets.';
 
 export const PUBLISH_BEFORE_SCAN_MESSAGE =
-  'Publish this event before issuing or scanning passes.';
+  'Publish this event before issuing or scanning tickets.';
 
 export type DashboardStatusFilter = 'all' | 'live' | 'draft';
 

@@ -20,7 +20,7 @@ export function LegalDocumentScreen({ title, children }: LegalDocumentScreenProp
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}>
-          <ThemedText style={styles.wordmark}>808Tix</ThemedText>
+          <ThemedText style={styles.wordmark}>808Tickets</ThemedText>
           <ThemedText style={styles.title}>{title}</ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.updated}>
             Last updated: {LEGAL_LAST_UPDATED}

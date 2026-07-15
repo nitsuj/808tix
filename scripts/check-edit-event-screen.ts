@@ -47,13 +47,13 @@ const eventNameIndex = layoutSource.indexOf('label="Event Name"');
 const venueIndex = layoutSource.indexOf('label="Venue"');
 const dateIndex = layoutSource.indexOf('<EventDateFormField');
 const startTimeIndex = layoutSource.indexOf('label="Start Time"');
-const maxPassesIndex = layoutSource.indexOf('label="Max Passes"');
+const maxPassesIndex = layoutSource.indexOf('label="Max tickets"');
 
 assert(artworkIndex > -1 && artworkIndex < eventNameIndex, 'artwork field appears before Event Name');
 assert(eventNameIndex > -1 && venueIndex > -1 && eventNameIndex < venueIndex, 'Event Name before Venue');
 assert(venueIndex > -1 && dateIndex > -1 && venueIndex < dateIndex, 'Venue before Date');
 assert(dateIndex > -1 && startTimeIndex > -1 && dateIndex < startTimeIndex, 'Date before Start Time');
-assert(startTimeIndex > -1 && maxPassesIndex > -1 && startTimeIndex < maxPassesIndex, 'Start Time before Max Passes');
+assert(startTimeIndex > -1 && maxPassesIndex > -1 && startTimeIndex < maxPassesIndex, 'Start Time before Max tickets');
 
 if (failures > 0) {
   console.error(`\ncheck-edit-event-screen: ${failures} failure(s)`);

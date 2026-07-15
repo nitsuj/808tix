@@ -82,8 +82,8 @@ assert(passesSource.includes('MOBILE_VIEWPORT_WIDTH = 390'), 'pass lists use 390
 assert(passesSource.includes('formatEventDateTimeLong'), 'pass lists show canonical event date');
 assert(passesSource.includes('EventScreenBackground'), 'pass lists use event artwork context');
 assert(passesSource.includes('prepareEventPassList'), 'pass lists search/sort pipeline unchanged');
-assert(rowSource.includes('View Guest Pass'), 'pass row keeps View Guest Pass action');
+assert(rowSource.includes('View Guest Ticket'), 'pass row keeps View Guest Ticket action');
 assert(rowSource.includes('Resend SMS'), 'pass row keeps Resend SMS action');
-assert(rowSource.includes('Send Pass'), 'pass row keeps Send Pass action');
+assert(rowSource.includes('Send Ticket'), 'pass row keeps Send Ticket action');
 
 console.log('check-event-pass-list-ui: all checks passed');

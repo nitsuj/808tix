@@ -64,7 +64,7 @@ export function SignUpCheckEmailScreen({
       <OrganizerAmbientBackground />
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.brandBlock}>
-          <Text style={styles.wordmark}>808Tix</Text>
+          <Text style={styles.wordmark}>808Tickets</Text>
           <Text style={styles.eyebrow}>Almost there</Text>
         </View>
 
@@ -75,7 +75,7 @@ export function SignUpCheckEmailScreen({
             <ThemedText type="defaultSemiBold" style={styles.emailInline}>
               {email}
             </ThemedText>
-            . Open it to finish creating your 808Tix account.
+            . Open it to finish creating your 808Tickets account.
           </ThemedText>
 
           {resendError ? <ThemedText style={styles.errorText}>{resendError}</ThemedText> : null}

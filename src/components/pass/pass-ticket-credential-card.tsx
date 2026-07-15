@@ -65,7 +65,7 @@ export function PassTicketCredentialCard({
       <View style={styles.lanyardSlot} />
 
       <View style={styles.credentialHeader}>
-        <Text style={styles.ticketBrandLabel}>808TIX TICKET</Text>
+        <Text style={styles.ticketBrandLabel}>808TICKETS</Text>
         {ticketNumberLabel ? (
           <Text style={styles.ticketNumberLabel}>{ticketNumberLabel}</Text>
         ) : null}

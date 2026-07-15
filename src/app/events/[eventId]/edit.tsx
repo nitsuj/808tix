@@ -210,7 +210,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
     if (updateError) {
       if (updateError.message.includes('issued passes')) {
         setFieldErrors({
-          maxPasses: `Max passes cannot be less than ${issuedCount} issued.`,
+          maxPasses: `Max tickets cannot be less than ${issuedCount} issued.`,
         });
       } else {
         setSubmitError(updateError.message);
@@ -336,7 +336,7 @@ function EditEventForm({ event, eventId, issuedCount, refetch }: EditEventFormPr
                     error={fieldErrors.maxPasses}
                     hint={`Minimum ${issuedCount} (issued)`}
                     keyboardType="number-pad"
-                    label="Max Passes"
+                    label="Max tickets"
                     placeholder="100"
                     tone="organizer"
                     value={maxPasses}

@@ -14,7 +14,7 @@
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.howzitjustin.808Tix",
       "infoPlist": {
-        "CFBundleDisplayName": "808Tix",
+        "CFBundleDisplayName": "808Tickets",
         "CFBundleName": "Tix808",
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -42,14 +42,14 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow 808Tix to scan pass QR codes at the door.",
+          "cameraPermission": "Allow 808Tickets to scan ticket QR codes at the door.",
           "recordAudioAndroid": false
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow 808Tix to select event artwork from your photo library."
+          "photosPermission": "Allow 808Tickets to select event artwork from your photo library."
         }
       ],
       [

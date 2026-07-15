@@ -65,6 +65,6 @@ export async function sendPassSms(input: SendPassSmsInput): Promise<SendPassSmsR
   return {
     ok: true,
     mode: 'sent',
-    message: data.message ?? 'Pass link sent by SMS.',
+    message: data.message ?? 'Ticket link sent by SMS.',
   };
 }

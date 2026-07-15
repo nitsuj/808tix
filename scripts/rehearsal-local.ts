@@ -129,7 +129,7 @@ function main(): void {
   const laptopScannerUrl = `${laptopBaseUrl}/events/${fixtures.event_id}/scan`;
   const lanScannerUrl = `${phoneBaseUrl}/events/${fixtures.event_id}/scan`;
 
-  console.log('808Tix local physical rehearsal helper\n');
+  console.log('808Tickets local physical rehearsal helper\n');
   console.log('Confirmed local flow: phone shows pass (LAN IP) + laptop scanner (localhost).');
   console.log('Summary');
   console.log(`  event_id: ${fixtures.event_id}`);
@@ -164,7 +164,7 @@ function main(): void {
   }
 
   console.log('\nChecklist:');
-  console.log('- Open pass URL on phone.');
+  console.log('- Open ticket URL on phone.');
   console.log('- Confirm QR visible and guest name looks correct.');
   console.log('- If the page does not load, confirm Mac and phone are on the same Wi-Fi.');
 
@@ -213,7 +213,7 @@ function main(): void {
 
   console.log('\n=== Physical rehearsal checklist ===\n');
   console.log('- Step 1: Start Expo web using the LAN command above.');
-  console.log('- Step 2: Open pass URL on phone (LAN IP); confirm QR visible.');
+  console.log('- Step 2: Open ticket URL on phone (LAN IP); confirm QR visible.');
   console.log('- Step 3: On laptop, open localhost scanner and sign in as qa@808tix.test / qa.');
   console.log('- Scan phone QR from laptop → valid check-in.');
   console.log('- Rescan same pass → already used.');

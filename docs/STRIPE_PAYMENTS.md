@@ -21,7 +21,7 @@ Set in Supabase Dashboard → Edge Functions → Secrets, or locally in `supabas
 | `STRIPE_WEBHOOK_SECRET` | `stripe-webhook` only | From Stripe webhook endpoint (`whsec_...`) |
 | `SUPABASE_URL` | Both | Auto-injected locally when serving functions |
 | `SUPABASE_SERVICE_ROLE_KEY` | Both | Service role only — never in Expo `.env` |
-| `PUBLIC_SITE_URL` | Optional | Buyer site origin for docs/examples (e.g. `https://808tix.vercel.app`) |
+| `PUBLIC_SITE_URL` | Optional | Buyer site origin for docs/examples (e.g. `https://808tickets.com`) |
 
 Do **not** put Stripe secrets in `EXPO_PUBLIC_*` or any `src/` file.
 
@@ -150,8 +150,8 @@ Prerequisites:
        "quantity": 2,
        "buyer_email": "buyer@example.com",
        "buyer_name": "Test Buyer",
-       "success_url": "https://808tix.vercel.app/checkout/success",
-       "cancel_url": "https://808tix.vercel.app/checkout/cancel"
+       "success_url": "https://808tickets.com/checkout/success",
+       "cancel_url": "https://808tickets.com/checkout/cancel"
      }'
    ```
 
@@ -255,7 +255,7 @@ npx expo start --web
 5. Confirm redirect to `/purchase/success?order_token=...` with inline QR tickets per purchase (**Add to Apple Wallet** on iOS, **Share** with clipboard fallback).
 6. Open each ticket and confirm QR works at `/pass/{secure_token}`.
 
-Paid success shows each ticket inline with a scannable QR code (same payload as `/pass/{token}`). Share copies the pass URL when native share is unavailable. On web, share URLs use `window.location.origin` (local QA: `http://localhost:8081/pass/{token}`). Add to Apple Wallet reuses the same client component as `/pass/{token}`.
+Paid success shows each ticket inline with a scannable QR code (same payload as `/pass/{token}`). Share copies the ticket URL when native share is unavailable. On web, share URLs use `window.location.origin` (local QA: `http://localhost:8081/pass/{token}`). Add to Apple Wallet reuses the same client component as `/pass/{token}`.
 
 `get_order_by_public_token` also returns event `venue_name`, `event_date`, `start_time`, and `image_url` for inline ticket artwork and details.
 
@@ -409,6 +409,41 @@ limit 5;
 Preview mode logs subject/pass count to the function console and writes `outbound_messages` with `provider='preview'`. It does **not** call Resend.
 
 **Send mode** requires `EMAIL_DELIVERY_MODE=send`, verified `EMAIL_FROM`, and `RESEND_API_KEY` with a verified Resend domain. Real delivery is separate from local preview/webhook testing.
+
+### Real provider email smoke (`npm run smoke:email:send`)
+
+Isolated from Stripe Checkout. Calls the existing `send-order-confirmation-email` Edge Function against a **paid** order token and forces send mode to Resend.
+
+Required env:
+
+| Variable | Purpose |
+|----------|---------|
+| `EMAIL_SMOKE_ORDER_TOKEN` | Paid order `public_access_token` |
+| `EMAIL_OVERRIDE_TO` | **Required** override inbox (never emails the original buyer during smoke) |
+| `RESEND_API_KEY` | Resend API key |
+| `EMAIL_FROM` | Verified Resend sender (not a placeholder) |
+| `PUBLIC_SITE_URL` | Absolute ticket links (defaults to `http://localhost:8081` with a warning if unset) |
+
+```bash
+EMAIL_SMOKE_ORDER_TOKEN="..." \
+EMAIL_OVERRIDE_TO="you@yourdomain.com" \
+RESEND_API_KEY="re_..." \
+EMAIL_FROM="808Tickets <tickets@your-verified-domain.com>" \
+PUBLIC_SITE_URL="http://localhost:8081" \
+npm run smoke:email:send
+```
+
+Behavior:
+
+- Starts `supabase functions serve send-order-confirmation-email` with a generated env that forces `EMAIL_DELIVERY_MODE=send`
+- Verifies the order token exists and is **paid** before sending
+- Refuses if an `order_confirmation` row is already `sent`/`skipped` for that order (idempotency key is `order_confirmation:{order_id}`)
+- Masks secrets, full order tokens, pass tokens, pass URLs, and email HTML in logs
+- Writes `qa/artifacts/email-send/latest.log`
+
+**Preview vs send:** `smoke:payments:preview` proves webhook → preview row only. `smoke:email:send` proves real Resend delivery to `EMAIL_OVERRIDE_TO`.
+
+**Idempotency:** If the same paid order already got an order confirmation (including preview), use a **fresh** paid order token (new Stripe smoke or `qa:seed` paid token that has never been emailed). The smoke does **not** delete `outbound_messages` or bypass idempotency.
 
 Verify the table locally after `supabase db reset`:
 

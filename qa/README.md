@@ -1,4 +1,4 @@
-# 808Tix local web QA
+# 808Tickets local web QA
 
 Playwright-based browser checks for buyer purchase and ticket UI. Captures mobile-width screenshots for human review and runs light DOM assertions. No Stripe payment or real email required.
 
@@ -160,13 +160,13 @@ Cleared before each `qa:web` run. Gitignored.
 - Apple Wallet on real iOS Safari
 - Real Resend email delivery and domain verification
 - SMS / Twilio
-- Scanner camera behavior on physical devices — see `npm run rehearsal:local` (phone LAN pass + laptop localhost scanner)
+- Scanner camera behavior on physical devices — see `npm run rehearsal:local` (phone LAN ticket + laptop localhost scanner)
 
 ## Physical device rehearsal (`npm run rehearsal:local`)
 
 Confirmed local physical path:
 
-- **Phone** opens pass pages over your Mac's **LAN IP** (`http://LAN_IP:8081/pass/...`)
+- **Phone** opens ticket pages over your Mac's **LAN IP** (`http://LAN_IP:8081/pass/...`)
 - **Laptop** opens the scanner on **localhost** (`http://localhost:8081/events/{event_id}/scan`) so camera works
 - Scan the phone QR from the laptop scanner
 
@@ -206,11 +206,11 @@ The script prints:
 
 - Primary LAN IP
 - Step 1: Expo start command
-- Step 2: Phone pass URLs (LAN)
+- Step 2: Phone ticket URLs (LAN)
 - Step 3: Laptop localhost scanner URL + short QA credentials
 - Step 4: Optional buyer spot-check URLs
 
-Then start Expo with the printed commands, open a pass on your phone, and scan from the laptop.
+Then start Expo with the printed commands, open a ticket on your phone, and scan from the laptop.
 
 ## Related commands
 
@@ -220,6 +220,7 @@ Then start Expo with the printed commands, open a pass on your phone, and scan f
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
 - `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
 - `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
+- `npm run smoke:email:send` — real Resend order confirmation to `EMAIL_OVERRIDE_TO` (see [STRIPE_PAYMENTS.md](../docs/STRIPE_PAYMENTS.md))
 - `npm run rehearsal:local` — LAN URLs + QA scanner login for phone/device testing
 
 ### Check-in smoke (`npm run smoke:checkin`)

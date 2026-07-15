@@ -97,7 +97,7 @@ export default function IndexScreen() {
           logoUrl={profileValues.logoUrl}
           organizerId={profile.id}
           welcomeMessage={
-            accountJustConfirmed ? 'Account confirmed. Welcome to 808Tix.' : undefined
+            accountJustConfirmed ? 'Account confirmed. Welcome to 808Tickets.' : undefined
           }
           onDismissWelcome={dismissAccountJustConfirmed}
         />
@@ -211,7 +211,7 @@ function OrganizerAuthScreen() {
         style={styles.keyboardView}>
         <SafeAreaView style={styles.safeArea}>
           <View style={styles.brandBlock}>
-            <Text style={styles.wordmark}>808Tix</Text>
+            <Text style={styles.wordmark}>808Tickets</Text>
             <Text style={styles.tagline}>Independent events, verified at the door.</Text>
             <Text style={styles.eyebrow}>Organizer access</Text>
           </View>

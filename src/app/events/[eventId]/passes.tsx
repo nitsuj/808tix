@@ -219,8 +219,8 @@ function EventPassesContent({
   const countLabel = isLoading
     ? 'Loading…'
     : searchQuery.trim()
-      ? `${visiblePasses.length} of ${passes.length} pass${passes.length === 1 ? '' : 'es'}`
-      : `${passes.length} pass${passes.length === 1 ? '' : 'es'}`;
+      ? `${visiblePasses.length} of ${passes.length} ticket${passes.length === 1 ? '' : 's'}`
+      : `${passes.length} ticket${passes.length === 1 ? '' : 's'}`;
 
   return (
     <MobileViewport>
@@ -307,8 +307,8 @@ function EventPassesContent({
                     {passes.length === 0
                       ? filter === 'checked_in'
                         ? 'No guests checked in yet.'
-                        : 'No passes issued yet. Issue a pass from the event screen.'
-                      : 'No passes match your search.'}
+                        : 'No tickets issued yet. Issue a ticket from the event screen.'
+                      : 'No tickets match your search.'}
                   </ThemedText>
                 </View>
               </View>

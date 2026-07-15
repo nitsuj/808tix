@@ -226,7 +226,7 @@ export function OrganizerDashboard({
             <View style={styles.stateCard}>
               <ThemedText style={styles.emptyTitle}>No events yet</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
-                Create your first event to start issuing passes.
+                Create your first event to start issuing tickets.
               </ThemedText>
             </View>
           ) : null}
@@ -252,7 +252,7 @@ export function OrganizerDashboard({
               <ThemedText style={styles.emptyTitle}>No active events</ThemedText>
               <ThemedText themeColor="textSecondary" style={styles.emptyBody}>
                 You have {events.length} completed or cancelled event
-                {events.length === 1 ? '' : 's'}. Create a new event to issue passes.
+                {events.length === 1 ? '' : 's'}. Create a new event to issue tickets.
               </ThemedText>
             </View>
           ) : null}

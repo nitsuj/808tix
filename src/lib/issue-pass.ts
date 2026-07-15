@@ -20,7 +20,7 @@ function mapInsertError(message: string): IssuePassResult {
   if (message.includes('at capacity') || message.includes('Capacity')) {
     return {
       ok: false,
-      error: 'This event is at capacity. Increase max passes or void a pass before issuing more.',
+      error: 'This event is at capacity. Increase max tickets or void a ticket before issuing more.',
       fieldError: 'capacity',
     };
   }

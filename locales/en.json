@@ -1,8 +1,8 @@
 {
   "ios": {
-    "CFBundleDisplayName": "808Tix"
+    "CFBundleDisplayName": "808Tickets"
   },
   "android": {
-    "app_name": "808Tix"
+    "app_name": "808Tickets"
   }
 }

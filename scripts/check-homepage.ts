@@ -34,15 +34,15 @@ const indexRoute = readFileSync(join(ROOT, 'src/app/index.tsx'), 'utf8');
 assert(homeRoute.includes('MarketingHomepageScreen'), 'home route renders marketing homepage');
 assert(homepage.includes('Ticketing built for independent events.'), 'homepage hero headline present');
 assert(
-  homepage.includes('Create events. Sell tickets. Issue passes. Scan guests.'),
+  homepage.includes('Create events. Sell tickets. Issue tickets. Scan guests.'),
   'homepage hero subheadline present',
 );
 assert(homepage.includes('Get Started'), 'homepage primary CTA present');
 assert(homepage.includes('See How It Works'), 'homepage secondary CTA present');
 assert(homepage.includes('HOW IT WORKS'), 'homepage how-it-works section present');
-assert(homepage.includes('WHY 808TIX'), 'homepage why section present');
+assert(homepage.includes('WHY 808TICKETS'), 'homepage why section present');
 assert(homepage.includes('backgrounds/organizer-background.png'), 'homepage uses dot-matrix brand background asset');
-assert(homepage.includes('Share links by text or email'), 'homepage mentions text/email pass delivery');
+assert(homepage.includes('Share links by text or email'), 'homepage mentions text/email ticket delivery');
 assert(homepage.includes('Scan Guests'), 'homepage mentions scan guests');
 assert(homepage.includes('href="/"'), 'homepage CTAs link to organizer auth entry at /');
 assert(indexRoute.includes('OrganizerDashboard'), 'index route still renders organizer dashboard when authenticated');

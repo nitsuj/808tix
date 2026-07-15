@@ -303,7 +303,7 @@ export default function CreateEventScreen() {
                     error={fieldErrors.maxPasses}
                     hint="Whole number, minimum 1"
                     keyboardType="number-pad"
-                    label="Max Passes"
+                    label="Max tickets"
                     placeholder="100"
                     tone="organizer"
                     value={maxPasses}
