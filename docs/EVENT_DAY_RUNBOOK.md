@@ -2,7 +2,7 @@
 
 Field manual for operating **one real event** with the current 808Tickets MVP. This document is for organizers, door staff, and the technical operator—not marketing copy.
 
-**Related docs:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [qa/README.md](../qa/README.md)
+**Related docs:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [qa/README.md](../qa/README.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md)
 
 ---
 

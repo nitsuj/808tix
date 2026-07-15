@@ -4,6 +4,8 @@ Server-side Stripe Checkout and webhook handling for paid ticketing. Ticket mint
 
 **Event day:** See [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) for operator checklist, recovery playbook, and go/no-go criteria.
 
+**Launch domain:** See [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md) before changing production origins (`808tickets.com` vs `808tix.vercel.app`, env, EAS, Auth redirects).
+
 ## Edge Functions
 
 | Function | Purpose | JWT required |
