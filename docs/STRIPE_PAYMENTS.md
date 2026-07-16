@@ -4,7 +4,7 @@ Server-side Stripe Checkout and webhook handling for paid ticketing. Ticket mint
 
 **Event day:** See [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) for operator checklist, recovery playbook, and go/no-go criteria.
 
-**Launch domain:** See [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md) before changing production origins (`808tickets.com` vs `808tix.vercel.app`, env, EAS, Auth redirects).
+**Launch domain:** Canonical buyer origin is `https://808tickets.com` (repo defaults updated). Hosted Edge `PUBLIC_SITE_URL` and Resend remain operator setup — see [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md). Legacy `808tix.vercel.app` may redirect during transition.
 
 ## Edge Functions
 

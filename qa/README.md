@@ -2,7 +2,7 @@
 
 Playwright-based browser checks for buyer purchase and ticket UI. Captures mobile-width screenshots for human review and runs light DOM assertions. No Stripe payment or real email required.
 
-**Launch domain cutover:** Local QA stays on localhost/LAN. Do not point these flows at `https://808tickets.com`. See [docs/DOMAIN_CUTOVER.md](../docs/DOMAIN_CUTOVER.md).
+**Launch domain cutover:** Local QA stays on localhost/LAN. Do not point these flows at `https://808tickets.com`. Production buyer origin is `https://808tickets.com` (`www` redirects to apex; legacy `808tix.vercel.app` may redirect). See [docs/DOMAIN_CUTOVER.md](../docs/DOMAIN_CUTOVER.md).
 
 ## Quick start
 

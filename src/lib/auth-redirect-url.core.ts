@@ -1,6 +1,6 @@
 import { normalizePassLinkBaseUrl } from '@/lib/pass-link.core';
 
-const PRODUCTION_FALLBACK_ORIGIN = 'https://808tix.vercel.app';
+const PRODUCTION_FALLBACK_ORIGIN = 'https://808tickets.com';
 
 /**
  * Resolve origin for Supabase auth emailRedirectTo (signup / magic-link callbacks).

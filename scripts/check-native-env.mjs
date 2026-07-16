@@ -17,7 +17,7 @@ const REQUIRED_KEYS = [
   'EXPO_PUBLIC_PASS_LINK_BASE_URL',
 ];
 
-const GUEST_PASS_ORIGIN = 'https://808tix.vercel.app';
+const GUEST_PASS_ORIGIN = 'https://808tickets.com';
 
 let failures = 0;
 let warnings = 0;
@@ -145,7 +145,7 @@ if (!existsSync(envPath)) {
 console.log('\nEAS secret reminder (set on Expo dashboard or via eas env):');
 console.log('  EXPO_PUBLIC_SUPABASE_URL');
 console.log('  EXPO_PUBLIC_SUPABASE_ANON_KEY');
-console.log('  EXPO_PUBLIC_PASS_LINK_BASE_URL=https://808tix.vercel.app (also in eas.json preview/production)');
+console.log('  EXPO_PUBLIC_PASS_LINK_BASE_URL=https://808tickets.com (also in eas.json preview/production)');
 
 if (failures > 0) {
   console.error(`\ncheck-native-env: ${failures} failure(s)`);

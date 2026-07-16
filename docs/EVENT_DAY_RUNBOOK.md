@@ -4,6 +4,8 @@ Field manual for operating **one real event** with the current 808Tickets MVP. T
 
 **Related docs:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [qa/README.md](../qa/README.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md)
 
+**Production domain:** Canonical launch origin is `https://808tickets.com`. Legacy `808tix.vercel.app` may redirect during transition. Ticket pages remain at `/pass/{token}`.
+
 ---
 
 ## 1. Purpose

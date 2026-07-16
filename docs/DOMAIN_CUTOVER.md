@@ -1,10 +1,23 @@
 # 808Tickets domain cutover
 
-Audit and readiness plan for moving the **public launch origin** from `https://808tix.vercel.app` to `https://808tickets.com`.
+Production launch origin: **`https://808tickets.com`**
 
-**Status:** documentation / planning only. This file does **not** authorize runtime config changes by itself.
+**Repo status (implemented):** `eas.json`, auth redirect fallback (`auth-redirect-url.core.ts`), and static guards now default to `https://808tickets.com`. Local QA remains localhost/LAN.
+
+**Operator status (still required outside repo):** Hosted Supabase Edge `PUBLIC_SITE_URL`, Supabase Auth redirect allow-list, Vercel production env, and **Resend** (not configured yet) must be set in dashboards — see §5 and §10.
 
 **Related:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) · [qa/README.md](../qa/README.md) · [NATIVE_PHASE_0.md](./NATIVE_PHASE_0.md) · [MVP_ROADMAP.md](./MVP_ROADMAP.md)
+
+### Canonical domain policy
+
+| Host | Role |
+|------|------|
+| `https://808tickets.com` | **Launch canonical** buyer/guest web origin |
+| `https://www.808tickets.com` | Redirects to apex (`808tickets.com`) |
+| `https://808tix.vercel.app` | **Legacy transition** — Vercel redirect to launch domain; keep in Auth allow-list during transition if needed |
+| `/pass/{token}` | Internal route unchanged (ticket page path) |
+
+Resend email sending domain is **pending** — URL cutover does not configure Resend.
 
 ---
 
@@ -38,11 +51,11 @@ Do **not** hardcode `808tickets.com` into local QA orchestration.
 | Surface | Source of origin | Notes |
 |---------|------------------|-------|
 | Guest ticket share / SMS (web) | `window.location.origin` via `pass-link.ts` | Local host stays local; production host stays production. |
-| Guest ticket share / SMS (native) | `EXPO_PUBLIC_PASS_LINK_BASE_URL` then Linking / localhost | Baked at EAS build time from `eas.json` today. |
+| Guest ticket share / SMS (native) | `EXPO_PUBLIC_PASS_LINK_BASE_URL` then Linking / localhost | Baked at EAS build time from `eas.json` (`https://808tickets.com`). |
 | Stripe success/cancel (buyer web) | `window.location.origin` via `app-base-url.ts` → `purchase-urls.ts` | Paths are `/purchase/success` and `/purchase/cancel` (not `/checkout/...`). |
 | Order confirmation email links | Edge `PUBLIC_SITE_URL` via `pass-link-server.ts` | Independent of the buyer browser; wrong production secret = wrong email links. |
 | Auth email `emailRedirectTo` (web) | Current browser origin | Confirming on `808tickets.com` requires that host to serve the app. |
-| Auth email redirect (native / missing env) | Env pass-link base, else hardcoded `https://808tix.vercel.app` in `auth-redirect-url.core.ts` | Hardcoded fallback is a cutover gap. |
+| Auth email redirect (native / missing env) | Env pass-link base, else `https://808tickets.com` in `auth-redirect-url.core.ts` | Repo fallback updated; rebuild native after EAS env change. |
 | SMS Edge Function | Client-supplied absolute `pass_url` | Domain is whatever the app already built. |
 | Apple Wallet `.pkpass` | Pass Type ID `pass.com.808tix.pass` | Not the web domain. `webServiceURL` is future / not MVP cutover-blocking. |
 | Vercel routing | `vercel.json` rewrites only | No domain string in repo; custom domain is project settings + DNS. |
@@ -53,22 +66,22 @@ Do **not** hardcode `808tickets.com` into local QA orchestration.
 
 | Reference | File | Current value | Type | Recommendation | Risk |
 |-----------|------|---------------|------|----------------|------|
-| Guest pass link base (preview EAS) | `eas.json` → `build.preview.env` | `https://808tix.vercel.app` | native deep/web link fallback | Change to `https://808tickets.com` only when preview builds should hand guests the launch domain | Medium — wrong domain until DNS/Vercel ready; requires rebuild |
-| Guest pass link base (production EAS) | `eas.json` → `build.production.env` | `https://808tix.vercel.app` | production buyer-facing URL | Same as preview when launching on custom domain | High if flipped early; Medium after DNS |
+| Guest pass link base (preview EAS) | `eas.json` → `build.preview.env` | `https://808tickets.com` | native deep/web link fallback | **Done in repo** — rebuild preview binaries | Low after DNS live |
+| Guest pass link base (production EAS) | `eas.json` → `build.production.env` | `https://808tickets.com` | production buyer-facing URL | **Done in repo** — rebuild store binaries | Low after DNS live |
 | Display / example production origin | `.env.example` | `EXPO_PUBLIC_PASS_LINK_BASE_URL=https://808tickets.com` | docs-only (example) | Keep as launch docs target; do not force into local `.env` | Low — already documents launch intent |
 | Local Supabase example | `.env.example` | `http://127.0.0.1:54321` | local QA URL | Keep | Low |
 | Edge email site origin example | `supabase/functions/.env.example` | `# PUBLIC_SITE_URL=http://localhost:8081` | local QA URL | Keep localhost example; add commented production line in a later env-docs pass | Low |
-| Auth email production fallback | `src/lib/auth-redirect-url.core.ts` | `PRODUCTION_FALLBACK_ORIGIN = https://808tix.vercel.app` | native deep/web link fallback | Later code change → `https://808tickets.com` once custom domain is live | Medium — native signup without env still hits Vercel hostname |
+| Auth email production fallback | `src/lib/auth-redirect-url.core.ts` | `PRODUCTION_FALLBACK_ORIGIN = https://808tickets.com` | native deep/web link fallback | **Done in repo** | Low |
 | Pass / success / cancel builders (web) | `src/lib/pass-link.ts`, `src/lib/app-base-url.ts`, `src/lib/purchase-urls.ts` | Uses live origin or env | production buyer-facing URL / local QA URL | No hardcode change required; origin follows host | Low if Vercel serves custom domain |
 | Stripe Checkout body URLs | `src/app/events/[eventId]/buy.tsx` → `create-checkout-session` | Caller-built absolute URLs | Stripe success/cancel URL | No path change; ensure buyers open buy page on launch domain | Medium if buy page still opened on old Vercel host |
 | Edge create-checkout-session | `supabase/functions/create-checkout-session/index.ts` | Accepts client `success_url` / `cancel_url` | Stripe success/cancel URL | Do not bake domain into function; keep client-supplied | Low |
 | Email ticket + success URLs | `supabase/functions/_shared/pass-link-server.ts`, `order-email.ts` | `PUBLIC_SITE_URL` | email ticket URL | Set hosted Edge secret to `https://808tickets.com` at cutover | High if left on old domain or unset |
 | SMS ticket URL | `supabase/functions/send-pass-sms` + client builders | Absolute URL from client | production buyer-facing URL | Follows app origin / EAS env | Medium until EAS updated |
 | Hosted guest rewrites | `vercel.json` | Path rewrites only | production buyer-facing URL | No domain edit; attach custom domain in Vercel UI | Low |
-| EAS readiness asserts | `scripts/check-native-eas-readiness.mjs` | Expects `eas.json` == `https://808tix.vercel.app` | internal/test-only | Update asserts in same PR as `eas.json` change | Medium — check:all fails if eas changes alone |
-| Native env reminder / warn | `scripts/check-native-env.mjs` | `GUEST_PASS_ORIGIN = https://808tix.vercel.app` | internal/test-only | Update constant with eas/env cutover | Low/Medium |
-| Pass-link unit fixtures | `scripts/check-pass-links.ts` | Uses `808tix.vercel.app` as sample host | internal/test-only | Update samples to `808tickets.com` when locking launch origin in tests | Low |
-| Auth redirect checks | `scripts/check-auth-redirect-url.ts`, `check-auth-callback-url.ts` | `808tix.vercel.app` fixtures | internal/test-only | Update with fallback constant change | Low |
+| EAS readiness asserts | `scripts/check-native-eas-readiness.mjs` | Expects `eas.json` == `https://808tickets.com` | internal/test-only | **Done in repo** | Low |
+| Native env reminder / warn | `scripts/check-native-env.mjs` | `GUEST_PASS_ORIGIN = https://808tickets.com` | internal/test-only | **Done in repo** | Low |
+| Pass-link unit fixtures | `scripts/check-pass-links.ts` | Uses `808tickets.com` as sample host | internal/test-only | **Done in repo** | Low |
+| Auth redirect checks | `scripts/check-auth-redirect-url.ts`, `check-auth-callback-url.ts` | `808tickets.com` fixtures | internal/test-only | **Done in repo** | Low |
 | Purchase UI forbidden hosts | `scripts/check-purchase-ui.ts` | Forbids hardcoding `808tix.vercel.app` (and localhost) in UI | internal/test-only | Keep forbid-list; optionally add `808tickets.com` if guarding against hardcodes | Low |
 | Local smoke return URLs | `scripts/smoke-payments-local.ts` | `http://127.0.0.1:8081/purchase/...` | local QA URL | Keep | Low |
 | Preview smoke / email smoke | `scripts/smoke-payments-preview.ts`, `smoke-email-send.ts` | Prefer env / localhost | local QA URL | Keep | Low |
@@ -89,7 +102,7 @@ Do **not** hardcode `808tickets.com` into local QA orchestration.
 ### Principles
 
 1. **DNS and Vercel first** — serve the same Expo web build on `808tickets.com` before changing link-builders that guests cannot open.
-2. **Keep Vercel hostname temporarily** — `808tix.vercel.app` can remain a working alias while custom domain propagates.
+2. **Keep Vercel hostname temporarily** — `808tix.vercel.app` may remain as a redirect alias during transition (configured in Vercel, not in repo).
 3. **Split client vs Edge secrets** — browser ticket links follow the host the buyer opened; emails require hosted `PUBLIC_SITE_URL`.
 4. **Rebuild native** after `eas.json` / EAS env change — Expo public env is compile-time for device builds.
 5. **Update static guards in the same change** as `eas.json` / hardcoded fallback so `check:all` stays green.
@@ -148,12 +161,12 @@ Do **not** execute these in this audit-only change.
 - Align comments in `.env.example` / `supabase/functions/.env.example` with launch + local examples (no secrets)
 - Optionally note production `PUBLIC_SITE_URL=https://808tickets.com` as a commented line next to localhost
 
-### C. Native / EAS pass-link fallback (production-bound)
+### C. Native / EAS pass-link fallback (production-bound) — **done in repo**
 
-- Update `eas.json` preview + production `EXPO_PUBLIC_PASS_LINK_BASE_URL` → `https://808tickets.com`
-- Update `PRODUCTION_FALLBACK_ORIGIN` in `auth-redirect-url.core.ts`
-- Update companion asserts: `check-native-eas-readiness.mjs`, `check-native-env.mjs`, auth/pass-link fixture hosts as needed
-- Rebuild EAS preview/production
+- [x] `eas.json` preview + production `EXPO_PUBLIC_PASS_LINK_BASE_URL` → `https://808tickets.com`
+- [x] `PRODUCTION_FALLBACK_ORIGIN` in `auth-redirect-url.core.ts`
+- [x] Companion asserts: `check-native-eas-readiness.mjs`, `check-native-env.mjs`, pass-link and auth redirect fixture hosts
+- [ ] Rebuild EAS preview/production binaries (operator)
 
 ### D. Hosted platform env
 
@@ -193,12 +206,12 @@ npm run check:all
 
 **Go** when:
 
-- [ ] `https://808tickets.com` serves buyer + ticket + purchase routes over HTTPS
-- [ ] Supabase Auth redirects allow the new origin
-- [ ] Hosted `PUBLIC_SITE_URL` is the launch domain
-- [ ] EAS / Vercel public pass-link base matches launch domain (after intentional flip)
-- [ ] `check:all` green after any repo config/guard updates
-- [ ] One real ticket link and one Stripe return URL observed on the launch domain
+- [x] `https://808tickets.com` serves buyer + ticket + purchase routes over HTTPS
+- [ ] Supabase Auth redirects allow the new origin (operator)
+- [ ] Hosted `PUBLIC_SITE_URL` is the launch domain (operator)
+- [x] EAS / repo public pass-link base matches launch domain
+- [x] `check:all` green after repo config/guard updates
+- [ ] One real ticket link and one Stripe return URL observed on the launch domain (operator smoke)
 
 **No-go** if:
 
@@ -211,8 +224,17 @@ npm run check:all
 
 ## 9. Known gaps / watchouts
 
-1. **Docs vs `eas.json` drift:** `.env.example` already documents `808tickets.com`, but EAS still ships `808tix.vercel.app`. Treat that as intentional until Section 6.C/D.
-2. **Hardcoded auth fallback** still names Vercel even if env is updated elsewhere.
-3. **STRIPE_PAYMENTS.md** sample JSON uses `/checkout/success|cancel`; runtime paths are `/purchase/success|cancel`. Fix path wording in a follow-up docs pass (not payment behavior).
-4. **Static guards will fail** if `eas.json` alone is edited without updating `check-native-eas-readiness.mjs`.
-5. **`check-native-env.mjs`** warns when local `.env` pass-link base ≠ current `GUEST_PASS_ORIGIN` constant — expect a warn while examples say launch domain and constant still says Vercel.
+1. **Hosted secrets:** Repo defaults are updated; **Supabase Edge `PUBLIC_SITE_URL`** must still be set to `https://808tickets.com` in the hosted project for email ticket links.
+2. **Resend:** Not configured yet — email delivery remains preview/blocked until Resend domain and `RESEND_API_KEY` are set (out of scope for URL cutover).
+3. **Native rebuild:** Existing device builds baked with the old pass-link base need a new EAS build to pick up `eas.json`.
+4. **STRIPE_PAYMENTS.md** sample JSON uses `/checkout/success|cancel`; runtime paths are `/purchase/success|cancel` (docs-only path wording).
+5. **NATIVE_PHASE_0.md / MVP_ROADMAP.md** may still mention `808tix.vercel.app` as historical reference — canonical launch domain is `808tickets.com`.
+
+## 10. Operator checklist (post-repo cutover)
+
+- [ ] Vercel production: `EXPO_PUBLIC_PASS_LINK_BASE_URL=https://808tickets.com` (if not only from build)
+- [ ] Supabase Edge secret: `PUBLIC_SITE_URL=https://808tickets.com`
+- [ ] Supabase Auth: Site URL + `https://808tickets.com/**` redirect allow-list (optionally keep `https://808tix.vercel.app/**` during redirect transition)
+- [ ] EAS: new preview/production build after `eas.json` change
+- [ ] Resend: deferred
+- [ ] Smoke: one buy flow and one shared ticket link on `https://808tickets.com`

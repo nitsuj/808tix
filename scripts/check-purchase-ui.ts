@@ -275,7 +275,12 @@ assert(
   'parser unwraps accidental result wrapper without treating valid payload as unavailable',
 );
 
-const forbiddenHardcodedHosts = ['127.0.0.1', 'localhost:8081', '808tix.vercel.app'];
+const forbiddenHardcodedHosts = [
+  '127.0.0.1',
+  'localhost:8081',
+  '808tix.vercel.app',
+  '808tickets.com',
+];
 
 for (const filePath of listPurchaseSourceFiles()) {
   const source = read(filePath);

@@ -90,11 +90,11 @@ const previewPassBase = eas.build.preview.env?.EXPO_PUBLIC_PASS_LINK_BASE_URL;
 const productionPassBase = eas.build.production.env?.EXPO_PUBLIC_PASS_LINK_BASE_URL;
 
 assert(
-  previewPassBase === 'https://808tix.vercel.app',
+  previewPassBase === 'https://808tickets.com',
   'preview profile sets EXPO_PUBLIC_PASS_LINK_BASE_URL to production guest web origin',
 );
 assert(
-  eas.build.production.env?.EXPO_PUBLIC_PASS_LINK_BASE_URL === 'https://808tix.vercel.app',
+  eas.build.production.env?.EXPO_PUBLIC_PASS_LINK_BASE_URL === 'https://808tickets.com',
   'production profile sets EXPO_PUBLIC_PASS_LINK_BASE_URL to production guest web origin',
 );
 

@@ -20,13 +20,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_PASS_LINK_BASE_URL": "https://808tix.vercel.app"
+        "EXPO_PUBLIC_PASS_LINK_BASE_URL": "https://808tickets.com"
       }
     },
     "production": {
       "distribution": "store",
       "env": {
-        "EXPO_PUBLIC_PASS_LINK_BASE_URL": "https://808tix.vercel.app"
+        "EXPO_PUBLIC_PASS_LINK_BASE_URL": "https://808tickets.com"
       }
     }
   },

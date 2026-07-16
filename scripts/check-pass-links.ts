@@ -33,12 +33,12 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  normalizePassLinkBaseUrl('808tix.vercel.app') === 'https://808tix.vercel.app',
+  normalizePassLinkBaseUrl('808tickets.com') === 'https://808tickets.com',
   'prepends https:// when protocol is missing',
 );
 
 assert(
-  normalizePassLinkBaseUrl('https://808tix.vercel.app/') === 'https://808tix.vercel.app',
+  normalizePassLinkBaseUrl('https://808tickets.com/') === 'https://808tickets.com',
   'removes trailing slash from base URL',
 );
 
@@ -47,16 +47,16 @@ assert(
   'preserves http:// for local development',
 );
 
-const productionUrl = buildAbsolutePassLinkUrl('https://808tix.vercel.app', 'abc-123');
+const productionUrl = buildAbsolutePassLinkUrl('https://808tickets.com', 'abc-123');
 
 assert(
-  productionUrl === 'https://808tix.vercel.app/pass/abc-123',
+  productionUrl === 'https://808tickets.com/pass/abc-123',
   'creates absolute /pass/{token} URL',
 );
 
 assert(/^https?:\/\//.test(productionUrl), 'pass URL always includes protocol');
 
-const normalized = normalizePassLinkBaseUrl('808tix.vercel.app')!;
+const normalized = normalizePassLinkBaseUrl('808tickets.com')!;
 const fixedUrl = buildAbsolutePassLinkUrl(normalized, 'tok');
 
 assert(!fixedUrl.includes('/events/'), 'pass URL is not nested under /events/{eventId}');
@@ -64,11 +64,11 @@ assert(!fixedUrl.includes('/events/'), 'pass URL is not nested under /events/{ev
 assert(!fixedUrl.startsWith('/pass/'), 'pass URL is not a root-relative path');
 
 assert(
-  fixedUrl === 'https://808tix.vercel.app/pass/tok',
+  fixedUrl === 'https://808tickets.com/pass/tok',
   'bare host env does not produce route-relative pass links',
 );
 
-const relativeStyle = '808tix.vercel.app/pass/tok';
+const relativeStyle = '808tickets.com/pass/tok';
 const simulatedCurrent =
   'http://localhost:8081/events/11111111-1111-1111-1111-111111111111/passes';
 const resolvedRelative = new URL(relativeStyle, simulatedCurrent).href;
@@ -78,13 +78,13 @@ assert(
   'absolute pass URL differs from path-relative resolution under /events/.../passes',
 );
 
-if (resolvedRelative.includes('/events/') && resolvedRelative.includes('808tix.vercel.app')) {
+if (resolvedRelative.includes('/events/') && resolvedRelative.includes('808tickets.com')) {
   pass('confirmed relative host-only URLs would break under event routes (regression guard)');
 }
 
-const encoded = buildAbsolutePassLinkUrl('https://808tix.vercel.app', 'a b/c');
+const encoded = buildAbsolutePassLinkUrl('https://808tickets.com', 'a b/c');
 
-assert(encoded === 'https://808tix.vercel.app/pass/a%20b%2Fc', 'encodes token in path segment');
+assert(encoded === 'https://808tickets.com/pass/a%20b%2Fc', 'encodes token in path segment');
 
 assert(
   buildPassRoutePath('abc-123') === '/pass/abc-123',
@@ -112,7 +112,7 @@ assert(
 );
 
 assert(
-  !passRowSource.includes('808tix.vercel.app'),
+  !passRowSource.includes('808tickets.com'),
   'View Guest Pass row does not hardcode production pass origin',
 );
 

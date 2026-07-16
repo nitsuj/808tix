@@ -27,24 +27,29 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(
-  resolveAuthEmailRedirectOriginFromSources('https://808tix.vercel.app', null) ===
-    'https://808tix.vercel.app',
+  resolveAuthEmailRedirectOriginFromSources('https://808tickets.com', null) ===
+    'https://808tickets.com',
   'web origin used when present',
 );
 
 assert(
-  resolveAuthEmailRedirectOriginFromSources(null, '808tix.vercel.app') === 'https://808tix.vercel.app',
+  resolveAuthEmailRedirectOriginFromSources(null, '808tickets.com') === 'https://808tickets.com',
   'env fallback prepends https',
 );
 
 assert(
-  resolveAuthEmailRedirectOriginFromSources('http://localhost:8081', '808tix.vercel.app') ===
+  resolveAuthEmailRedirectOriginFromSources('http://localhost:8081', '808tickets.com') ===
     'http://localhost:8081',
   'web origin wins over env for local dev',
 );
 
 assert(
-  buildAuthEmailRedirectUrl('https://808tix.vercel.app') === 'https://808tix.vercel.app/',
+  resolveAuthEmailRedirectOriginFromSources(null, null) === 'https://808tickets.com',
+  'production fallback when no web origin or env',
+);
+
+assert(
+  buildAuthEmailRedirectUrl('https://808tickets.com') === 'https://808tickets.com/',
   'redirect URL ends with slash',
 );
 
