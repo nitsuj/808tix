@@ -6,10 +6,15 @@ import { platformViewShadow } from '@/theme/platform-styles';
 type GlassCardProps = {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
-export function GlassCard({ children, style }: GlassCardProps) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function GlassCard({ children, style, testID }: GlassCardProps) {
+  return (
+    <View style={[styles.card, style]} testID={testID}>
+      {children}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -50,6 +50,7 @@ const SUMMARY_ROWS: Array<{
   testTitle: string;
   route: string;
   screenshot: string;
+  requiredScreenshot?: boolean;
 }> = [
   {
     testTitle: 'purchase buy page renders checkout UI',
@@ -75,6 +76,30 @@ const SUMMARY_ROWS: Array<{
     testTitle: 'invalid pass shows unavailable state',
     route: '/pass/not-a-real-token',
     screenshot: '05-pass-invalid.png',
+  },
+  {
+    testTitle: 'auth default page shows Forgot password',
+    route: '/',
+    screenshot: '06-auth-default.png',
+    requiredScreenshot: true,
+  },
+  {
+    testTitle: 'forgot password shows reset request UI',
+    route: '/ (Forgot password?)',
+    screenshot: '07-auth-forgot-password.png',
+    requiredScreenshot: true,
+  },
+  {
+    testTitle: 'submitting reset request shows reset-sent message',
+    route: '/ (reset sent)',
+    screenshot: '08-auth-reset-sent.png',
+    requiredScreenshot: true,
+  },
+  {
+    testTitle: 'signup confirmation shows check-email UI',
+    route: '/ (check email)',
+    screenshot: '09-auth-check-email.png',
+    requiredScreenshot: true,
   },
 ];
 
@@ -418,6 +443,7 @@ function readPlaywrightResults(): Map<string, 'passed' | 'failed' | 'skipped' | 
 
 function printSummary(exitCode: number): void {
   const statuses = readPlaywrightResults();
+  const missingRequiredScreenshots: string[] = [];
 
   console.log('\n' + '='.repeat(88));
   console.log('808Tix web QA summary');
@@ -439,6 +465,10 @@ function printSummary(exitCode: number): void {
       displayStatus = 'SKIPPED';
     }
 
+    if (row.requiredScreenshot && !screenshotExists && displayStatus === 'PASSED') {
+      missingRequiredScreenshots.push(row.screenshot);
+    }
+
     console.log(
       `${row.testTitle.padEnd(46)} ${screenshotLabel.padEnd(28)} ${displayStatus.padEnd(8)} ${row.route}`,
     );
@@ -446,6 +476,14 @@ function printSummary(exitCode: number): void {
 
   console.log('='.repeat(88));
   console.log(`Screenshots saved under: ${SCREENSHOT_DIR}`);
+
+  if (missingRequiredScreenshots.length > 0) {
+    console.error('\nFAIL: required auth UI screenshots missing:');
+    for (const name of missingRequiredScreenshots) {
+      console.error(`  - ${join(SCREENSHOT_DIR, name)}`);
+    }
+    process.exitCode = 1;
+  }
 }
 
 function runPlaywright(forwardedArgs: string[]): Promise<number> {
@@ -482,12 +520,15 @@ async function main(): Promise<void> {
   const exitCode = await runPlaywright(forwardedArgs);
   printSummary(exitCode);
 
-  if (exitCode !== 0) {
-    console.error(`\nFAIL: Playwright exited with code ${exitCode}`);
+  const summaryFailed = process.exitCode === 1;
+  const finalCode = exitCode !== 0 || summaryFailed ? exitCode || 1 : 0;
+
+  if (finalCode !== 0) {
+    console.error(`\nFAIL: Playwright exited with code ${exitCode}${summaryFailed ? ' (or required screenshots missing)' : ''}`);
     console.error(
       'If the browser binary is missing, run once: npx playwright install chromium',
     );
-    process.exit(exitCode);
+    process.exit(finalCode);
   }
 
   console.log('\nPASS: web QA completed.');

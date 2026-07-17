@@ -264,6 +264,8 @@ function OrganizerAuthScreen() {
           {!isForgotPassword ? (
             <View style={styles.modeRow}>
               <Pressable
+                accessibilityRole="button"
+                testID="auth-mode-sign-in"
                 onPress={() => switchMode('sign_in')}
                 style={[styles.modeChip, isSignIn && styles.modeChipActive]}>
                 <Text style={[styles.modeChipText, isSignIn && styles.modeChipTextActive]}>
@@ -271,6 +273,8 @@ function OrganizerAuthScreen() {
                 </Text>
               </Pressable>
               <Pressable
+                accessibilityRole="button"
+                testID="auth-mode-create-account"
                 onPress={() => switchMode('create_account')}
                 style={[styles.modeChip, !isSignIn && styles.modeChipActive]}>
                 <Text style={[styles.modeChipText, !isSignIn && styles.modeChipTextActive]}>
@@ -279,14 +283,21 @@ function OrganizerAuthScreen() {
               </Pressable>
             </View>
           ) : (
-            <Pressable onPress={handleBackToSignIn} style={styles.forgotBackHit}>
+            <Pressable
+              accessibilityRole="button"
+              testID="auth-back-to-sign-in"
+              onPress={handleBackToSignIn}
+              style={styles.forgotBackHit}>
               <Text style={styles.forgotBackText}>← Back to Sign In</Text>
             </Pressable>
           )}
 
-          <GlassCard style={styles.formCard}>
+          <GlassCard style={styles.formCard} testID="auth-form-card">
             {isForgotPassword ? (
-              <ThemedText themeColor="textSecondary" style={styles.forgotHint}>
+              <ThemedText
+                testID="auth-forgot-password-hint"
+                themeColor="textSecondary"
+                style={styles.forgotHint}>
                 Enter your organizer email and we will send a reset link.
               </ThemedText>
             ) : null}
@@ -295,6 +306,7 @@ function OrganizerAuthScreen() {
               Email
             </ThemedText>
             <TextInput
+              accessibilityLabel="Email"
               autoCapitalize="none"
               autoComplete="email"
               autoCorrect={false}
@@ -303,6 +315,7 @@ function OrganizerAuthScreen() {
               placeholder="you@venue.com"
               placeholderTextColor={chrome.input.placeholder}
               style={styles.input}
+              testID="auth-email-input"
               textContentType="emailAddress"
               value={email}
               onChangeText={setEmail}
@@ -317,6 +330,7 @@ function OrganizerAuthScreen() {
                   Password
                 </ThemedText>
                 <TextInput
+                  accessibilityLabel="Password"
                   autoCapitalize="none"
                   autoComplete={isSignIn ? 'password' : 'new-password'}
                   editable={!isSubmitting}
@@ -324,6 +338,7 @@ function OrganizerAuthScreen() {
                   placeholderTextColor={chrome.input.placeholder}
                   secureTextEntry
                   style={styles.input}
+                  testID="auth-password-input"
                   textContentType={isSignIn ? 'password' : 'newPassword'}
                   value={password}
                   onChangeText={setPassword}
@@ -334,7 +349,9 @@ function OrganizerAuthScreen() {
 
                 {isSignIn ? (
                   <Pressable
+                    accessibilityLabel="Forgot password?"
                     accessibilityRole="button"
+                    testID="auth-forgot-password"
                     onPress={() => switchMode('forgot_password')}
                     style={styles.forgotLinkHit}>
                     <Text style={styles.forgotLinkText}>Forgot password?</Text>
@@ -347,6 +364,7 @@ function OrganizerAuthScreen() {
                       Confirm Password
                     </ThemedText>
                     <TextInput
+                      accessibilityLabel="Confirm Password"
                       autoCapitalize="none"
                       autoComplete="new-password"
                       editable={!isSubmitting}
@@ -354,6 +372,7 @@ function OrganizerAuthScreen() {
                       placeholderTextColor={chrome.input.placeholder}
                       secureTextEntry
                       style={styles.input}
+                      testID="auth-confirm-password-input"
                       textContentType="newPassword"
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
@@ -369,7 +388,15 @@ function OrganizerAuthScreen() {
             {displayError ? <ThemedText style={styles.errorText}>{displayError}</ThemedText> : null}
 
             <Pressable
+              accessibilityRole="button"
               disabled={isSubmitting}
+              testID={
+                isForgotPassword
+                  ? 'auth-send-reset-link'
+                  : isSignIn
+                    ? 'auth-submit-sign-in'
+                    : 'auth-submit-create-account'
+              }
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed && styles.primaryButtonPressed,
@@ -429,13 +456,17 @@ function PasswordResetSentScreen({
           <Text style={styles.wordmark}>808Tickets</Text>
           <Text style={styles.tagline}>Check your email</Text>
         </View>
-        <GlassCard style={styles.formCard}>
-          <ThemedText style={styles.resetSentTitle}>Reset link sent</ThemedText>
+        <GlassCard style={styles.formCard} testID="auth-reset-sent">
+          <ThemedText style={styles.resetSentTitle} testID="auth-reset-sent-title">
+            Reset link sent
+          </ThemedText>
           <ThemedText themeColor="textSecondary" style={styles.forgotHint}>
             If an account exists for {email}, you will receive a password reset link shortly. Open
             the link on this device to choose a new password.
           </ThemedText>
           <Pressable
+            accessibilityRole="button"
+            testID="auth-reset-sent-back"
             onPress={onBackToSignIn}
             style={({ pressed }) => [
               styles.primaryButton,
@@ -505,11 +536,12 @@ function UpdatePasswordScreen() {
             <Text style={styles.eyebrow}>Password recovery</Text>
           </View>
 
-          <GlassCard style={styles.formCard}>
+          <GlassCard style={styles.formCard} testID="auth-update-password">
             <ThemedText type="smallBold" style={styles.label}>
               New Password
             </ThemedText>
             <TextInput
+              accessibilityLabel="New Password"
               autoCapitalize="none"
               autoComplete="new-password"
               editable={!isSubmitting && !successMessage}
@@ -517,6 +549,7 @@ function UpdatePasswordScreen() {
               placeholderTextColor={chrome.input.placeholder}
               secureTextEntry
               style={styles.input}
+              testID="auth-update-password-input"
               textContentType="newPassword"
               value={password}
               onChangeText={setPassword}
@@ -529,6 +562,7 @@ function UpdatePasswordScreen() {
               Confirm Password
             </ThemedText>
             <TextInput
+              accessibilityLabel="Confirm Password"
               autoCapitalize="none"
               autoComplete="new-password"
               editable={!isSubmitting && !successMessage}
@@ -536,6 +570,7 @@ function UpdatePasswordScreen() {
               placeholderTextColor={chrome.input.placeholder}
               secureTextEntry
               style={styles.input}
+              testID="auth-update-confirm-password-input"
               textContentType="newPassword"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -553,7 +588,9 @@ function UpdatePasswordScreen() {
 
             {!successMessage ? (
               <Pressable
+                accessibilityRole="button"
                 disabled={isSubmitting}
+                testID="auth-submit-update-password"
                 style={({ pressed }) => [
                   styles.primaryButton,
                   pressed && styles.primaryButtonPressed,

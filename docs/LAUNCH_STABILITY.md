@@ -14,13 +14,38 @@ With Confirm Email OFF, Supabase returns a session on signup and skips the confi
 
 Also verify Auth URL allow list includes the app callback (local + `https://808tickets.com` auth callback).
 
+### Resend SMTP (production auth mail)
+
+Auth emails must go through **Resend-backed Supabase Auth SMTP**. Full checklist:
+
+See **`docs/AUTH_EMAIL_RESEND.md`**.
+
+Exact settings:
+
+- Host: `smtp.resend.com`
+- Port: `587`
+- Username: `resend`
+- Password: Resend API key
+- Sender: `808Tickets <tickets@808tickets.com>` (or verified Resend sender)
+- Site URL: `https://808tickets.com`
+- Redirect URLs: `https://808tickets.com/**`, `http://localhost:8081/**`
+
+Inbox delivery is an **external** verification step. App QA proves UI only.
+
 ## Password recovery
 
 Supported in-app:
 
-1. Sign In → **Forgot password?**
+1. Sign In → **Forgot password?** (visible on the default auth page)
 2. Request reset email via `supabase.auth.resetPasswordForEmail` + `resolveAuthEmailRedirectUrl()`
 3. Reset link opens auth callback → password recovery pending → **Update Password** via `supabase.auth.updateUser({ password })`
+
+Browser proof (Playwright `qa:web`):
+
+- `06-auth-default.png` — Forgot password visible
+- `07-auth-forgot-password.png` — reset request UI
+- `08-auth-reset-sent.png` — reset-sent message
+- `09-auth-check-email.png` — signup check-email UI
 
 ## Create Event date / time pickers
 

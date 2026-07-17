@@ -68,8 +68,10 @@ export function SignUpCheckEmailScreen({
           <Text style={styles.eyebrow}>Almost there</Text>
         </View>
 
-        <GlassCard style={styles.card}>
-          <Text style={styles.title}>Check your email</Text>
+        <GlassCard style={styles.card} testID="auth-check-email">
+          <Text style={styles.title} testID="auth-check-email-title">
+            Check your email
+          </Text>
           <ThemedText themeColor="textSecondary" style={styles.body}>
             We sent a confirmation link to{' '}
             <ThemedText type="defaultSemiBold" style={styles.emailInline}>
