@@ -222,6 +222,7 @@ Then start Expo with the printed commands, open a ticket on your phone, and scan
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke
 - `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
 - `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
+- `npm run seed:email-smoke-order` — fresh local paid order token for email smoke (no Stripe, no outbound row)
 - `npm run smoke:email:send` — real Resend order confirmation to `EMAIL_OVERRIDE_TO` (see [STRIPE_PAYMENTS.md](../docs/STRIPE_PAYMENTS.md))
 - `npm run rehearsal:local` — LAN URLs + QA scanner login for phone/device testing
 

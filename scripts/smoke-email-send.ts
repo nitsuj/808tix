@@ -318,19 +318,33 @@ function parseBoxTable(output: string): { columns: string[]; rows: string[][] } 
 }
 
 function parseJsonRows(output: string): Record<string, unknown>[] {
-  const start = output.indexOf('{');
-  if (start === -1) {
-    return [];
+  const balanced = extractBalancedJson(output);
+  if (!balanced || !balanced.includes('"rows"')) {
+    const start = output.indexOf('{');
+    if (start === -1) {
+      return [];
+    }
+
+    const end = output.indexOf('\nA new version', start);
+    const jsonText = end === -1 ? output.slice(start) : output.slice(start, end);
+    if (!jsonText.includes('"rows"')) {
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(jsonText) as { rows?: Record<string, unknown>[] };
+      return parsed.rows ?? [];
+    } catch {
+      return [];
+    }
   }
 
-  const end = output.indexOf('\nA new version', start);
-  const jsonText = end === -1 ? output.slice(start) : output.slice(start, end);
-  if (!jsonText.includes('"rows"')) {
+  try {
+    const parsed = JSON.parse(balanced) as { rows?: Record<string, unknown>[] };
+    return parsed.rows ?? [];
+  } catch {
     return [];
   }
-
-  const parsed = JSON.parse(jsonText) as { rows?: Record<string, unknown>[] };
-  return parsed.rows ?? [];
 }
 
 function extractBalancedJson(text: string): string | null {
@@ -395,6 +409,19 @@ function parseJsonValue<T>(rawValue: string): T {
   }
 }
 
+function extractSingleCellFromBoxTable(output: string, columnName: string): string | null {
+  const { columns, rows } = parseBoxTable(output);
+  const columnIndex = columns.findIndex((column) => column === columnName);
+  if (columnIndex === -1 || rows.length === 0) {
+    return null;
+  }
+  return rows[0][columnIndex] ?? null;
+}
+
+/**
+ * Parse a single `result` column from `supabase db query` output.
+ * Handles CLI JSON `{ rows: [...] }`, box tables, and SQL null / 'null' cells.
+ */
 function extractJsonCell<T>(output: string, columnName: string): T {
   const jsonRows = parseJsonRows(output);
   if (jsonRows.length > 0 && columnName in jsonRows[0]) {
@@ -411,27 +438,106 @@ function extractJsonCell<T>(output: string, columnName: string): T {
     return value as T;
   }
 
-  const { columns, rows } = parseBoxTable(output);
-  const columnIndex = columns.findIndex((column) => column === columnName);
-  if (columnIndex >= 0 && rows.length > 0) {
-    const cell = rows[0][columnIndex] ?? '';
-    if (cell !== '' && cell !== 'null') {
-      return parseJsonValue<T>(cell);
+  const cell = extractSingleCellFromBoxTable(output, columnName);
+  // Box-table SQL null / coalesce(..., 'null') must return null — do not fall through.
+  if (cell !== null) {
+    if (cell === '' || cell === 'null') {
+      return null as T;
+    }
+    return parseJsonValue<T>(cell);
+  }
+
+  // Zero-row box/json tables for queries that return no rows at all.
+  if (jsonRows.length === 0) {
+    const { columns, rows } = parseBoxTable(output);
+    if (columns.includes(columnName) && rows.length === 0) {
+      return null as T;
     }
   }
 
   const balanced = extractBalancedJson(output);
   if (balanced) {
-    return JSON.parse(balanced) as T;
+    try {
+      const parsed = JSON.parse(balanced) as { rows?: Record<string, unknown>[] } | T;
+      if (
+        parsed &&
+        typeof parsed === 'object' &&
+        'rows' in parsed &&
+        Array.isArray(parsed.rows) &&
+        parsed.rows.length > 0 &&
+        columnName in parsed.rows[0]
+      ) {
+        const value = parsed.rows[0][columnName];
+        if (value === null || value === undefined || value === '' || value === 'null') {
+          return null as T;
+        }
+        if (typeof value === 'string') {
+          return parseJsonValue<T>(value);
+        }
+        return value as T;
+      }
+    } catch {
+      // Fall through to error below.
+    }
   }
 
   throw new Error(`Could not parse ${columnName} from supabase db query output`);
 }
 
+const SUPABASE_CLI_NULL_JSON_SAMPLE = `Connecting to local database...
+{
+  "boundary": "test-boundary",
+  "rows": [
+    {
+      "result": "null"
+    }
+  ],
+  "warning": "untrusted data"
+}
+A new version of Supabase CLI is available: v2.109.0
+`;
+
+const SUPABASE_CLI_NULL_BOX_SAMPLE = `Connecting to local database...
+┌────────┐
+│ result │
+├────────┤
+│ null   │
+└────────┘
+A new version of Supabase CLI is available: v2.109.0
+`;
+
+const SUPABASE_CLI_OBJECT_BOX_SAMPLE = `Connecting to local database...
+┌────────────────────────────────────┐
+│               result               │
+├────────────────────────────────────┤
+│ {"status" : "sent", "provider" : "resend"} │
+└────────────────────────────────────┘
+`;
+
+function runParserSelfTest(): void {
+  const nullFromJson = extractJsonCell<null>(SUPABASE_CLI_NULL_JSON_SAMPLE, 'result');
+  if (nullFromJson !== null) {
+    throw new Error('Parser self-test failed: JSON mode null cell must return null');
+  }
+
+  const nullFromBox = extractJsonCell<null>(SUPABASE_CLI_NULL_BOX_SAMPLE, 'result');
+  if (nullFromBox !== null) {
+    throw new Error('Parser self-test failed: box-table null cell must return null');
+  }
+
+  const objectFromBox = extractJsonCell<{ status: string; provider: string }>(
+    SUPABASE_CLI_OBJECT_BOX_SAMPLE,
+    'result',
+  );
+  if (objectFromBox?.status !== 'sent' || objectFromBox?.provider !== 'resend') {
+    throw new Error('Parser self-test failed: box-table object cell');
+  }
+}
+
 async function queryResultJson<T>(sql: string): Promise<T> {
   const { stdout, stderr, exitCode } = await runSupabaseQuery(sql);
 
-  if (exitCode !== 0 || (/^ERROR:/im.test(stdout) && !stdout.includes('│'))) {
+  if (exitCode !== 0 || (/^ERROR:/im.test(stdout) && !stdout.includes('│') && !stdout.includes('"rows"'))) {
     throw new Error(stderr.trim() || stdout.trim() || 'supabase db query failed');
   }
 
@@ -646,6 +752,8 @@ async function main(): Promise<void> {
   log('808Tickets real email send smoke (Resend)\n');
   log('This command does not run Stripe Checkout.');
   log('It sends a real order confirmation for an existing paid order token.\n');
+
+  runParserSelfTest();
 
   const orderToken = process.env.EMAIL_SMOKE_ORDER_TOKEN?.trim();
   const emailOverrideTo = process.env.EMAIL_OVERRIDE_TO?.trim();

@@ -97,6 +97,7 @@
     "smoke:payments:preview": "tsx scripts/smoke-payments-preview.ts",
     "smoke:checkin": "tsx scripts/smoke-checkin.ts",
     "smoke:email:send": "tsx scripts/smoke-email-send.ts",
+    "seed:email-smoke-order": "tsx scripts/seed-email-smoke-order.ts",
     "qa:env": "tsx scripts/print-local-expo-env.ts",
     "qa:web": "tsx scripts/qa-web.ts",
     "qa:purchase": "tsx scripts/qa-web.ts -- --grep purchase",

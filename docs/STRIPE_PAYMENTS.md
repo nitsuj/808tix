@@ -445,7 +445,14 @@ Behavior:
 
 **Preview vs send:** `smoke:payments:preview` proves webhook → preview row only. `smoke:email:send` proves real Resend delivery to `EMAIL_OVERRIDE_TO`.
 
-**Idempotency:** If the same paid order already got an order confirmation (including preview), use a **fresh** paid order token (new Stripe smoke or `qa:seed` paid token that has never been emailed). The smoke does **not** delete `outbound_messages` or bypass idempotency.
+**Idempotency:** If the same paid order already got an order confirmation (including preview), use a **fresh** paid order token. Seed one locally (no Stripe, no outbound row):
+
+```bash
+npm run seed:email-smoke-order
+# copy the printed EMAIL_SMOKE_ORDER_TOKEN=... line, then smoke:email:send
+```
+
+The smoke does **not** delete `outbound_messages` or bypass idempotency.
 
 Verify the table locally after `supabase db reset`:
 
