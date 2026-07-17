@@ -29,7 +29,11 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(source.includes('EventDateFormField'), 'Edit Event uses EventDateFormField');
-assert(source.includes('EventScreenBackground'), 'Edit Event uses EventScreenBackground');
+assert(source.includes('EventStartTimeField'), 'Edit Event uses EventStartTimeField');
+assert(
+  source.includes('12-hour AM/PM') || source.includes('12-hour'),
+  'Edit Event start time hint expects 12-hour AM/PM',
+);assert(source.includes('EventScreenBackground'), 'Edit Event uses EventScreenBackground');
 assert(source.includes('OrganizerMobileViewport'), 'Edit Event uses OrganizerMobileViewport');
 assert(
   source.match(/OrganizerMobileViewport[\s\S]*background=\{[\s\S]*EventScreenBackground/),

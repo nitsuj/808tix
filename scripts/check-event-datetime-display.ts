@@ -10,6 +10,7 @@ import {
   formatEventDateTimeLong,
   formatEventDateTimeTicketUpper,
 } from '../src/lib/event-datetime-display';
+import { formatHhMmTo12HourDisplay } from '../src/lib/event-time-input';
 
 let failures = 0;
 
@@ -39,6 +40,10 @@ assert(
   formatEventDateTimeLong(EVENT_DATE, '19:00') === 'Jun 10, 2026 · 7:00 PM',
   'organizer datetime accepts HH:MM start time',
 );
+
+assert(formatHhMmTo12HourDisplay('19:00') === '7:00 PM', 'HH:MM formats as 12-hour AM/PM');
+assert(formatHhMmTo12HourDisplay('00:30') === '12:30 AM', 'midnight formats as 12-hour AM');
+assert(formatHhMmTo12HourDisplay('bad') === null, 'invalid time returns null for 12-hour display');
 
 assert(
   (() => {

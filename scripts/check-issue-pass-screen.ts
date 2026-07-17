@@ -38,7 +38,16 @@ assert(source.includes('passScreen.credential'), 'issue pass uses credential com
 assert(source.includes('canIssuePassesForEvent'), 'issue pass draft/live guard preserved');
 assert(source.includes('issuePass({'), 'issue pass still calls issuePass mutation');
 assert(source.includes('validateIssuePassForm'), 'issue pass validation rules unchanged');
-
+assert(source.includes('sendPassSms'), 'issue pass wires optional SMS send path');
+assert(
+  source.includes('Automatic ticket email is not available yet') &&
+    source.includes('Share Ticket'),
+  'issue pass copy is explicit that manual issues use Share Ticket, not automatic email',
+);
+assert(
+  !source.includes('send-order-confirmation') && !source.includes('sendOrderConfirmation'),
+  'issue pass does not call paid order confirmation email',
+);
 if (failures > 0) {
   console.error(`\ncheck-issue-pass-screen: ${failures} failure(s)`);
   process.exit(1);

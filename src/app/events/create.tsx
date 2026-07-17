@@ -293,9 +293,8 @@ export default function CreateEventScreen() {
                   />
                   <EventStartTimeField
                     error={fieldErrors.startTime}
-                    hint="24-hour HH:MM (e.g. 21:00 or 1900)"
+                    hint="Tap to choose a time (12-hour AM/PM)"
                     label="Start Time"
-                    placeholder="21:00"
                     value={startTime}
                     onChange={setStartTime}
                   />

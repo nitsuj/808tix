@@ -72,6 +72,17 @@ assert(
   'isValidDateInput is not duplicated in event-form',
 );
 
+const dateFieldSource = readFileSync(
+  join(ROOT, 'src/components/organizer/event-date-form-field.tsx'),
+  'utf8',
+);
+assert(
+  dateFieldSource.includes('setShowPicker') &&
+    dateFieldSource.includes('onPress={() => setShowPicker(true)}') &&
+    dateFieldSource.includes('openWebDatePicker'),
+  'EventDateFormField has native and web picker open triggers',
+);
+
 if (failures > 0) {
   console.error(`\ncheck-event-date: ${failures} failure(s)`);
   process.exit(1);

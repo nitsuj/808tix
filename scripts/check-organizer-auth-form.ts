@@ -4,9 +4,11 @@
  */
 import {
   MIN_PASSWORD_LENGTH,
+  validatePasswordResetRequest,
   validateResendConfirmationEmail,
   validateSignInForm,
   validateSignUpForm,
+  validateUpdatePasswordForm,
 } from '../src/lib/organizer-auth-form';
 
 let failures = 0;
@@ -81,6 +83,32 @@ assert(validateResendConfirmationEmail('') === 'Email is required.', 'resend req
 assert(
   validateResendConfirmationEmail('organizer@venue.com') === null,
   'valid resend email passes',
+);
+
+assert(validatePasswordResetRequest('') === 'Email is required.', 'password reset requires email');
+
+assert(
+  validatePasswordResetRequest('organizer@venue.com') === null,
+  'valid password reset email passes',
+);
+
+assert(
+  validateUpdatePasswordForm({ password: 'short', confirmPassword: 'short' }).password ===
+    `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
+  'short update password blocked',
+);
+
+assert(
+  validateUpdatePasswordForm({ password: 'password123', confirmPassword: 'password124' })
+    .confirmPassword === 'Passwords do not match.',
+  'mismatched update passwords blocked',
+);
+
+assert(
+  Object.keys(
+    validateUpdatePasswordForm({ password: 'password123', confirmPassword: 'password123' }),
+  ).length === 0,
+  'valid update password passes',
 );
 
 if (failures > 0) {

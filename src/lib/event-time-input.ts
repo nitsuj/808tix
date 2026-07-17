@@ -1,4 +1,4 @@
-/** Strip non-digits for time entry (never mutate formatted strings in place). */
+/** Strip non-digits for legacy time entry (never mutate formatted strings in place). */
 export function stripTimeInputDigits(input: string): string {
   return input.replace(/\D/g, '').slice(0, 4);
 }
@@ -46,6 +46,17 @@ export function normalizeTimeDisplayFromDigits(digits: string): string | null {
 
 /** Strip digits from any input, then produce a fresh HH:MM (or null if invalid). */
 export function normalizeTimeDisplayFromInput(input: string): string | null {
+  const trimmed = input.trim();
+
+  if (/^\d{2}:\d{2}$/.test(trimmed)) {
+    const hours = Number(trimmed.slice(0, 2));
+    const minutes = Number(trimmed.slice(3, 5));
+    if (hours <= 23 && minutes <= 59) {
+      return trimmed;
+    }
+    return null;
+  }
+
   const digits = stripTimeInputDigits(input);
 
   if (!digits) {
@@ -64,4 +75,37 @@ export function normalizeTimeFieldOnBlur(input: string): string {
   }
 
   return stripTimeInputDigits(input);
+}
+
+/** Parse stored HH:MM (24-hour) into a Date for time pickers. */
+export function parseHhMmToLocalDate(value: string): Date | null {
+  const normalized = normalizeTimeDisplayFromInput(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const hours = Number(normalized.slice(0, 2));
+  const minutes = Number(normalized.slice(3, 5));
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
+/** Format a Date as HH:MM (24-hour) for form storage. */
+export function formatDateToHhMm(date: Date): string {
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+}
+
+/** Display HH:MM as 12-hour AM/PM (e.g. 7:00 PM). */
+export function formatHhMmTo12HourDisplay(value: string): string | null {
+  const parsed = parseHhMmToLocalDate(value);
+  if (!parsed) {
+    return null;
+  }
+
+  return parsed.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
 }

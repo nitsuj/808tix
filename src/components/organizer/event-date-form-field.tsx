@@ -1,5 +1,5 @@
 import DateTimePicker, { type DateTimePickerEvent } from '@react-native-community/datetimepicker';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/themed-text';
@@ -36,6 +36,7 @@ export function EventDateFormField({
   onChange,
 }: EventDateFormFieldProps) {
   const [showPicker, setShowPicker] = useState(false);
+  const webInputRef = useRef<HTMLInputElement | null>(null);
 
   const pickerDate = useMemo(() => {
     return parseYyyyMmDdToLocalDate(value) ?? new Date();
@@ -55,6 +56,29 @@ export function EventDateFormField({
     onChange(formatDateToYyyyMmDd(selectedDate));
   }
 
+  function openWebDatePicker() {
+    if (disabled) {
+      return;
+    }
+
+    const input = webInputRef.current;
+    if (!input) {
+      return;
+    }
+
+    if (typeof input.showPicker === 'function') {
+      try {
+        input.showPicker();
+        return;
+      } catch {
+        // Fall through to click/focus.
+      }
+    }
+
+    input.focus();
+    input.click();
+  }
+
   if (Platform.OS === 'web') {
     return (
       <View style={eventFormStyles.field}>
@@ -62,21 +86,30 @@ export function EventDateFormField({
         <ThemedText themeColor="textSecondary" style={eventFormStyles.hint}>
           Tap to choose a date
         </ThemedText>
-        <View
-          style={[
-            styles.webInputWrap,
+        <Pressable
+          accessibilityRole="button"
+          disabled={disabled}
+          onPress={openWebDatePicker}
+          style={({ pressed }) => [
+            styles.nativeTrigger,
             error ? eventFormStyles.inputError : null,
+            pressed && !disabled && styles.pressed,
             disabled && styles.disabled,
           ]}>
+          <ThemedText style={[styles.nativeTriggerText, !value.trim() && styles.placeholderText]}>
+            {displayValue}
+          </ThemedText>
           <input
+            ref={webInputRef}
+            aria-label={label}
             disabled={disabled}
             min={getTodayYyyyMmDdLocal()}
             type="date"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            style={styles.webInput as never}
+            style={styles.webHiddenInput as never}
           />
-        </View>
+        </Pressable>
         {error ? <ThemedText style={eventFormStyles.errorText}>{error}</ThemedText> : null}
       </View>
     );
@@ -86,9 +119,10 @@ export function EventDateFormField({
     <View style={eventFormStyles.field}>
       <ThemedText style={eventFormStyles.label}>{label}</ThemedText>
       <ThemedText themeColor="textSecondary" style={eventFormStyles.hint}>
-        Stored as YYYY-MM-DD
+        Tap to choose a date
       </ThemedText>
       <Pressable
+        accessibilityRole="button"
         disabled={disabled}
         onPress={() => setShowPicker(true)}
         style={({ pressed }) => [
@@ -152,21 +186,17 @@ export function EventDateFormField({
 }
 
 const styles = StyleSheet.create({
-  webInputWrap: {
-    backgroundColor: formField.inputBackground,
-    borderColor: formField.inputBorder,
-    borderRadius: 12,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  webInput: {
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: textTokens.primary,
-    fontSize: 16,
-    fontWeight: '500',
-    padding: spacing.three,
+  webHiddenInput: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
     width: '100%',
+    height: '100%',
+    opacity: 0.01,
+    border: 'none',
+    padding: 0,
+    margin: 0,
+    cursor: 'pointer',
   },
   nativeTrigger: {
     backgroundColor: formField.inputBackground,
@@ -175,6 +205,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: spacing.three,
     paddingVertical: spacing.three,
+    position: 'relative',
+    overflow: 'hidden',
   },
   nativeTriggerText: {
     color: textTokens.primary,

@@ -45,6 +45,37 @@ export function validateResendConfirmationEmail(email: string): string | null {
   return null;
 }
 
+export function validatePasswordResetRequest(email: string): string | null {
+  return validateResendConfirmationEmail(email);
+}
+
+export type UpdatePasswordFormValues = {
+  password: string;
+  confirmPassword: string;
+};
+
+export type UpdatePasswordFieldErrors = Partial<Record<keyof UpdatePasswordFormValues, string>>;
+
+export function validateUpdatePasswordForm(
+  values: UpdatePasswordFormValues,
+): UpdatePasswordFieldErrors {
+  const errors: UpdatePasswordFieldErrors = {};
+
+  if (!values.password) {
+    errors.password = 'Password is required.';
+  } else if (values.password.length < MIN_PASSWORD_LENGTH) {
+    errors.password = `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`;
+  }
+
+  if (!values.confirmPassword) {
+    errors.confirmPassword = 'Confirm your password.';
+  } else if (values.password !== values.confirmPassword) {
+    errors.confirmPassword = 'Passwords do not match.';
+  }
+
+  return errors;
+}
+
 export function validateSignUpForm(values: SignUpFormValues): OrganizerAuthFieldErrors {
   const errors: OrganizerAuthFieldErrors = {};
 

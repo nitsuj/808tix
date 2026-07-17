@@ -31,6 +31,14 @@ type ResendResult = {
   error: AuthError | null;
 };
 
+type PasswordResetRequestResult = {
+  error: AuthError | null;
+};
+
+type UpdatePasswordResult = {
+  error: AuthError | null;
+};
+
 type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
@@ -40,10 +48,14 @@ type AuthContextValue = {
   isAuthenticated: boolean;
   profileMissing: boolean;
   accountJustConfirmed: boolean;
+  passwordRecoveryPending: boolean;
   authCallbackError: string | null;
   signInWithEmail: (email: string, password: string) => Promise<SignInResult>;
   signUpWithEmail: (email: string, password: string) => Promise<SignUpResult>;
   resendSignUpConfirmation: (email: string) => Promise<ResendResult>;
+  requestPasswordReset: (email: string) => Promise<PasswordResetRequestResult>;
+  updatePassword: (password: string) => Promise<UpdatePasswordResult>;
+  clearPasswordRecoveryPending: () => void;
   ensureOrganizerProfile: () => Promise<Profile | null>;
   reloadProfile: () => Promise<Profile | null>;
   signOut: () => Promise<void>;
@@ -111,6 +123,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [isAuthCallbackProcessing, setIsAuthCallbackProcessing] = useState(false);
   const [accountJustConfirmed, setAccountJustConfirmed] = useState(false);
+  const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
   const [authCallbackError, setAuthCallbackError] = useState<string | null>(null);
 
   const resetToSignedOutState = useCallback(() => {
@@ -120,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsProfileLoading(false);
     setIsAuthCallbackProcessing(false);
     setAccountJustConfirmed(false);
+    setPasswordRecoveryPending(false);
   }, []);
 
   const recoverFromStaleRefreshToken = useCallback(async () => {
@@ -166,6 +180,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           callbackResult.intent?.isSignupConfirmation
         ) {
           setAccountJustConfirmed(true);
+        }
+
+        if (callbackResult.sessionEstablished && callbackResult.intent?.isRecovery) {
+          setPasswordRecoveryPending(true);
         }
       }
 
@@ -217,11 +235,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(nextSession);
       setIsLoading(false);
 
+      if (event === 'PASSWORD_RECOVERY') {
+        setPasswordRecoveryPending(true);
+      }
+
       if (event === 'SIGNED_IN' && nextSession) {
         const snapshot = readAuthCallbackSnapshot();
 
         if (snapshot?.intent.isSignupConfirmation) {
           setAccountJustConfirmed(true);
+        }
+
+        if (snapshot?.intent.isRecovery) {
+          setPasswordRecoveryPending(true);
         }
       }
 
@@ -321,6 +347,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   }, []);
 
+  const requestPasswordReset = useCallback(async (email: string) => {
+    setAuthCallbackError(null);
+    const redirectTo = resolveAuthEmailRedirectUrl();
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo,
+    });
+
+    return { error };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const { error } = await supabase.auth.updateUser({ password });
+
+    if (!error) {
+      setPasswordRecoveryPending(false);
+    }
+
+    return { error };
+  }, []);
+
+  const clearPasswordRecoveryPending = useCallback(() => {
+    setPasswordRecoveryPending(false);
+  }, []);
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -337,6 +388,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsProfileLoading(false);
     setIsLoading(false);
     setAccountJustConfirmed(false);
+    setPasswordRecoveryPending(false);
     setAuthCallbackError(null);
   }, []);
 
@@ -375,10 +427,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: session !== null,
       profileMissing,
       accountJustConfirmed,
+      passwordRecoveryPending,
       authCallbackError,
       signInWithEmail,
       signUpWithEmail,
       resendSignUpConfirmation,
+      requestPasswordReset,
+      updatePassword,
+      clearPasswordRecoveryPending,
       ensureOrganizerProfile,
       reloadProfile,
       signOut,
@@ -394,10 +450,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthCallbackProcessing,
       profileMissing,
       accountJustConfirmed,
+      passwordRecoveryPending,
       authCallbackError,
       signInWithEmail,
       signUpWithEmail,
       resendSignUpConfirmation,
+      requestPasswordReset,
+      updatePassword,
+      clearPasswordRecoveryPending,
       ensureOrganizerProfile,
       reloadProfile,
       signOut,

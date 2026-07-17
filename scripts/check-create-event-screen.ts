@@ -31,7 +31,51 @@ assert(source.includes('EventArtworkUploadField'), 'Create Event imports EventAr
 assert(source.includes('uploadEventArtwork'), 'Create Event uploads artwork via shared helper');
 assert(source.includes('persistEventArtworkUrl'), 'Create Event persists image_url after upload');
 assert(source.includes('EventDateFormField'), 'Create Event uses EventDateFormField date picker');
+assert(source.includes('EventStartTimeField'), 'Create Event uses EventStartTimeField time picker');
+assert(
+  source.includes('12-hour AM/PM') || source.includes('12-hour'),
+  'Create Event start time hint expects 12-hour AM/PM',
+);
 
+const dateFieldSource = readFileSync(
+  join(process.cwd(), 'src/components/organizer/event-date-form-field.tsx'),
+  'utf8',
+);
+const timeFieldSource = readFileSync(
+  join(process.cwd(), 'src/components/organizer/event-start-time-field.tsx'),
+  'utf8',
+);
+
+assert(
+  dateFieldSource.includes('accessibilityRole="button"') &&
+    dateFieldSource.includes('Tap to choose a date') &&
+    dateFieldSource.includes('type="date"') &&
+    dateFieldSource.includes('DateTimePicker') &&
+    dateFieldSource.includes('mode="date"'),
+  'EventDateFormField exposes date picker trigger and DateTimePicker',
+);
+
+assert(
+  dateFieldSource.includes('formatEventDateForDisplay') &&
+    !dateFieldSource.includes('keyboardType="number-pad"'),
+  'EventDateFormField uses display formatter, not number-pad manual date entry',
+);
+
+assert(
+  timeFieldSource.includes('accessibilityRole="button"') &&
+    timeFieldSource.includes('DateTimePicker') &&
+    timeFieldSource.includes('mode="time"') &&
+    timeFieldSource.includes('is24Hour={false}') &&
+    timeFieldSource.includes('formatHhMmTo12HourDisplay') &&
+    timeFieldSource.includes('type="time"'),
+  'EventStartTimeField exposes 12-hour time picker (not 24-hour-only manual input)',
+);
+
+assert(
+  !timeFieldSource.includes('keyboardType="number-pad"') &&
+    !timeFieldSource.includes('normalizeTimeDisplayFromDigits'),
+  'EventStartTimeField is not a digit-only 24-hour TextInput',
+);
 assert(
   source.includes('EventScreenBackground'),
   'Create Event uses full-bleed artwork background like Event Detail',
