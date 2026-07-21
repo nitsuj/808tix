@@ -442,7 +442,7 @@ function IssuePassFormView({
                   />
                   <EventFormField
                     error={fieldErrors.guestEmail}
-                    hint="Optional. Automatic ticket email is not available yet — use Share Ticket to send the link."
+                    hint="Optional. Share Ticket opens your device share sheet so you can text or email the ticket link."
                     keyboardType="default"
                     label="Guest Email"
                     placeholder="alex@example.com"
@@ -530,7 +530,7 @@ function IssuePassSuccessView({
                 {canSendSms
                   ? 'Send the ticket by SMS, or Share Ticket to send the link another way.'
                   : createdPass.guest_email
-                    ? 'Automatic ticket email is not available yet. Use Share Ticket to send the link (Mail, Messages, etc.).'
+                    ? 'Share Ticket opens your device share sheet so you can text or email the ticket link.'
                     : 'Share the ticket link with your guest.'}
               </ThemedText>
 

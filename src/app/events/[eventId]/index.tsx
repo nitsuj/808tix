@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { EventTicketTypesPanel } from '@/components/organizer/event-ticket-types-panel';
 import { MissingProfileScreen } from '@/components/organizer/missing-profile-screen';
 import { ThemedText } from '@/components/themed-text';
 import { EventScreenBackground } from '@/components/ui/event-screen-background';
@@ -280,6 +281,8 @@ function EventDetailContent({
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${checkInRate}%` }]} />
               </View>
+
+              <EventTicketTypesPanel eventId={event.id} onChanged={() => void onRefetch()} />
 
               {publishError ? <Text style={styles.publishErrorText}>{publishError}</Text> : null}
 

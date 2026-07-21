@@ -72,11 +72,20 @@ Browser proof (Playwright `qa:web`):
 
 | Channel | Launch behavior |
 |---------|-----------------|
-| Email | **Not automatic.** Guest email is stored for contact. Copy tells organizers to use **Share Ticket**. Paid order confirmation email is separate and unchanged. |
+| Email | **Not automatic.** Guest email is stored for contact. UI copy: Share Ticket opens the device share sheet so organizers can text or email the ticket link. Paid order confirmation email is separate and unchanged. |
 | SMS | Optional after issue when a phone is present. Calls Edge Function `send-pass-sms` (Twilio). See `docs/SMS_DELIVERY.md`. |
 | Share link | Primary delivery path for manual issues. |
 
 **Launch blocker note:** Do not claim automatic ticket email for manual Issue Ticket until a dedicated send path exists. Share + optional SMS is the designed launch path.
+
+## Consumer buyer path (P0)
+
+- Unauthenticated `/` shows the public homepage with **Browse Events** / upcoming published paid events.
+- Organizer auth lives at `/login` (Create Event / Organizer Login).
+- Buy route: `/events/{eventId}/buy` (optional `ticket_type_id`) shows ticket types, price, quantity, and Continue to payment.
+- Organizers manage ticket type name/price/capacity on the event detail screen.
+
+QA screenshots: `10-public-home-events.png` … `14-manual-ticket-share-copy.png` under `qa/artifacts/screenshots/latest/`.
 
 ## SMS readiness
 

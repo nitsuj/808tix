@@ -32,7 +32,7 @@ async function clearAuthStorage(page: Page): Promise<void> {
 }
 
 async function waitForAuthDefault(page: Page): Promise<void> {
-  await page.goto('/', { waitUntil: 'networkidle', timeout: 60_000 });
+  await page.goto('/login', { waitUntil: 'networkidle', timeout: 60_000 });
   await expect(page.getByTestId('auth-forgot-password')).toBeVisible({ timeout: 45_000 });
   await expect(page.getByText('Organizer access')).toBeVisible();
   await expect(page.getByTestId('auth-mode-sign-in')).toBeVisible();

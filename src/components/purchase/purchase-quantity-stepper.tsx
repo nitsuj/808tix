@@ -8,6 +8,7 @@ type PurchaseQuantityStepperProps = {
   max: number;
   disabled?: boolean;
   onChange: (value: number) => void;
+  testID?: string;
 };
 
 export function PurchaseQuantityStepper({
@@ -16,12 +17,13 @@ export function PurchaseQuantityStepper({
   max,
   disabled = false,
   onChange,
+  testID,
 }: PurchaseQuantityStepperProps) {
   const canDecrease = !disabled && value > min;
   const canIncrease = !disabled && value < max;
 
   return (
-    <View style={styles.root}>
+    <View style={styles.root} testID={testID}>
       <Text style={styles.label}>How many?</Text>
       <View style={styles.controls}>
         <Pressable

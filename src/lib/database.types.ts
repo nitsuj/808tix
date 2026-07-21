@@ -478,6 +478,10 @@ export type Database = {
         };
         Returns: GetPublicEventPurchaseOptionsResult | null;
       };
+      list_public_upcoming_events: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

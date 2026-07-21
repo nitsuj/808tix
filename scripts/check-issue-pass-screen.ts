@@ -40,9 +40,14 @@ assert(source.includes('issuePass({'), 'issue pass still calls issuePass mutatio
 assert(source.includes('validateIssuePassForm'), 'issue pass validation rules unchanged');
 assert(source.includes('sendPassSms'), 'issue pass wires optional SMS send path');
 assert(
-  source.includes('Automatic ticket email is not available yet') &&
-    source.includes('Share Ticket'),
-  'issue pass copy is explicit that manual issues use Share Ticket, not automatic email',
+  source.includes(
+    'Share Ticket opens your device share sheet so you can text or email the ticket link.',
+  ) && source.includes('Share Ticket'),
+  'issue pass copy explains Share Ticket opens the device share sheet',
+);
+assert(
+  !source.includes('Automatic ticket email is not available yet'),
+  'issue pass does not use the old automatic-email unavailable copy',
 );
 assert(
   !source.includes('send-order-confirmation') && !source.includes('sendOrderConfirmation'),

@@ -33,6 +33,11 @@ function assert(condition: boolean, message: string) {
 
 const authContext = readFileSync(join(ROOT, 'src/contexts/auth-context.tsx'), 'utf8');
 const indexSource = readFileSync(join(ROOT, 'src/app/index.tsx'), 'utf8');
+const loginRoute = readFileSync(join(ROOT, 'src/app/login.tsx'), 'utf8');
+const authScreen = readFileSync(
+  join(ROOT, 'src/components/organizer/organizer-auth-screen.tsx'),
+  'utf8',
+);
 const checkEmailSource = readFileSync(
   join(ROOT, 'src/components/organizer/signup-check-email-screen.tsx'),
   'utf8',
@@ -61,14 +66,14 @@ assert(
 );
 
 assert(
-  indexSource.includes('SignUpCheckEmailScreen') &&
-    indexSource.includes('needsEmailConfirmation'),
-  'index shows check-email screen when confirmation is required',
+  authScreen.includes('SignUpCheckEmailScreen') &&
+    authScreen.includes('needsEmailConfirmation'),
+  'auth screen shows check-email when confirmation is required',
 );
 
 assert(
   /check your email|Check your email/i.test(checkEmailSource) ||
-    /check your email|Check your email/i.test(indexSource),
+    /check your email|Check your email/i.test(authScreen),
   'copy indicates email verification when appropriate',
 );
 
@@ -83,13 +88,15 @@ assert(
 );
 
 assert(
-  indexSource.includes('Forgot password?') &&
-    indexSource.includes('testID="auth-forgot-password"') &&
-    indexSource.includes('requestPasswordReset') &&
-    indexSource.includes('UpdatePasswordScreen') &&
-    indexSource.includes('PasswordResetSentScreen') &&
-    indexSource.includes('Send Reset Link') &&
-    indexSource.includes('Update Password'),
+  loginRoute.includes('OrganizerAuthScreen') &&
+    authScreen.includes('Forgot password?') &&
+    authScreen.includes('testID="auth-forgot-password"') &&
+    authScreen.includes('requestPasswordReset') &&
+    authScreen.includes('UpdatePasswordScreen') &&
+    authScreen.includes('PasswordResetSentScreen') &&
+    authScreen.includes('Send Reset Link') &&
+    authScreen.includes('Update Password') &&
+    indexSource.includes('UpdatePasswordScreen'),
   'login screen exposes visible forgot password, reset sent, and update password flows',
 );
 

@@ -17,6 +17,7 @@ import {
   MarketingPhonePreview,
   type MarketingPhoneVariant,
 } from '@/components/marketing/marketing-phone-preview';
+import { PublicUpcomingEventsSection } from '@/components/marketing/public-upcoming-events';
 import { fan, palette, spacing, text } from '@/theme';
 import { platformPointerEventsNone } from '@/theme/platform-styles';
 
@@ -101,12 +102,16 @@ function MarketingWordmark() {
 
 type MarketingHomepageProps = {
   onScrollToHowItWorks: () => void;
+  onScrollToUpcomingEvents: () => void;
   onHowItWorksLayout: (event: LayoutChangeEvent) => void;
+  onUpcomingEventsLayout: (event: LayoutChangeEvent) => void;
 };
 
 export function MarketingHomepage({
   onScrollToHowItWorks,
+  onScrollToUpcomingEvents,
   onHowItWorksLayout,
+  onUpcomingEventsLayout,
 }: MarketingHomepageProps) {
   const { width } = useWindowDimensions();
   const isDesktop = width >= DESKTOP_BREAKPOINT;
@@ -115,7 +120,7 @@ export function MarketingHomepage({
     <View style={styles.page}>
       <SafeAreaView edges={['top']} style={styles.safeArea}>
         <View style={styles.header}>
-          <Link href="/home" asChild>
+          <Link href="/" asChild>
             <Pressable accessibilityRole="link">
               <MarketingWordmark />
             </Pressable>
@@ -123,24 +128,24 @@ export function MarketingHomepage({
 
           {isDesktop ? (
             <View style={styles.headerNav}>
+              <Pressable accessibilityRole="button" onPress={onScrollToUpcomingEvents}>
+                <Text style={styles.headerLink}>Browse Events</Text>
+              </Pressable>
               <Pressable accessibilityRole="button" onPress={onScrollToHowItWorks}>
                 <Text style={styles.headerLink}>How It Works</Text>
-              </Pressable>
-              <Pressable accessibilityRole="button">
-                <Text style={styles.headerLink}>For Organizers</Text>
               </Pressable>
             </View>
           ) : null}
 
           <View style={styles.headerActions}>
-            <Link href="/" asChild>
+            <Link href="/login" asChild>
               <Pressable accessibilityRole="link" style={styles.headerGhostButton}>
-                <Text style={styles.headerGhostText}>Log In</Text>
+                <Text style={styles.headerGhostText}>Organizer Login</Text>
               </Pressable>
             </Link>
-            <Link href="/" asChild>
+            <Link href="/login" asChild>
               <Pressable accessibilityRole="link" style={styles.headerPrimaryButton}>
-                <Text style={styles.headerPrimaryText}>Get Started</Text>
+                <Text style={styles.headerPrimaryText}>Create Event</Text>
               </Pressable>
             </Link>
           </View>
@@ -161,11 +166,13 @@ export function MarketingHomepage({
             </Text>
 
             <View style={[styles.heroActions, isDesktop && styles.heroActionsDesktop]}>
-              <Link href="/" asChild>
-                <Pressable accessibilityRole="link" style={styles.primaryButton}>
-                  <Text style={styles.primaryButtonText}>Get Started</Text>
-                </Pressable>
-              </Link>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onScrollToUpcomingEvents}
+                style={styles.primaryButton}
+                testID="browse-events-cta">
+                <Text style={styles.primaryButtonText}>Browse Events</Text>
+              </Pressable>
               <Pressable
                 accessibilityRole="button"
                 onPress={onScrollToHowItWorks}
@@ -173,11 +180,30 @@ export function MarketingHomepage({
                 <Text style={styles.secondaryButtonText}>See How It Works</Text>
               </Pressable>
             </View>
+            <View style={styles.heroOrganizerLinks}>
+              <Link href="/login" asChild>
+                <Pressable accessibilityRole="link">
+                  <Text style={styles.heroOrganizerLink}>Create Event</Text>
+                </Pressable>
+              </Link>
+              <Text style={styles.heroOrganizerSep}>·</Text>
+              <Link href="/login" asChild>
+                <Pressable accessibilityRole="link">
+                  <Text style={styles.heroOrganizerLink}>Organizer Login</Text>
+                </Pressable>
+              </Link>
+            </View>
           </View>
 
           <View style={[styles.heroPhoneWrap, isDesktop && styles.heroPhoneWrapDesktop]}>
             <MarketingPhonePreview variant="dashboard" />
           </View>
+        </View>
+      </View>
+
+      <View onLayout={onUpcomingEventsLayout} style={styles.section}>
+        <View style={styles.sectionInner}>
+          <PublicUpcomingEventsSection />
         </View>
       </View>
 
@@ -244,7 +270,7 @@ export function MarketingHomepage({
               <View style={styles.finalCtaCopy}>
                 <Text style={styles.finalCtaTitle}>Ready to run your next event?</Text>
                 <Text style={styles.finalCtaBody}>Get started in minutes. It&apos;s free.</Text>
-                <Link href="/" asChild>
+                <Link href="/login" asChild>
                   <Pressable accessibilityRole="link" style={styles.primaryButton}>
                     <Text style={styles.primaryButtonText}>Create Your First Event →</Text>
                   </Pressable>
@@ -270,9 +296,14 @@ export function MarketingHomepage({
 export function MarketingHomepageScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const howItWorksOffsetRef = useRef(0);
+  const upcomingEventsOffsetRef = useRef(0);
 
   function handleHowItWorksLayout(event: LayoutChangeEvent) {
     howItWorksOffsetRef.current = event.nativeEvent.layout.y;
+  }
+
+  function handleUpcomingEventsLayout(event: LayoutChangeEvent) {
+    upcomingEventsOffsetRef.current = event.nativeEvent.layout.y;
   }
 
   function scrollToHowItWorks() {
@@ -282,15 +313,25 @@ export function MarketingHomepageScreen() {
     });
   }
 
+  function scrollToUpcomingEvents() {
+    scrollRef.current?.scrollTo({
+      animated: true,
+      y: Math.max(upcomingEventsOffsetRef.current - 24, 0),
+    });
+  }
+
   return (
     <ScrollView
       ref={scrollRef}
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
-      style={styles.scroll}>
+      style={styles.scroll}
+      testID="public-home-scroll">
       <MarketingHomepage
         onHowItWorksLayout={handleHowItWorksLayout}
+        onUpcomingEventsLayout={handleUpcomingEventsLayout}
         onScrollToHowItWorks={scrollToHowItWorks}
+        onScrollToUpcomingEvents={scrollToUpcomingEvents}
       />
     </ScrollView>
   );
@@ -441,6 +482,23 @@ const styles = StyleSheet.create({
   heroActionsDesktop: {
     alignItems: 'center',
     flexDirection: 'row',
+  },
+  heroOrganizerLinks: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.two,
+    marginTop: spacing.three,
+  },
+  heroOrganizerLink: {
+    color: text.secondary,
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  heroOrganizerSep: {
+    color: text.muted,
+    fontSize: 14,
   },
   primaryButton: {
     alignItems: 'center',

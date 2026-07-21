@@ -28,6 +28,7 @@ import {
   type PurchaseUnavailableReason,
 } from '@/lib/get-public-purchase-options';
 import { buildPurchaseCancelUrl, buildPurchaseSuccessUrl } from '@/lib/purchase-urls';
+import { formatTicketPriceLabel } from '@/lib/ticket-type-price';
 import { fan, text } from '@/theme';
 
 const DEFAULT_MAX_QUANTITY = 10;
@@ -38,19 +39,6 @@ type PurchasePagePhase =
   | 'submitting'
   | 'redirecting'
   | 'error';
-
-function formatMoneyFromCents(cents: number, currency = 'usd'): string {
-  const amount = cents / 100;
-
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount);
-  } catch {
-    return `$${amount.toFixed(2)}`;
-  }
-}
 
 function estimatePlatformFeeCents(
   subtotalCents: number,
@@ -79,6 +67,39 @@ function resolveMaxQuantity(quantityAvailable: number | null): number {
   }
 
   return quantityAvailable;
+}
+
+function isTicketTypeSoldOut(ticketType: PublicEventPurchaseTicketType): boolean {
+  return resolveMaxQuantity(ticketType.quantity_available) === 0;
+}
+
+function pickInitialTicketType(
+  ticketTypes: PublicEventPurchaseTicketType[],
+  preferredTicketTypeId: string,
+): PublicEventPurchaseTicketType | null {
+  if (preferredTicketTypeId && isUuidLike(preferredTicketTypeId)) {
+    const preferred = ticketTypes.find((ticketType) =>
+      ticketType.id.toLowerCase() === preferredTicketTypeId.trim().toLowerCase(),
+    );
+
+    if (preferred && !isTicketTypeSoldOut(preferred)) {
+      return preferred;
+    }
+  }
+
+  return ticketTypes.find((ticketType) => !isTicketTypeSoldOut(ticketType)) ?? null;
+}
+
+function remainingLabel(ticketType: PublicEventPurchaseTicketType): string | null {
+  if (ticketType.quantity_available === null) {
+    return null;
+  }
+
+  if (ticketType.quantity_available <= 0) {
+    return 'Sold out';
+  }
+
+  return `${ticketType.quantity_available} remaining`;
 }
 
 function unavailableCopy(reason: PurchaseUnavailableReason): { title: string; body: string } {
@@ -150,36 +171,15 @@ export default function EventBuyScreen() {
     );
   }
 
-  if (!ticketTypeId || !isUuidLike(ticketTypeId)) {
-    logPurchaseOptionsDiagnostics({
-      eventId,
-      ticketTypeId,
-      unavailableReason: 'invalid_ticket_type_id',
-    });
-
-    const copy = unavailableCopy('invalid_ticket_type_id');
-    return (
-      <PurchaseScreenShell>
-        <PurchaseOrderStatus title={copy.title} body={copy.body} />
-      </PurchaseScreenShell>
-    );
-  }
-
-  return (
-    <EventBuyContent
-      key={`${eventId}:${ticketTypeId}`}
-      eventId={eventId}
-      ticketTypeId={ticketTypeId}
-    />
-  );
+  return <EventBuyContent key={eventId} eventId={eventId} preferredTicketTypeId={ticketTypeId} />;
 }
 
 function EventBuyContent({
   eventId,
-  ticketTypeId,
+  preferredTicketTypeId,
 }: {
   eventId: string;
-  ticketTypeId: string;
+  preferredTicketTypeId: string;
 }) {
   const [options, setOptions] = useState<GetPublicEventPurchaseOptionsResult | null>(null);
   const [selectedTicketType, setSelectedTicketType] =
@@ -211,7 +211,7 @@ function EventBuyContent({
       if (error) {
         logPurchaseOptionsDiagnostics({
           eventId,
-          ticketTypeId,
+          ticketTypeId: preferredTicketTypeId,
           rpcError: error,
           unavailableReason: 'rpc_error',
         });
@@ -225,7 +225,7 @@ function EventBuyContent({
       if (!parsedOptions) {
         logPurchaseOptionsDiagnostics({
           eventId,
-          ticketTypeId,
+          ticketTypeId: preferredTicketTypeId,
           dataIsNull: true,
           unavailableReason: 'rpc_null',
         });
@@ -242,7 +242,7 @@ function EventBuyContent({
       if (parsedOptions.ticket_types.length === 0) {
         logPurchaseOptionsDiagnostics({
           eventId,
-          ticketTypeId,
+          ticketTypeId: preferredTicketTypeId,
           returnedTicketTypeIds,
           unavailableReason: 'no_ticket_types',
         });
@@ -251,26 +251,29 @@ function EventBuyContent({
         return;
       }
 
-      const selected = findPurchaseTicketType(parsedOptions, ticketTypeId);
+      const selected = pickInitialTicketType(parsedOptions.ticket_types, preferredTicketTypeId);
 
       if (!selected) {
+        const preferred =
+          preferredTicketTypeId && isUuidLike(preferredTicketTypeId)
+            ? findPurchaseTicketType(parsedOptions, preferredTicketTypeId)
+            : null;
+
+        if (preferred && isTicketTypeSoldOut(preferred)) {
+          logPurchaseOptionsDiagnostics({
+            eventId,
+            ticketTypeId: preferredTicketTypeId,
+            returnedTicketTypeIds,
+            unavailableReason: 'sold_out',
+          });
+          setUnavailableReason('sold_out');
+          setPhase('error');
+          return;
+        }
+
         logPurchaseOptionsDiagnostics({
           eventId,
-          ticketTypeId,
-          returnedTicketTypeIds,
-          unavailableReason: 'ticket_type_not_found',
-        });
-        setUnavailableReason('ticket_type_not_found');
-        setPhase('error');
-        return;
-      }
-
-      const maxQuantity = resolveMaxQuantity(selected.quantity_available);
-
-      if (maxQuantity === 0) {
-        logPurchaseOptionsDiagnostics({
-          eventId,
-          ticketTypeId,
+          ticketTypeId: preferredTicketTypeId,
           returnedTicketTypeIds,
           unavailableReason: 'sold_out',
         });
@@ -281,7 +284,7 @@ function EventBuyContent({
 
       logPurchaseOptionsDiagnostics({
         eventId,
-        ticketTypeId,
+        ticketTypeId: selected.id,
         returnedTicketTypeIds,
         unavailableReason: 'ready',
       });
@@ -296,7 +299,7 @@ function EventBuyContent({
     return () => {
       isMounted = false;
     };
-  }, [eventId, ticketTypeId]);
+  }, [eventId, preferredTicketTypeId]);
 
   const maxQuantity = useMemo(
     () => resolveMaxQuantity(selectedTicketType?.quantity_available ?? null),
@@ -338,6 +341,20 @@ function EventBuyContent({
     quantity <= maxQuantity &&
     maxQuantity > 0 &&
     Boolean(options && selectedTicketType && pricing);
+
+  const handleSelectTicketType = useCallback((ticketType: PublicEventPurchaseTicketType) => {
+    if (isTicketTypeSoldOut(ticketType)) {
+      return;
+    }
+
+    setSelectedTicketType(ticketType);
+    setQuantity(1);
+    setErrorMessage(null);
+    if (phase === 'error') {
+      setPhase('ready');
+      setUnavailableReason(null);
+    }
+  }, [phase]);
 
   const handleCheckout = useCallback(async () => {
     if (!options || !selectedTicketType || !canSubmit) {
@@ -403,7 +420,7 @@ function EventBuyContent({
     );
   }
 
-  if (phase === 'error') {
+  if (phase === 'error' && !options) {
     return (
       <PurchaseScreenShell>
         <PurchaseOrderStatus
@@ -417,7 +434,7 @@ function EventBuyContent({
   if (!options || !selectedTicketType || !pricing) {
     logPurchaseOptionsDiagnostics({
       eventId,
-      ticketTypeId,
+      ticketTypeId: preferredTicketTypeId,
       unavailableReason: 'rpc_error',
       returnedTicketTypeIds: options?.ticket_types.map((ticketType) => ticketType.id),
     });
@@ -446,18 +463,56 @@ function EventBuyContent({
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.ticketType}>{selectedTicketType.name}</Text>
+        <Text style={styles.sectionLabel}>Ticket type</Text>
+        <View style={styles.ticketTypeList} testID="buy-ticket-type-list">
+          {options.ticket_types.map((ticketType) => {
+            const soldOut = isTicketTypeSoldOut(ticketType);
+            const selected = selectedTicketType.id === ticketType.id;
+            const remaining = remainingLabel(ticketType);
+            const priceLabel = formatTicketPriceLabel(
+              ticketType.price_cents,
+              ticketType.currency || options.event.currency,
+            );
+
+            return (
+              <Pressable
+                key={ticketType.id}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: soldOut, selected }}
+                disabled={soldOut || isBusy}
+                onPress={() => handleSelectTicketType(ticketType)}
+                style={({ pressed }) => [
+                  styles.ticketTypeRow,
+                  selected && styles.ticketTypeRowSelected,
+                  soldOut && styles.ticketTypeRowSoldOut,
+                  pressed && !soldOut && styles.ticketTypeRowPressed,
+                ]}
+                testID={`buy-ticket-type-${ticketType.id}`}>
+                <View style={styles.ticketTypeRowText}>
+                  <Text style={styles.ticketTypeName}>{ticketType.name}</Text>
+                  {remaining ? (
+                    <Text style={[styles.ticketTypeMeta, soldOut && styles.soldOutText]}>
+                      {remaining}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={[styles.ticketTypePrice, soldOut && styles.soldOutText]}>
+                  {priceLabel}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         {selectedTicketType.description ? (
           <Text style={styles.ticketDescription}>{selectedTicketType.description}</Text>
         ) : null}
-        <Text style={styles.unitPrice}>
-          {formatMoneyFromCents(selectedTicketType.price_cents, pricing.currency)} each
-        </Text>
 
         <PurchaseQuantityStepper
           disabled={isBusy}
           max={maxQuantity}
           onChange={setQuantity}
+          testID="buy-quantity-stepper"
           value={quantity}
         />
 
@@ -474,19 +529,19 @@ function EventBuyContent({
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Subtotal</Text>
           <Text style={styles.summaryValue}>
-            {formatMoneyFromCents(pricing.subtotalCents, pricing.currency)}
+            {formatTicketPriceLabel(pricing.subtotalCents, pricing.currency)}
           </Text>
         </View>
         <View style={styles.summaryRow}>
           <Text style={styles.summaryLabel}>Service fee (est.)</Text>
           <Text style={styles.summaryValue}>
-            {formatMoneyFromCents(pricing.platformFeeCents, pricing.currency)}
+            {formatTicketPriceLabel(pricing.platformFeeCents, pricing.currency)}
           </Text>
         </View>
         <View style={[styles.summaryRow, styles.summaryTotalRow]}>
           <Text style={styles.summaryTotalLabel}>Total (est.)</Text>
           <Text style={styles.summaryTotalValue}>
-            {formatMoneyFromCents(pricing.totalCents, pricing.currency)}
+            {formatTicketPriceLabel(pricing.totalCents, pricing.currency)}
           </Text>
         </View>
         <Text style={styles.stripeNote}>
@@ -504,7 +559,8 @@ function EventBuyContent({
           styles.cta,
           (!canSubmit || isBusy) && styles.ctaDisabled,
           pressed && canSubmit && !isBusy && styles.ctaPressed,
-        ]}>
+        ]}
+        testID="buy-checkout-cta">
         {isBusy ? (
           <ActivityIndicator color="#FFFFFF" />
         ) : (
@@ -547,20 +603,62 @@ const styles = StyleSheet.create({
     padding: 18,
     gap: 18,
   },
-  ticketType: {
+  sectionLabel: {
     color: text.primary,
-    fontSize: 20,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  ticketTypeList: {
+    gap: 10,
+  },
+  ticketTypeRow: {
+    alignItems: 'center',
+    borderColor: 'rgba(255, 43, 214, 0.28)',
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'space-between',
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  ticketTypeRowSelected: {
+    backgroundColor: 'rgba(255, 43, 214, 0.14)',
+    borderColor: fan.bright,
+  },
+  ticketTypeRowSoldOut: {
+    opacity: 0.45,
+  },
+  ticketTypeRowPressed: {
+    opacity: 0.85,
+  },
+  ticketTypeRowText: {
+    flex: 1,
+    gap: 2,
+  },
+  ticketTypeName: {
+    color: text.primary,
+    fontSize: 16,
     fontWeight: '700',
+  },
+  ticketTypeMeta: {
+    color: text.secondary,
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  ticketTypePrice: {
+    color: fan.bright,
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  soldOutText: {
+    color: text.secondary,
   },
   ticketDescription: {
     color: text.secondary,
     fontSize: 14,
     lineHeight: 20,
-  },
-  unitPrice: {
-    color: fan.bright,
-    fontSize: 16,
-    fontWeight: '600',
   },
   summaryCard: {
     borderWidth: 1,

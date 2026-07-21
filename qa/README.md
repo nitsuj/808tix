@@ -164,9 +164,20 @@ qa/artifacts/screenshots/latest/
   03-pass-ticket.png
   04-purchase-cancel.png
   05-pass-invalid.png
+  06-auth-default.png
+  07-auth-forgot-password.png
+  08-auth-reset-sent.png
+  09-auth-check-email.png
+  10-public-home-events.png
+  11-public-event-buy-ticket-price.png
+  12-public-event-buy-quantity-checkout.png
+  13-organizer-ticket-type-price.png
+  14-manual-ticket-share-copy.png
 ```
 
 Cleared before each `qa:web` run. Gitignored.
+
+Buyer-path coverage (`qa/tests/buyer-path-web.spec.ts`): homepage discovery → buy price/quantity/checkout CTA → organizer ticket price UI → honest Share Ticket copy. Auth screens use `/login`.
 
 ## Manual / alternate fixture sources
 
