@@ -2,9 +2,17 @@
 
 Field manual for operating **one real event** with the current 808Tickets MVP. This document is for organizers, door staff, and the technical operator—not marketing copy.
 
-**Related docs:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [qa/README.md](../qa/README.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md)
+**Related docs:** [P0_ACCEPTANCE.md](./P0_ACCEPTANCE.md) · [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [qa/README.md](../qa/README.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md)
 
 **Production domain:** Canonical launch origin is `https://808tickets.com`. Legacy `808tix.vercel.app` may redirect during transition. Ticket pages remain at `/pass/{token}`.
+
+**Before any launch claim, run:**
+
+```bash
+npm run release:proof
+```
+
+Then manually run hosted checkout smoke on `https://808tickets.com`. See [P0_ACCEPTANCE.md](./P0_ACCEPTANCE.md).
 
 ---
 

@@ -2,6 +2,22 @@
 
 Hosted/domain testing blockers and explicit launch expectations.
 
+**P0 source of truth:** [P0_ACCEPTANCE.md](./P0_ACCEPTANCE.md)
+
+Before any launch claim:
+
+```bash
+# Prelaunch hosted QA (Stripe TEST allowed)
+npm run release:proof -- --prelaunch
+
+# Live Stripe expectations
+npm run release:proof -- --live
+```
+
+Then manually run hosted checkout smoke on `https://808tickets.com`.
+
+`release:proof -- --prelaunch` proves readiness gates but does **not** run hosted checkout.
+
 ## Auth: email confirmation (dashboard config)
 
 App signup already uses `supabase.auth.signUp` with `emailRedirectTo` from `resolveAuthEmailRedirectUrl()`. It does **not** admin-create users or auto-confirm in application code.

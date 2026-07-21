@@ -4,6 +4,23 @@ Playwright-based browser checks for buyer purchase and ticket UI. Captures mobil
 
 **Launch domain cutover:** Local QA stays on localhost/LAN. Do not point these flows at `https://808tickets.com`. Production buyer origin is `https://808tickets.com` (`www` redirects to apex; legacy `808tix.vercel.app` may redirect). See [docs/DOMAIN_CUTOVER.md](../docs/DOMAIN_CUTOVER.md).
 
+**P0 launch acceptance:** [docs/P0_ACCEPTANCE.md](../docs/P0_ACCEPTANCE.md)
+
+Before any launch claim:
+
+```bash
+# Prelaunch hosted QA (Stripe TEST keys allowed intentionally)
+npm run release:proof -- --prelaunch
+```
+
+This proves readiness gates but still does **not** run hosted checkout.
+
+After PASS, manually run:
+
+`808tickets.com` → public event → Stripe test checkout → success → email → ticket → Wallet → scanner.
+
+For live Stripe expectations: `npm run release:proof -- --live`.
+
 ## Quick start
 
 ```bash
@@ -216,7 +233,11 @@ Then start Expo with the printed commands, open a ticket on your phone, and scan
 
 ## Related commands
 
+- [P0_ACCEPTANCE.md](../docs/P0_ACCEPTANCE.md) — launch Definition of Done + proof rules
 - [EVENT_DAY_RUNBOOK.md](../docs/EVENT_DAY_RUNBOOK.md) — event-day operator runbook, rehearsal, go/no-go
+- `npm run release:proof -- --prelaunch` — P0 prelaunch proof (hosted env + hosted readiness + check:all + local qa:seed/qa:web/smoke:checkin); Stripe TEST allowed; does **not** run Stripe/hosted checkout
+- `npm run release:proof -- --live` — same gates with live Stripe key expectations
+- `npm run check:hosted` — hosted migrations/functions/secrets/domain readiness (secret values never printed)
 - `npm run check:all` — static validation (does not include `qa:seed` or `qa:web`)
 - `npm run check:env` — environment readiness (Supabase, Expo env, Stripe/email/wallet secrets)
 - `npm run smoke:payments:local` — Stripe API + DB integration smoke

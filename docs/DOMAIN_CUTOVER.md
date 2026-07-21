@@ -6,7 +6,15 @@ Production launch origin: **`https://808tickets.com`**
 
 **Operator status (still required outside repo):** Hosted Supabase Edge `PUBLIC_SITE_URL`, Supabase Auth redirect allow-list, Vercel production env, and **Resend** (not configured yet) must be set in dashboards — see §5 and §10.
 
-**Related:** [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) · [qa/README.md](../qa/README.md) · [NATIVE_PHASE_0.md](./NATIVE_PHASE_0.md) · [MVP_ROADMAP.md](./MVP_ROADMAP.md)
+**Related:** [P0_ACCEPTANCE.md](./P0_ACCEPTANCE.md) · [STRIPE_PAYMENTS.md](./STRIPE_PAYMENTS.md) · [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) · [qa/README.md](../qa/README.md) · [NATIVE_PHASE_0.md](./NATIVE_PHASE_0.md) · [MVP_ROADMAP.md](./MVP_ROADMAP.md)
+
+Before any launch claim:
+
+```bash
+npm run release:proof
+```
+
+Then manually run hosted checkout smoke on `https://808tickets.com`.
 
 ### Canonical domain policy
 

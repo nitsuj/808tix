@@ -1038,6 +1038,27 @@ async function main(): Promise<void> {
   const failures = rows.filter((row) => row.result === 'FAIL' && row.required);
   if (failures.length > 0) {
     console.error(`\nFAIL: ${failures.length} required environment check(s) failed.`);
+
+    const localhostFailures = failures.filter((row) => {
+      const actual = row.actual.toLowerCase();
+      return (
+        actual.includes('127.0.0.1') ||
+        actual.includes('localhost') ||
+        (row.check.includes('EXPO_PUBLIC_SUPABASE_URL') && row.result === 'FAIL') ||
+        (row.check.includes('PUBLIC_SITE_URL') && row.result === 'FAIL' && mode !== 'local')
+      );
+    });
+
+    if (mode !== 'local' && localhostFailures.length > 0) {
+      console.error('');
+      console.error(
+        'Your local env is not configured for hosted proof. Use the hosted env file or pass required EXPO_PUBLIC_SUPABASE_URL/PUBLIC_SITE_URL values. This does not mean hosted Supabase is broken.',
+      );
+      console.error(
+        'For prelaunch hosted QA: npm run release:proof -- --prelaunch (requires hosted URLs in .env / shell).',
+      );
+    }
+
     process.exit(1);
   }
 
