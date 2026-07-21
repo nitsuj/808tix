@@ -2,6 +2,8 @@
 
 Source of truth for what must be true before claiming 808Tickets is launch-ready.
 
+Cursor agents must follow [.cursor/rules/808tickets-release-gate.mdc](../.cursor/rules/808tickets-release-gate.mdc) so P0 proof is not re-stated in every prompt.
+
 **Before any launch claim, run an explicit proof mode:**
 
 ```bash

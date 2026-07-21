@@ -1,0 +1,43 @@
+---
+description: 808Tickets release-gated development — P0 acceptance and proof harness
+alwaysApply: true
+---
+
+# 808Tickets release gate
+
+This project is **808Tickets**.
+
+Launch readiness source of truth: [docs/P0_ACCEPTANCE.md](docs/P0_ACCEPTANCE.md).
+
+## Before coding
+
+1. Run `git status --short`.
+2. State which **P0 journey** is affected (organizer, consumer, payment/email/ticket, Wallet/scanner, hosted infra) — or none.
+
+## Definition of complete
+
+Do **not** report complete unless required checks pass.
+
+| Change type | Required validation |
+|-------------|---------------------|
+| Any code, config, docs, or QA change | `npm run check:all` |
+| Launch / P0 work | Also `npm run release:proof -- --prelaunch` unless explicitly told not to |
+| UI work | `qa:web` screenshot artifact paths (e.g. `qa/artifacts/screenshots/latest/…`) |
+| Hosted / infra work | Include relevant command output |
+
+## Hard constraints
+
+- Never weaken, skip, bypass, or remove checks to pass validation.
+- Do **not** run hosted Stripe checkout automatically.
+- Do **not** run Stripe smoke automatically unless explicitly asked.
+- Do **not** claim hosted checkout readiness without **manual** hosted checkout smoke on `https://808tickets.com`.
+- Never suggest `supabase db push` unless direct evidence shows pending migrations or confirmed schema drift.
+- If payment checkout behavior changed, explicitly state whether `npm run smoke:payments:local` is required separately (do not run it unless asked).
+- Apple Wallet is required for launch.
+- If an external manual proof is already complete, preserve that state in docs — do not re-open it as a blocker.
+
+## Customer language
+
+Public/customer copy: **ticket / tickets / mobile ticket / QR ticket** — not “pass”.
+
+Internal `pass` tables, routes, and RPCs may remain unchanged.
