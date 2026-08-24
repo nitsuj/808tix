@@ -95,6 +95,7 @@ Verified by `npm run check:hosted` (presence/status only — never print secret 
 - Optional / warn: `send-pass-sms` + Twilio secrets.
 - Hosted secrets present (names only): `PUBLIC_SITE_URL`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `EMAIL_DELIVERY_MODE`, `EMAIL_FROM`, `RESEND_API_KEY`, Apple Wallet cert suite.
 - Domains: `https://808tickets.com` responds; `https://www.808tickets.com` redirects/responds.
+- Clean URLs (no `.html`): `/login`, `/privacy`, `/terms`, `/home`, `/profile`, `/events/create` return HTTP 200 (see `vercel.json` + `docs/DOMAIN_CUTOVER.md`).
 - Legacy `808tix.vercel.app` redirect is a transition note only — not the launch canonical origin.
 
 ---

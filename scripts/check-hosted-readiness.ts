@@ -830,6 +830,30 @@ async function checkDomains(rows: CheckRow[]): Promise<void> {
     false,
     'Canonical launch origin is https://808tickets.com — see docs/DOMAIN_CUTOVER.md',
   );
+
+  const cleanUrlPaths = [
+    { path: '/login', required: true },
+    { path: '/privacy', required: true },
+    { path: '/terms', required: true },
+    { path: '/home', required: true },
+    { path: '/profile', required: true },
+    { path: '/events/create', required: true },
+  ] as const;
+
+  for (const entry of cleanUrlPaths) {
+    const probe = await probeUrl(`${CANONICAL_ORIGIN}${entry.path}`);
+    addRow(
+      rows,
+      `clean URL ${entry.path}`,
+      'HTTP 200 (no .html suffix)',
+      probe.detail,
+      probe.ok ? 'PASS' : 'FAIL',
+      entry.required,
+      probe.ok
+        ? undefined
+        : 'Add vercel.json rewrite to matching Expo export .html — see docs/DOMAIN_CUTOVER.md',
+    );
+  }
 }
 
 async function main(): Promise<void> {

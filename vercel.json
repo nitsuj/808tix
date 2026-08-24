@@ -4,6 +4,34 @@
   "outputDirectory": "dist",
   "rewrites": [
     {
+      "source": "/login",
+      "destination": "/login.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/privacy.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/terms.html"
+    },
+    {
+      "source": "/home",
+      "destination": "/home.html"
+    },
+    {
+      "source": "/profile",
+      "destination": "/profile.html"
+    },
+    {
+      "source": "/explore",
+      "destination": "/explore.html"
+    },
+    {
+      "source": "/events/create",
+      "destination": "/events/create.html"
+    },
+    {
       "source": "/events/:eventId/scan",
       "destination": "/events/[eventId]/scan.html"
     },
@@ -20,12 +48,12 @@
       "destination": "/events/[eventId]/passes.html"
     },
     {
-      "source": "/events/:eventId",
-      "destination": "/events/[eventId].html"
-    },
-    {
       "source": "/events/:eventId/buy",
       "destination": "/events/[eventId]/buy.html"
+    },
+    {
+      "source": "/events/:eventId",
+      "destination": "/events/[eventId].html"
     },
     {
       "source": "/purchase/success",

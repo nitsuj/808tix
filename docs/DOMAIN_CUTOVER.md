@@ -85,7 +85,7 @@ Do **not** hardcode `808tickets.com` into local QA orchestration.
 | Edge create-checkout-session | `supabase/functions/create-checkout-session/index.ts` | Accepts client `success_url` / `cancel_url` | Stripe success/cancel URL | Do not bake domain into function; keep client-supplied | Low |
 | Email ticket + success URLs | `supabase/functions/_shared/pass-link-server.ts`, `order-email.ts` | `PUBLIC_SITE_URL` | email ticket URL | Set hosted Edge secret to `https://808tickets.com` at cutover | High if left on old domain or unset |
 | SMS ticket URL | `supabase/functions/send-pass-sms` + client builders | Absolute URL from client | production buyer-facing URL | Follows app origin / EAS env | Medium until EAS updated |
-| Hosted guest rewrites | `vercel.json` | Path rewrites only | production buyer-facing URL | No domain edit; attach custom domain in Vercel UI | Low |
+| Hosted guest rewrites | `vercel.json` | Path rewrites only | production buyer-facing URL | No domain edit; attach custom domain in Vercel UI; keep clean-URL rewrites for static Expo HTML | Low |
 | EAS readiness asserts | `scripts/check-native-eas-readiness.mjs` | Expects `eas.json` == `https://808tickets.com` | internal/test-only | **Done in repo** | Low |
 | Native env reminder / warn | `scripts/check-native-env.mjs` | `GUEST_PASS_ORIGIN = https://808tickets.com` | internal/test-only | **Done in repo** | Low |
 | Pass-link unit fixtures | `scripts/check-pass-links.ts` | Uses `808tickets.com` as sample host | internal/test-only | **Done in repo** | Low |
@@ -210,11 +210,33 @@ npm run check:all
 
 ---
 
+## 7a. Clean URL rewrites (Expo static export)
+
+Expo web export emits `login.html`, `privacy.html`, etc. Vercel does **not** automatically map `/login` → `/login.html` unless configured.
+
+`vercel.json` must rewrite clean paths to those HTML files. Required static clean URLs:
+
+| Clean URL | Destination |
+|-----------|-------------|
+| `/login` | `/login.html` |
+| `/privacy` | `/privacy.html` |
+| `/terms` | `/terms.html` |
+| `/home` | `/home.html` |
+| `/profile` | `/profile.html` |
+| `/events/create` | `/events/create.html` |
+
+Dynamic routes (`/pass/:token`, `/events/:eventId/buy`, `/purchase/success`, etc.) keep their existing bracket-file rewrites. `/events/create` and `/events/:eventId/buy` must be listed **before** `/events/:eventId`.
+
+`npm run check:vercel` asserts these rewrites. `npm run check:hosted` probes the clean URLs on `https://808tickets.com` after deploy.
+
+---
+
 ## 8. Cutover go / no-go
 
 **Go** when:
 
 - [x] `https://808tickets.com` serves buyer + ticket + purchase routes over HTTPS
+- [ ] Clean URLs work without `.html`: `/login`, `/privacy`, `/terms`, `/home`, `/profile`, `/events/create` (operator: verify after Vercel deploy)
 - [ ] Supabase Auth redirects allow the new origin (operator)
 - [ ] Hosted `PUBLIC_SITE_URL` is the launch domain (operator)
 - [x] EAS / repo public pass-link base matches launch domain

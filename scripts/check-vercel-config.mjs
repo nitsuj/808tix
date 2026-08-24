@@ -12,9 +12,17 @@ const root = join(__dirname, '..');
 const vercelPath = join(root, 'vercel.json');
 const distDir = join(root, 'dist');
 
-const EXPECTED_REWRITES = [
-  { source: '/pass/:token', destination: '/pass/[token].html', distFile: 'pass/[token].html' },
-  { source: '/events/:eventId', destination: '/events/[eventId].html', distFile: 'events/[eventId].html' },
+/** Static Expo HTML pages that must resolve without a .html suffix. */
+const STATIC_CLEAN_URL_REWRITES = [
+  { source: '/login', destination: '/login.html', distFile: 'login.html' },
+  { source: '/privacy', destination: '/privacy.html', distFile: 'privacy.html' },
+  { source: '/terms', destination: '/terms.html', distFile: 'terms.html' },
+  { source: '/home', destination: '/home.html', distFile: 'home.html' },
+  { source: '/profile', destination: '/profile.html', distFile: 'profile.html' },
+  { source: '/events/create', destination: '/events/create.html', distFile: 'events/create.html' },
+];
+
+const DYNAMIC_REWRITES = [
   {
     source: '/events/:eventId/scan',
     destination: '/events/[eventId]/scan.html',
@@ -35,7 +43,26 @@ const EXPECTED_REWRITES = [
     destination: '/events/[eventId]/passes.html',
     distFile: 'events/[eventId]/passes.html',
   },
+  {
+    source: '/events/:eventId/buy',
+    destination: '/events/[eventId]/buy.html',
+    distFile: 'events/[eventId]/buy.html',
+  },
+  { source: '/events/:eventId', destination: '/events/[eventId].html', distFile: 'events/[eventId].html' },
+  {
+    source: '/purchase/success',
+    destination: '/purchase/success.html',
+    distFile: 'purchase/success.html',
+  },
+  {
+    source: '/purchase/cancel',
+    destination: '/purchase/cancel.html',
+    distFile: 'purchase/cancel.html',
+  },
+  { source: '/pass/:token', destination: '/pass/[token].html', distFile: 'pass/[token].html' },
 ];
+
+const EXPECTED_REWRITES = [...STATIC_CLEAN_URL_REWRITES, ...DYNAMIC_REWRITES];
 
 let failures = 0;
 
@@ -92,9 +119,7 @@ for (const expected of EXPECTED_REWRITES) {
   );
 
   if (!match) {
-    fail(
-      `Missing rewrite: "${expected.source}" → "${expected.destination}"`,
-    );
+    fail(`Missing rewrite: "${expected.source}" → "${expected.destination}"`);
     continue;
   }
 
@@ -111,6 +136,26 @@ for (const expected of EXPECTED_REWRITES) {
       );
     }
   }
+}
+
+const createIndex = routeRewrites.findIndex((entry) => entry.source === '/events/create');
+const eventIdIndex = routeRewrites.findIndex((entry) => entry.source === '/events/:eventId');
+const buyIndex = routeRewrites.findIndex((entry) => entry.source === '/events/:eventId/buy');
+
+if (createIndex === -1 || eventIdIndex === -1) {
+  fail('Could not verify /events/create vs /events/:eventId rewrite order');
+} else if (createIndex > eventIdIndex) {
+  fail('/events/create rewrite must appear before /events/:eventId');
+} else {
+  pass('/events/create rewrite is ordered before /events/:eventId');
+}
+
+if (buyIndex === -1 || eventIdIndex === -1) {
+  fail('Could not verify /events/:eventId/buy vs /events/:eventId rewrite order');
+} else if (buyIndex > eventIdIndex) {
+  fail('/events/:eventId/buy rewrite must appear before /events/:eventId');
+} else {
+  pass('/events/:eventId/buy rewrite is ordered before /events/:eventId');
 }
 
 if (!existsSync(distDir)) {
