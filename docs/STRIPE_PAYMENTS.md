@@ -277,9 +277,21 @@ After Stripe payment fulfillment, buyers can receive an order confirmation email
 |-------|--------|
 | `public.outbound_messages` | Idempotency + audit log for email and future SMS |
 | `_shared/order-email.ts` | Email builder + Resend wrapper + outbound claim/update |
+| `_shared/order-email-template.ts` | Branded HTML + plain-text order confirmation bodies |
 | `_shared/pass-link-server.ts` | Server-side `PUBLIC_SITE_URL` pass/success links |
 | `send-order-confirmation-email` | Manual/local test (service role required) |
 | `stripe-webhook` integration | **Implemented** — non-blocking after `fulfill_paid_order` |
+
+Order confirmation emails are **branded HTML** (mobile-first, “Open Tickets” CTA, transparent fee lines) with a **plain-text fallback**. Links always use `PUBLIC_SITE_URL`.
+
+Inspect the HTML locally without sending:
+
+```bash
+npm run preview:order-email
+# writes qa/artifacts/email-preview/latest.html and latest.txt
+```
+
+Optional: set `EMAIL_PREVIEW_ARTIFACT_DIR` when serving functions in preview mode to write the same artifacts from a live `sendOrderConfirmationEmail` call.
 
 **Webhook flow (`checkout.session.completed`, `payment_status=paid`):**
 
@@ -302,6 +314,7 @@ After Stripe payment fulfillment, buyers can receive an order confirmation email
 | `EMAIL_FROM` | Verified sender address (send mode) |
 | `EMAIL_DELIVERY_MODE` | `preview` (log only) or `send` |
 | `EMAIL_OVERRIDE_TO` | Local QA — redirect all mail to one inbox |
+| `EMAIL_PREVIEW_ARTIFACT_DIR` | Optional — write `latest.html` / `latest.txt` in preview mode |
 
 Serve **both** payment functions with the same env file when testing email via webhook:
 

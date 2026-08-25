@@ -19,6 +19,10 @@ const TICKET_FEES = join(ROOT, 'src/lib/ticket-fees.ts');
 const BUY_ROUTE = join(ROOT, 'src/app/events/[eventId]/buy.tsx');
 const FEE_SUMMARY = join(ROOT, 'src/components/purchase/purchase-fee-summary.tsx');
 const ORDER_EMAIL = join(ROOT, 'supabase/functions/_shared/order-email.ts');
+const ORDER_EMAIL_TEMPLATE = join(
+  ROOT,
+  'supabase/functions/_shared/order-email-template.ts',
+);
 const SHARED_STRIPE = join(ROOT, 'supabase/functions/_shared/stripe.ts');
 
 const adminMigration = readFileSync(ADMIN_MIGRATION, 'utf8');
@@ -30,6 +34,7 @@ const ticketFees = readFileSync(TICKET_FEES, 'utf8');
 const buyRoute = readFileSync(BUY_ROUTE, 'utf8');
 const feeSummary = readFileSync(FEE_SUMMARY, 'utf8');
 const orderEmail = readFileSync(ORDER_EMAIL, 'utf8');
+const orderEmailTemplate = readFileSync(ORDER_EMAIL_TEMPLATE, 'utf8');
 const sharedStripe = readFileSync(SHARED_STRIPE, 'utf8');
 
 let failures = 0;
@@ -137,8 +142,16 @@ assert(buyRoute.includes('SERVICE_FEE_LABEL'), 'buy page uses service fee label'
 assert(buyRoute.includes('PROCESSING_FEE_LABEL'), 'buy page uses processing fee label');
 assert(feeSummary.includes('SERVICE_FEE_LABEL'), 'success fee summary uses service fee label');
 assert(feeSummary.includes('PROCESSING_FEE_LABEL'), 'success fee summary uses processing fee label');
-assert(orderEmail.includes('808Tickets service fee'), 'order email labels service fee');
-assert(orderEmail.includes('Payment processing fee'), 'order email labels processing fee');
+assert(
+  orderEmail.includes('SERVICE_FEE_LABEL') &&
+    orderEmailTemplate.includes('808Tickets service fee'),
+  'order email labels service fee',
+);
+assert(
+  orderEmail.includes('PROCESSING_FEE_LABEL') &&
+    orderEmailTemplate.includes('Payment processing fee'),
+  'order email labels processing fee',
+);
 assert(sharedStripe.includes('808Tickets service fee'), 'Stripe line item labels service fee');
 assert(sharedStripe.includes('Payment processing fee'), 'Stripe line item labels processing fee');
 

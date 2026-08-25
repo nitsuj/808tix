@@ -325,6 +325,9 @@ function writePreviewFunctionsEnv(
       process.env.EMAIL_OVERRIDE_TO?.trim() ||
       baseEnv.EMAIL_OVERRIDE_TO?.trim() ||
       DEFAULT_EMAIL_OVERRIDE,
+    EMAIL_PREVIEW_ARTIFACT_DIR:
+      process.env.EMAIL_PREVIEW_ARTIFACT_DIR?.trim() ||
+      join(ROOT, 'qa/artifacts/email-preview'),
   };
 
   if (!allowSend) {

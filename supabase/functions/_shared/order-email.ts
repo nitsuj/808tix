@@ -6,8 +6,17 @@ import {
   isPreviewDeliveryMode,
   resolvePublicSiteUrl,
 } from './pass-link-server.ts';
+import {
+  OPEN_TICKETS_CTA_LABEL,
+  PROCESSING_FEE_LABEL,
+  SERVICE_FEE_LABEL,
+  renderOrderConfirmationHtml,
+  renderOrderConfirmationText,
+  type OrderEmailFeeBreakdown,
+} from './order-email-template.ts';
 
 export const ORDER_CONFIRMATION_MESSAGE_TYPE = 'order_confirmation';
+export { OPEN_TICKETS_CTA_LABEL, PROCESSING_FEE_LABEL, SERVICE_FEE_LABEL };
 
 export type OrderConfirmationTicket = {
   sequence: number;
@@ -65,20 +74,6 @@ export type SendOrderConfirmationEmailResult =
       outbound_message_status?: string;
     };
 
-type OutboundMessageRow = {
-  id: string;
-  status: string;
-  attempt_count: number;
-};
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-}
-
 function formatEventDateLine(eventDate: string | null, startTime: string | null): string | null {
   const dateTrimmed = eventDate?.trim();
 
@@ -119,18 +114,6 @@ export function buildOrderConfirmationIdempotencyKey(orderId: string): string {
   return `order_confirmation:${orderId.trim()}`;
 }
 
-function formatMoneyCents(cents: number, currency: string): string {
-  const amount = cents / 100;
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount);
-  } catch {
-    return `$${(cents / 100).toFixed(2)}`;
-  }
-}
-
 export function buildOrderConfirmationEmail(
   input: BuildOrderConfirmationEmailInput,
 ): BuiltOrderConfirmationEmail {
@@ -148,121 +131,76 @@ export function buildOrderConfirmationEmail(
     typeof input.processing_fee_cents === 'number' &&
     typeof input.total_cents === 'number';
 
-  const ticketLines = input.tickets.map((ticket, index) => {
+  const fees: OrderEmailFeeBreakdown | null = hasFeeBreakdown
+    ? {
+        currency,
+        subtotal_cents: input.subtotal_cents!,
+        platform_fee_cents: input.platform_fee_cents!,
+        processing_fee_cents: input.processing_fee_cents!,
+        total_cents: input.total_cents!,
+      }
+    : null;
+
+  const tickets = input.tickets.map((ticket, index) => {
     const ticketNumber = index + 1;
     const passType = ticket.pass_type?.trim() || 'General Admission';
     const passUrl = buildPassLinkUrl(ticket.secure_token, siteOrigin);
 
     return {
       ticketNumber,
+      ticketTotal,
       passType,
       passUrl,
-      text: `Ticket ${ticketNumber} of ${ticketTotal} — ${passType}\nView ticket: ${passUrl}`,
-      html: `<li><strong>Ticket ${ticketNumber} of ${ticketTotal}</strong> — ${escapeHtml(passType)}<br><a href="${escapeHtml(passUrl)}">View ticket</a></li>`,
     };
   });
 
+  const templateInput = {
+    buyerName,
+    eventName,
+    dateLine,
+    venueLine,
+    ticketTotal,
+    tickets,
+    successUrl,
+    fees,
+  };
+
   const subject = `Your tickets for ${eventName}`;
-
-  const textParts = [
-    `Hi ${buyerName},`,
-    '',
-    `You're all set for ${eventName}.`,
-  ];
-
-  if (dateLine) {
-    textParts.push(dateLine);
-  }
-
-  if (venueLine) {
-    textParts.push(venueLine);
-  }
-
-  textParts.push(
-    '',
-    `You have ${ticketTotal} ticket${ticketTotal === 1 ? '' : 's'}.`,
-    '',
-    ...ticketLines.map((line) => line.text),
-  );
-
-  if (hasFeeBreakdown) {
-    textParts.push(
-      '',
-      'Payment summary',
-      `Subtotal: ${formatMoneyCents(input.subtotal_cents!, currency)}`,
-      `808Tickets service fee: ${formatMoneyCents(input.platform_fee_cents!, currency)}`,
-      `Payment processing fee: ${formatMoneyCents(input.processing_fee_cents!, currency)}`,
-      `Total paid: ${formatMoneyCents(input.total_cents!, currency)}`,
-    );
-  }
-
-  textParts.push(
-    '',
-    'On iPhone, open a ticket link and tap Add to Apple Wallet.',
-    '',
-    `View all tickets: ${successUrl}`,
-    '',
-    'Transactional email from 808Tickets.',
-  );
-
-  const htmlParts = [
-    `<p>Hi ${escapeHtml(buyerName)},</p>`,
-    `<p>You're all set for <strong>${escapeHtml(eventName)}</strong>.</p>`,
-  ];
-
-  if (dateLine) {
-    htmlParts.push(`<p>${escapeHtml(dateLine)}</p>`);
-  }
-
-  if (venueLine) {
-    htmlParts.push(`<p>${escapeHtml(venueLine)}</p>`);
-  }
-
-  htmlParts.push(
-    `<p>You have <strong>${ticketTotal}</strong> ticket${ticketTotal === 1 ? '' : 's'}.</p>`,
-    `<ul>${ticketLines.map((line) => line.html).join('')}</ul>`,
-  );
-
-  if (hasFeeBreakdown) {
-    htmlParts.push(
-      '<p><strong>Payment summary</strong></p>',
-      '<ul>',
-      `<li>Subtotal: ${escapeHtml(formatMoneyCents(input.subtotal_cents!, currency))}</li>`,
-      `<li>808Tickets service fee: ${escapeHtml(formatMoneyCents(input.platform_fee_cents!, currency))}</li>`,
-      `<li>Payment processing fee: ${escapeHtml(formatMoneyCents(input.processing_fee_cents!, currency))}</li>`,
-      `<li><strong>Total paid: ${escapeHtml(formatMoneyCents(input.total_cents!, currency))}</strong></li>`,
-      '</ul>',
-    );
-  }
-
-  htmlParts.push(
-    '<p>On iPhone, open a ticket link and tap <strong>Add to Apple Wallet</strong>.</p>',
-    `<p><a href="${escapeHtml(successUrl)}">View all tickets</a></p>`,
-    '<p style="color:#666;font-size:12px;">Transactional email from 808Tickets.</p>',
-  );
+  const html = renderOrderConfirmationHtml(templateInput);
+  const text = renderOrderConfirmationText(templateInput);
 
   return {
     to: input.buyer_email.trim(),
     subject,
-    html: htmlParts.join('\n'),
-    text: textParts.join('\n'),
+    html,
+    text,
     payload_snapshot: {
       message_type: ORDER_CONFIRMATION_MESSAGE_TYPE,
+      content_format: 'html+text',
+      has_html_body: true,
+      has_text_body: true,
+      html_bytes: html.length,
+      text_bytes: text.length,
+      primary_cta_label: OPEN_TICKETS_CTA_LABEL,
+      site_origin: siteOrigin,
       event_name: eventName,
       pass_count: ticketTotal,
       buyer_email: input.buyer_email.trim(),
       venue_name: venueLine,
       event_date: input.event_date,
       start_time: input.start_time,
-      success_url: successUrl,
       currency,
       subtotal_cents: input.subtotal_cents ?? null,
       platform_fee_cents: input.platform_fee_cents ?? null,
       processing_fee_cents: input.processing_fee_cents ?? null,
       total_cents: input.total_cents ?? null,
+      service_fee_label: SERVICE_FEE_LABEL,
+      processing_fee_label: PROCESSING_FEE_LABEL,
+      // Tokenized URLs intentionally omitted from snapshot.
     },
   };
 }
+
 
 export function resolveOutboundRecipient(buyerEmail: string): {
   recipient: string;
@@ -513,7 +451,23 @@ export async function sendOrderConfirmationEmail(
       recipient,
       pass_count: input.tickets.length,
       subject: built.subject,
+      content_format: 'html+text',
+      html_bytes: built.html.length,
+      text_bytes: built.text.length,
+      primary_cta_label: OPEN_TICKETS_CTA_LABEL,
     });
+
+    const artifactDir = Deno.env.get('EMAIL_PREVIEW_ARTIFACT_DIR')?.trim();
+    if (artifactDir) {
+      try {
+        await Deno.mkdir(artifactDir, { recursive: true });
+        await Deno.writeTextFile(`${artifactDir.replace(/\/+$/, '')}/latest.html`, built.html);
+        await Deno.writeTextFile(`${artifactDir.replace(/\/+$/, '')}/latest.txt`, built.text);
+        console.log('[order-email] wrote preview artifacts', { dir: artifactDir });
+      } catch (artifactError) {
+        console.warn('[order-email] preview artifact write failed', String(artifactError));
+      }
+    }
 
     await markOutboundMessageSent(supabase, claim.id, {
       provider: 'preview',

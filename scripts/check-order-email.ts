@@ -228,10 +228,98 @@ assert(
   'EMAIL_OVERRIDE_TO override exists in order-email helper',
 );
 
+const ORDER_EMAIL_TEMPLATE = join(
+  ROOT,
+  'supabase/functions/_shared/order-email-template.ts',
+);
+assert(existsSync(ORDER_EMAIL_TEMPLATE), 'order-email-template shared module exists');
+const orderEmailTemplate = readFileSync(ORDER_EMAIL_TEMPLATE, 'utf8');
+
 assert(
-  orderEmailShared.includes('808Tickets service fee') &&
-    orderEmailShared.includes('Payment processing fee'),
+  orderEmailShared.includes('SERVICE_FEE_LABEL') &&
+    orderEmailShared.includes('PROCESSING_FEE_LABEL') &&
+    orderEmailTemplate.includes('808Tickets service fee') &&
+    orderEmailTemplate.includes('Payment processing fee'),
   'order confirmation email itemizes transparent fee labels',
+);
+
+assert(
+  orderEmailShared.includes("from './order-email-template.ts'") ||
+    orderEmailShared.includes('from "./order-email-template.ts"'),
+  'order-email imports branded template module',
+);
+
+assert(
+  orderEmailTemplate.includes('renderOrderConfirmationHtml') &&
+    orderEmailTemplate.includes('renderOrderConfirmationText'),
+  'template module renders HTML and plain-text bodies',
+);
+
+assert(
+  orderEmailTemplate.includes('<!DOCTYPE html>') &&
+    orderEmailTemplate.includes('808Tickets') &&
+    orderEmailTemplate.includes('Open Tickets') &&
+    orderEmailTemplate.includes('max-width:560px'),
+  'HTML email is branded single-column with Open Tickets CTA',
+);
+
+assert(
+  orderEmailTemplate.includes('808Tickets service fee') &&
+    orderEmailTemplate.includes('Payment processing fee') &&
+    orderEmailTemplate.includes('Ticket subtotal') &&
+    orderEmailTemplate.includes('Total paid'),
+  'HTML + text templates include transparent fee labels and totals',
+);
+
+assert(
+  orderEmailTemplate.includes('Apple Wallet') &&
+    orderEmailTemplate.includes('Open on your phone'),
+  'email copy mentions phone tickets and Apple Wallet',
+);
+
+assert(
+  orderEmailShared.includes("content_format: 'html+text'") &&
+    orderEmailShared.includes('has_html_body: true') &&
+    orderEmailShared.includes('has_text_body: true') &&
+    orderEmailShared.includes('primary_cta_label') &&
+    orderEmailShared.includes('site_origin: siteOrigin') &&
+    !orderEmailShared.includes('success_url: successUrl'),
+  'payload_snapshot records HTML mode without tokenized success URLs',
+);
+
+assert(
+  orderEmailShared.includes('buildPassLinkUrl') &&
+    orderEmailShared.includes('buildPurchaseSuccessUrl') &&
+    orderEmailShared.includes('resolvePublicSiteUrl') &&
+    orderEmailShared.includes('site_origin'),
+  'order-email builds links via PUBLIC_SITE_URL / resolvePublicSiteUrl',
+);
+
+assert(
+  !orderEmailTemplate.includes('808tix.vercel.app') &&
+    !orderEmailTemplate.includes('localhost:8081') &&
+    !orderEmailTemplate.includes('127.0.0.1'),
+  'email templates do not hardcode localhost or legacy Vercel host',
+);
+
+assert(
+  orderEmailShared.includes('EMAIL_PREVIEW_ARTIFACT_DIR'),
+  'preview mode can write HTML/text artifacts for local inspection',
+);
+
+const previewOrderEmailScript = join(ROOT, 'scripts/preview-order-email.ts');
+assert(existsSync(previewOrderEmailScript), 'preview:order-email script exists');
+const previewScript = readFileSync(previewOrderEmailScript, 'utf8');
+assert(
+  previewScript.includes('renderOrderConfirmationHtml') &&
+    previewScript.includes('qa/artifacts/email-preview'),
+  'preview script writes HTML artifact under qa/artifacts/email-preview',
+);
+
+assert(
+  stripePaymentsDoc.includes('preview:order-email') ||
+    stripePaymentsDoc.includes('branded HTML'),
+  'STRIPE_PAYMENTS.md documents branded HTML email preview',
 );
 
 assert(

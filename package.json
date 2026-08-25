@@ -99,6 +99,7 @@
     "smoke:payments:preview": "tsx scripts/smoke-payments-preview.ts",
     "smoke:checkin": "tsx scripts/smoke-checkin.ts",
     "smoke:email:send": "tsx scripts/smoke-email-send.ts",
+    "preview:order-email": "tsx scripts/preview-order-email.ts",
     "smoke:auth:response": "tsx scripts/smoke-auth-response.ts",
     "seed:email-smoke-order": "tsx scripts/seed-email-smoke-order.ts",
     "qa:env": "tsx scripts/print-local-expo-env.ts",
