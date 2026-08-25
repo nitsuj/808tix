@@ -134,7 +134,7 @@ These remain **external** until proven manually on hosted:
 4. Order confirmation email arriving in a real inbox with correct `808tickets.com` links.
 5. Apple Wallet add on a production ticket.
 6. Door scan + duplicate rejection on a production ticket.
-7. Platform admin can open `https://808tickets.com/admin` (no public nav) and answer event/order/payout/fee questions without raw DB queries. Promote via SQL/`service_role` only (`profiles.is_platform_admin`). See [PAYOUT_RULES.md](./PAYOUT_RULES.md).
+7. Platform admin can open `https://808tickets.com/admin` (no public nav), open event detail at `/admin/events/:eventId`, and answer event/order/payout/fee questions without raw DB queries. Promote via SQL/`service_role` only (`profiles.is_platform_admin`). See [PAYOUT_RULES.md](./PAYOUT_RULES.md).
 
 **Public checkout is not launch-ready unless a public event with a priced ticket (or intentional free ticket) can be bought on 808tickets.com.**
 

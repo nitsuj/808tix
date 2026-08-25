@@ -33,7 +33,7 @@ Fee overrides (`platform_fee_*`, `processing_fee_*`, `use_custom_fees`) and glob
 
 Paid orders snapshot cents **and** the rates/source used (`fee_config_source`, `*_bps_used`, `*_fixed_cents_used`). Changing fee config later does **not** recalculate existing orders.
 
-Platform ops UI: hidden route `/admin` (no public nav).
+Platform ops UI: hidden routes `/admin` (global cockpit) and `/admin/events/:eventId` (event support, scanner links, event fee overrides). No public nav.
 
 ---
 

@@ -557,6 +557,18 @@ export type Database = {
         };
         Returns: unknown;
       };
+      admin_get_event_detail: {
+        Args: { p_event_id: string };
+        Returns: unknown;
+      };
+      admin_list_event_orders: {
+        Args: { p_event_id: string; p_limit?: number };
+        Returns: unknown;
+      };
+      admin_get_event_monetization: {
+        Args: { p_event_id: string };
+        Returns: unknown;
+      };
       resolve_effective_fee_config: {
         Args: { p_event_id: string };
         Returns: unknown;

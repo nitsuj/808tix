@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * Platform admin cockpit (/admin) + monetization RPC guards.
+ * Platform admin cockpit (/admin + /admin/events/:eventId) + monetization RPC guards.
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -10,7 +10,12 @@ const MIGRATION = join(
   ROOT,
   'supabase/migrations/20260825120000_platform_admin_cockpit.sql',
 );
-const ADMIN_PAGE = join(ROOT, 'src/app/admin.tsx');
+const EVENT_DETAIL_MIGRATION = join(
+  ROOT,
+  'supabase/migrations/20260825140000_platform_admin_event_detail.sql',
+);
+const ADMIN_PAGE = join(ROOT, 'src/app/admin/index.tsx');
+const ADMIN_EVENT_PAGE = join(ROOT, 'src/app/admin/events/[eventId].tsx');
 const ADMIN_SUPPORT = join(ROOT, 'src/lib/admin-support.ts');
 const HOME = join(ROOT, 'src/app/home.tsx');
 const INDEX = join(ROOT, 'src/app/index.tsx');
@@ -29,11 +34,16 @@ function assert(condition: boolean, message: string) {
 }
 
 assert(existsSync(MIGRATION), 'admin cockpit migration exists');
+assert(existsSync(EVENT_DETAIL_MIGRATION), 'admin event-detail migration exists');
 assert(existsSync(ADMIN_PAGE), '/admin route file exists');
+assert(existsSync(ADMIN_EVENT_PAGE), '/admin/events/:eventId route file exists');
 assert(existsSync(ADMIN_SUPPORT), 'admin-support helpers exist');
+assert(!existsSync(join(ROOT, 'src/app/admin.tsx')), 'flat admin.tsx removed (folder route)');
 
 const migration = readFileSync(MIGRATION, 'utf8');
+const eventDetailMigration = readFileSync(EVENT_DETAIL_MIGRATION, 'utf8');
 const adminPage = readFileSync(ADMIN_PAGE, 'utf8');
+const adminEventPage = readFileSync(ADMIN_EVENT_PAGE, 'utf8');
 const adminSupport = readFileSync(ADMIN_SUPPORT, 'utf8');
 const home = readFileSync(HOME, 'utf8');
 const indexPage = readFileSync(INDEX, 'utf8');
@@ -76,12 +86,38 @@ for (const fn of [
   );
 }
 
+for (const fn of [
+  'admin_get_event_detail',
+  'admin_list_event_orders',
+  'admin_get_event_monetization',
+]) {
+  assert(
+    eventDetailMigration.includes(`create or replace function public.${fn}`) &&
+      eventDetailMigration.includes('is_platform_admin()'),
+    `${fn} is platform-admin gated`,
+  );
+  assert(
+    eventDetailMigration.includes(`grant execute on function public.${fn}`) &&
+      !new RegExp(`grant execute on function public\\.${fn}[^;]*to anon`, 'i').test(
+        eventDetailMigration,
+      ),
+    `${fn} not granted to anon`,
+  );
+}
+
 assert(migration.includes('create_pending_order') && migration.includes('resolve_effective_fee_config'), 'create_pending_order uses effective fee config');
 assert(migration.includes("fee_config_source") && migration.includes('v_source'), 'orders snapshot fee source at create');
 
-assert(adminPage.includes("profile?.is_platform_admin"), 'admin UI gates on is_platform_admin');
-assert(adminPage.includes('Not authorized') || adminPage.includes('not a platform admin'), 'unauthorized state present');
-assert(adminPage.includes('Go to login') || adminPage.includes('/login'), 'logged-out prompts login');
+assert(adminPage.includes('is_platform_admin') || adminPage.includes('AdminGate'), 'admin UI gates on platform admin');
+assert(adminEventPage.includes('AdminGate'), 'event admin uses AdminGate');
+assert(
+  readFileSync(join(ROOT, 'src/components/admin/admin-gate.tsx'), 'utf8').includes('Not authorized'),
+  'unauthorized state present',
+);
+assert(
+  readFileSync(join(ROOT, 'src/components/admin/admin-gate.tsx'), 'utf8').includes('/login'),
+  'logged-out prompts login',
+);
 assert(adminPage.includes('admin_dashboard_summary'), 'admin UI calls dashboard summary RPC');
 assert(adminPage.includes('admin_list_events'), 'admin UI calls events RPC');
 assert(adminPage.includes('admin_list_recent_orders'), 'admin UI calls orders RPC');
@@ -91,7 +127,32 @@ assert(adminPage.includes('admin_set_payout_status'), 'admin UI can set payout s
 assert(adminPage.includes('admin_update_global_fee_config'), 'admin UI can update global fees');
 assert(adminPage.includes('808Tickets service fee') && adminPage.includes('Payment processing fee'), 'exact fee labels in admin UI');
 assert(adminPage.includes('Export CSV') || adminSupport.includes('downloadCsv'), 'CSV export available');
+assert(adminPage.includes('buildAdminCockpitEventPath'), 'global admin links event names to event cockpit');
+assert(
+  !adminPage.includes('label="Buy"') &&
+    !adminPage.includes('label="Scanner"') &&
+    !adminPage.includes("label='Buy'") &&
+    !adminPage.includes("label='Scanner'"),
+  'global admin events table has no Buy/Scanner action buttons',
+);
+assert(!adminPage.includes('buildAdminEventBuyUrl'), 'global admin does not render buy support links');
+assert(!adminPage.includes('buildAdminEventScanUrl'), 'global admin does not render scanner support links');
 
+assert(adminEventPage.includes('admin_get_event_detail'), 'event admin calls detail RPC');
+assert(adminEventPage.includes('admin_list_event_orders'), 'event admin calls event orders RPC');
+assert(adminEventPage.includes('admin_get_event_monetization'), 'event admin calls event monetization RPC');
+assert(adminEventPage.includes('admin_list_payouts'), 'event admin lists payouts');
+assert(adminEventPage.includes('admin_set_event_custom_fees'), 'event admin can mutate event fees');
+assert(adminEventPage.includes('admin_set_payout_status'), 'event admin can set payout status');
+assert(adminEventPage.includes('buildAdminEventBuyUrl'), 'event admin has buy support link');
+assert(adminEventPage.includes('buildAdminEventScanUrl'), 'event admin has scanner support link');
+assert(adminEventPage.includes('buildAdminEventDetailUrl'), 'event admin has public event link');
+assert(adminEventPage.includes('808Tickets service fee') && adminEventPage.includes('Payment processing fee'), 'exact fee labels on event admin');
+assert(adminEventPage.includes('Existing orders are not recalculated'), 'event fee copy warns existing orders');
+assert(adminEventPage.includes('Back to global admin'), 'event admin links back to /admin');
+
+assert(adminSupport.includes('buildAdminCockpitEventPath'), 'admin cockpit event path helper');
+assert(adminSupport.includes('/admin/events/'), 'event cockpit path uses /admin/events/');
 assert(adminSupport.includes('/events/') && adminSupport.includes('/buy'), 'buy support link uses real route');
 assert(adminSupport.includes('/scan'), 'scanner support link uses real route');
 assert(adminSupport.includes('/pass/'), 'ticket support link uses real route');
@@ -104,8 +165,13 @@ assert(!indexPage.includes('href="/admin"') && !indexPage.includes("push('/admin
 assert(!layout.includes('/admin'), 'root layout does not advertise /admin nav');
 
 assert(
-  vercel.includes('"source": "/admin"') && vercel.includes('"destination": "/admin.html"'),
+  vercel.includes('"source": "/admin"') && vercel.includes('"destination": "/admin/index.html"'),
   'vercel rewrite for /admin clean URL',
+);
+assert(
+  vercel.includes('"source": "/admin/events/:eventId"') &&
+    vercel.includes('"destination": "/admin/events/[eventId].html"'),
+  'vercel rewrite for /admin/events/:eventId',
 );
 
 if (failures > 0) {

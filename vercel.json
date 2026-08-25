@@ -9,7 +9,11 @@
     },
     {
       "source": "/admin",
-      "destination": "/admin.html"
+      "destination": "/admin/index.html"
+    },
+    {
+      "source": "/admin/events/:eventId",
+      "destination": "/admin/events/[eventId].html"
     },
     {
       "source": "/privacy",

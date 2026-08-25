@@ -1,5 +1,10 @@
 import { buildAbsoluteAppUrl } from '@/lib/app-base-url';
 
+/** In-app platform admin event cockpit path (Expo Router). */
+export function buildAdminCockpitEventPath(eventId: string): string {
+  return `/admin/events/${encodeURIComponent(eventId.trim())}`;
+}
+
 /** Support deep-links for platform admin cockpit (real app routes only). */
 export function buildAdminEventDetailUrl(eventId: string): string {
   return buildAbsoluteAppUrl(`/events/${encodeURIComponent(eventId.trim())}`);
