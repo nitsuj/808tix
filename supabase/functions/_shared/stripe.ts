@@ -7,6 +7,7 @@ export type StripeCheckoutSessionInput = {
   ticketUnitAmountCents: number;
   ticketQuantity: number;
   platformFeeCents: number;
+  processingFeeCents: number;
   customerEmail: string;
   successUrl: string;
   cancelUrl: string;
@@ -44,11 +45,33 @@ export async function createStripeCheckoutSession(
   params.set('line_items[0][price_data][unit_amount]', String(input.ticketUnitAmountCents));
   params.set('line_items[0][quantity]', String(input.ticketQuantity));
 
+  let nextLineIndex = 1;
+
   if (input.platformFeeCents > 0) {
-    params.set('line_items[1][price_data][currency]', input.currency);
-    params.set('line_items[1][price_data][product_data][name]', '808Tix Service Fee');
-    params.set('line_items[1][price_data][unit_amount]', String(input.platformFeeCents));
-    params.set('line_items[1][quantity]', '1');
+    params.set(`line_items[${nextLineIndex}][price_data][currency]`, input.currency);
+    params.set(
+      `line_items[${nextLineIndex}][price_data][product_data][name]`,
+      '808Tickets service fee',
+    );
+    params.set(
+      `line_items[${nextLineIndex}][price_data][unit_amount]`,
+      String(input.platformFeeCents),
+    );
+    params.set(`line_items[${nextLineIndex}][quantity]`, '1');
+    nextLineIndex += 1;
+  }
+
+  if (input.processingFeeCents > 0) {
+    params.set(`line_items[${nextLineIndex}][price_data][currency]`, input.currency);
+    params.set(
+      `line_items[${nextLineIndex}][price_data][product_data][name]`,
+      'Payment processing fee',
+    );
+    params.set(
+      `line_items[${nextLineIndex}][price_data][unit_amount]`,
+      String(input.processingFeeCents),
+    );
+    params.set(`line_items[${nextLineIndex}][quantity]`, '1');
   }
 
   for (const [key, value] of Object.entries(input.metadata)) {

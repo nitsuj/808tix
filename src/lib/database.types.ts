@@ -50,6 +50,7 @@ export type CreatePendingOrderResult = {
   status: OrderStatus;
   subtotal_cents: number;
   platform_fee_cents: number;
+  processing_fee_cents: number;
   total_cents: number;
   organizer_net_cents: number;
   currency: string;
@@ -86,6 +87,11 @@ export type GetOrderByPublicTokenResult = {
   start_time: string | null;
   image_url: string | null;
   ticket_count: number;
+  currency?: string;
+  subtotal_cents?: number;
+  platform_fee_cents?: number;
+  processing_fee_cents?: number;
+  total_cents?: number;
   tickets: PublicOrderTicket[] | null;
 };
 
@@ -103,6 +109,8 @@ export type PublicEventPurchaseOptionsEvent = {
   sales_enabled: boolean;
   platform_fee_bps: number;
   platform_fee_fixed_cents: number;
+  processing_fee_bps: number;
+  processing_fee_fixed_cents: number;
 };
 
 export type PublicEventPurchaseTicketType = {
@@ -151,6 +159,7 @@ export type Profile = {
   id: string;
   full_name: string | null;
   email: string | null;
+  is_platform_admin: boolean;
   default_settlement_mode: SettlementMode;
   stripe_connect_account_id: string | null;
   stripe_connect_onboarding_complete: boolean;
@@ -175,6 +184,8 @@ export type Event = {
   currency: string;
   platform_fee_bps: number;
   platform_fee_fixed_cents: number;
+  processing_fee_bps: number;
+  processing_fee_fixed_cents: number;
   sales_enabled: boolean;
   created_at: string;
   updated_at: string;
@@ -477,6 +488,22 @@ export type Database = {
           p_event_id: string;
         };
         Returns: GetPublicEventPurchaseOptionsResult | null;
+      };
+      admin_list_payouts: {
+        Args: {
+          p_status?: string | null;
+          p_event_id?: string | null;
+          p_organizer_id?: string | null;
+        };
+        Returns: unknown;
+      };
+      admin_set_payout_status: {
+        Args: {
+          p_payout_id: string;
+          p_status: string;
+          p_notes?: string | null;
+        };
+        Returns: unknown;
       };
       list_public_upcoming_events: {
         Args: Record<string, never>;

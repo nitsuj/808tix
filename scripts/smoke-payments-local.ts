@@ -4,12 +4,16 @@
  *
  * Proves: create-checkout-session → Stripe Checkout → stripe-webhook → fulfill_paid_order → paid passes.
  *
- * Prerequisites (separate terminals):
- *   A) supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env
+ * Recommended one-command path (starts web + functions + stripe listen):
+ *   npm run smoke:payments:preview
+ *
+ * Manual three-terminal fallback (SMOKE_MANUAL_CHECKOUT=true):
+ *   A) supabase functions serve create-checkout-session stripe-webhook --env-file ...
  *   B) stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhook
+ *   C) Expo web on http://127.0.0.1:8081
  */
 import { execFile } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
@@ -18,7 +22,13 @@ import { promisify } from 'node:util';
 const execFileAsync = promisify(execFile);
 const ROOT = process.cwd();
 const FUNCTIONS_ENV_PATH = join(ROOT, 'supabase/functions/.env');
+const ARTIFACT_DIR = join(ROOT, 'qa/artifacts/smoke-payments');
+const ARTIFACT_LOG = join(ARTIFACT_DIR, 'latest.log');
 const CHECKOUT_FUNCTION_URL = 'http://127.0.0.1:54321/functions/v1/create-checkout-session';
+const WEBHOOK_FUNCTION_URL = 'http://127.0.0.1:54321/functions/v1/stripe-webhook';
+const GUEST_WEB_ORIGIN = 'http://127.0.0.1:8081';
+const SUCCESS_PAGE_URL = `${GUEST_WEB_ORIGIN}/purchase/success`;
+const CANCEL_PAGE_URL = `${GUEST_WEB_ORIGIN}/purchase/cancel`;
 
 const SMOKE_ORGANIZER_ID = 'b0000000-0000-4000-8000-000000000001';
 const SMOKE_ORGANIZER_EMAIL = 'stripe-smoke-organizer@example.com';
@@ -27,8 +37,17 @@ const TICKET_QUANTITY = 2;
 const TICKET_PRICE_CENTS = 2500;
 const EXPECTED_SUBTOTAL_CENTS = TICKET_PRICE_CENTS * TICKET_QUANTITY;
 const EXPECTED_PLATFORM_FEE_CENTS =
-  Math.round((EXPECTED_SUBTOTAL_CENTS * 300) / 10000) + 50;
-const EXPECTED_TOTAL_CENTS = EXPECTED_SUBTOTAL_CENTS + EXPECTED_PLATFORM_FEE_CENTS;
+  Math.round((EXPECTED_SUBTOTAL_CENTS * 250) / 10000) + 99 * TICKET_QUANTITY;
+const EXPECTED_PROCESSING_FEE_CENTS = (() => {
+  const base = EXPECTED_SUBTOTAL_CENTS + EXPECTED_PLATFORM_FEE_CENTS;
+  const total = Math.ceil((base + 30) / (1 - 290 / 10000));
+  return total - base;
+})();
+const EXPECTED_TOTAL_CENTS =
+  EXPECTED_SUBTOTAL_CENTS + EXPECTED_PLATFORM_FEE_CENTS + EXPECTED_PROCESSING_FEE_CENTS;
+
+const SERVICE_FEE_LABEL = '808Tickets service fee';
+const PROCESSING_FEE_LABEL = 'Payment processing fee';
 
 type CheckResult = { ok: boolean; detail?: string };
 
@@ -47,6 +66,9 @@ type OrderRow = {
   paid_at: string | null;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  subtotal_cents: number;
+  platform_fee_cents: number;
+  processing_fee_cents: number | null;
   total_cents: number;
   organizer_net_cents: number;
   public_access_token: string;
@@ -73,15 +95,44 @@ type PayoutRow = {
   amount_cents: number;
 };
 
+const artifactLines: string[] = [];
+
+function appendArtifact(line: string): void {
+  artifactLines.push(line);
+}
+
+function flushArtifact(extra?: Record<string, unknown>): void {
+  mkdirSync(ARTIFACT_DIR, { recursive: true });
+  const payload = {
+    written_at: new Date().toISOString(),
+    expected_fees: {
+      subtotal_cents: EXPECTED_SUBTOTAL_CENTS,
+      platform_fee_cents: EXPECTED_PLATFORM_FEE_CENTS,
+      processing_fee_cents: EXPECTED_PROCESSING_FEE_CENTS,
+      total_cents: EXPECTED_TOTAL_CENTS,
+      organizer_net_cents: EXPECTED_SUBTOTAL_CENTS,
+    },
+    log: artifactLines,
+    ...extra,
+  };
+  writeFileSync(ARTIFACT_LOG, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  console.error(`Smoke artifact: ${ARTIFACT_LOG}`);
+}
+
 function logCheck(label: string, result: CheckResult) {
-  console.log(`${result.ok ? 'PASS' : 'FAIL'}  ${label}${result.detail ? ` — ${result.detail}` : ''}`);
+  const line = `${result.ok ? 'PASS' : 'FAIL'}  ${label}${result.detail ? ` — ${result.detail}` : ''}`;
+  console.log(line);
+  appendArtifact(line);
 }
 
 function failAndExit(message: string, nextAction?: string): never {
   console.error(`\nSmoke test stopped: ${message}`);
+  appendArtifact(`FAIL: ${message}`);
   if (nextAction) {
     console.error(`Next action: ${nextAction}`);
+    appendArtifact(`Next action: ${nextAction}`);
   }
+  flushArtifact({ failed: true, message, nextAction });
   process.exit(1);
 }
 
@@ -288,6 +339,9 @@ async function fetchExactOrderByToken(
         'paid_at', o.paid_at::text,
         'stripe_checkout_session_id', o.stripe_checkout_session_id,
         'stripe_payment_intent_id', o.stripe_payment_intent_id,
+        'subtotal_cents', o.subtotal_cents,
+        'platform_fee_cents', o.platform_fee_cents,
+        'processing_fee_cents', o.processing_fee_cents,
         'total_cents', o.total_cents,
         'organizer_net_cents', o.organizer_net_cents,
         'public_access_token', o.public_access_token
@@ -529,8 +583,8 @@ async function checkPrerequisites(): Promise<{
       detail: String(error),
     });
     failAndExit(
-      'Could not reach create-checkout-session.',
-      'Terminal A: supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env',
+      'Could not reach create-checkout-session (Edge Functions not serving).',
+      'Use one-command: npm run smoke:payments:preview\nOr Terminal A: supabase functions serve create-checkout-session stripe-webhook --env-file supabase/functions/.env',
     );
   }
 
@@ -541,9 +595,124 @@ async function checkPrerequisites(): Promise<{
   });
   if (!checkoutReachable) {
     failAndExit(
-      `Unexpected GET status ${checkoutGetStatus} from create-checkout-session.`,
-      'Ensure Edge Functions are served locally.',
+      `Unexpected GET status ${checkoutGetStatus} from create-checkout-session (expected 405).`,
+      'Ensure Edge Functions are served locally via npm run smoke:payments:preview',
     );
+  }
+
+  let webhookGetStatus = 0;
+  try {
+    const response = await fetch(WEBHOOK_FUNCTION_URL, { method: 'GET' });
+    webhookGetStatus = response.status;
+  } catch (error) {
+    logCheck('stripe-webhook reachable', { ok: false, detail: String(error) });
+    failAndExit(
+      'Could not reach stripe-webhook (Edge Functions not serving webhook).',
+      'Use one-command: npm run smoke:payments:preview\nOr serve both: supabase functions serve create-checkout-session stripe-webhook --env-file ...',
+    );
+  }
+
+  // Deno serve returns 405 for GET on POST-only handlers (or 400/401 without signature).
+  const webhookReachable = webhookGetStatus === 405 || webhookGetStatus === 400 || webhookGetStatus === 401;
+  logCheck('stripe-webhook reachable (GET → 405/400/401)', {
+    ok: webhookReachable,
+    detail: `HTTP ${webhookGetStatus}`,
+  });
+  if (!webhookReachable) {
+    failAndExit(
+      `Unexpected GET status ${webhookGetStatus} from stripe-webhook.`,
+      'Serve stripe-webhook locally (npm run smoke:payments:preview).',
+    );
+  }
+
+  let guestWebStatus = 0;
+  try {
+    const response = await fetch(GUEST_WEB_ORIGIN, { method: 'GET' });
+    guestWebStatus = response.status;
+  } catch (error) {
+    logCheck(`Expo web at redirect origin ${GUEST_WEB_ORIGIN}`, {
+      ok: false,
+      detail: String(error),
+    });
+    failAndExit(
+      `Expo web is not reachable at ${GUEST_WEB_ORIGIN} (required for Stripe success redirect).`,
+      'Use one-command: npm run smoke:payments:preview\nOr: npx expo start --web --port 8081',
+    );
+  }
+
+  const guestWebOk = guestWebStatus > 0 && guestWebStatus < 500;
+  logCheck(`Expo web at redirect origin ${GUEST_WEB_ORIGIN}`, {
+    ok: guestWebOk,
+    detail: `HTTP ${guestWebStatus}`,
+  });
+  if (!guestWebOk) {
+    failAndExit(
+      `Expo web returned HTTP ${guestWebStatus} at ${GUEST_WEB_ORIGIN}.`,
+      'Start Expo web on port 8081 before paying (npm run smoke:payments:preview).',
+    );
+  }
+
+  let successPageStatus = 0;
+  try {
+    const response = await fetch(`${SUCCESS_PAGE_URL}?order_token=smoke-preflight`, {
+      method: 'GET',
+    });
+    successPageStatus = response.status;
+  } catch (error) {
+    logCheck('purchase success page reachable', { ok: false, detail: String(error) });
+    failAndExit(
+      `Could not load ${SUCCESS_PAGE_URL}.`,
+      'Ensure Expo web is serving the app on 8081.',
+    );
+  }
+
+  const successPageOk = successPageStatus > 0 && successPageStatus < 500;
+  logCheck('purchase success page reachable', {
+    ok: successPageOk,
+    detail: `HTTP ${successPageStatus}`,
+  });
+  if (!successPageOk) {
+    failAndExit(
+      `Success page returned HTTP ${successPageStatus}.`,
+      'Ensure Expo web export/routes include /purchase/success.',
+    );
+  }
+
+  const feeColumnProbe = await runSupabaseQuery(`
+    select platform_fee_cents, processing_fee_cents from public.orders limit 0;
+  `);
+  const feeColumnsPresent = feeColumnProbe.exitCode === 0 && !/^ERROR:/im.test(feeColumnProbe.stdout + feeColumnProbe.stderr);
+  logCheck('orders fee columns present (platform + processing)', {
+    ok: feeColumnsPresent,
+    detail: feeColumnsPresent
+      ? 'platform_fee_cents + processing_fee_cents selectable'
+      : feeColumnProbe.stderr.trim() || feeColumnProbe.stdout.trim() || 'column probe failed',
+  });
+  if (!feeColumnsPresent) {
+    failAndExit(
+      'Local DB is missing transparent fee columns.',
+      'Apply migrations: supabase db reset  (includes 20260824140000_platform_admin_fees_payout_rpcs)',
+    );
+  }
+
+  const ticketFeesSource = readFileSync(join(ROOT, 'src/lib/ticket-fees.ts'), 'utf8');
+  const stripeSharedSource = readFileSync(
+    join(ROOT, 'supabase/functions/_shared/stripe.ts'),
+    'utf8',
+  );
+  const labelsOk =
+    ticketFeesSource.includes(SERVICE_FEE_LABEL) &&
+    ticketFeesSource.includes(PROCESSING_FEE_LABEL) &&
+    stripeSharedSource.includes(SERVICE_FEE_LABEL) &&
+    stripeSharedSource.includes(PROCESSING_FEE_LABEL);
+  logCheck('buyer-facing transparent fee labels in source', {
+    ok: labelsOk,
+    detail: labelsOk
+      ? `"${SERVICE_FEE_LABEL}" + "${PROCESSING_FEE_LABEL}"`
+      : 'missing label constants / Stripe line item names',
+  });
+  if (!labelsOk) {
+    failAndExit('Transparent fee labels missing from ticket-fees / Stripe helper sources.');
   }
 
   const functionsEnv = parseEnvFile(FUNCTIONS_ENV_PATH);
@@ -566,19 +735,49 @@ async function checkPrerequisites(): Promise<{
     ok: webhookSecretConfigured,
     detail: webhookSecretConfigured
       ? process.env.STRIPE_WEBHOOK_SECRET?.trim()
-        ? 'present (process env)'
-        : 'present (supabase/functions/.env)'
+        ? 'present (process env — must match active stripe listen whsec)'
+        : 'present (supabase/functions/.env — must match active stripe listen whsec)'
       : 'missing or placeholder',
   });
 
   if (!stripeSecretConfigured || !webhookSecretConfigured) {
     failAndExit(
-      'Stripe function env is incomplete.',
-      'Copy supabase/functions/.env.example → supabase/functions/.env and set sk_test_... + whsec_... from stripe listen',
+      'Stripe function env is incomplete (secret key and/or webhook signing secret).',
+      'Preferred: npm run smoke:payments:preview (captures whsec from stripe listen automatically)\nFallback: set sk_test_... + whsec_... from `stripe listen` into supabase/functions/.env',
     );
   }
 
-  return { publishableKey, apiUrl };
+  // stripe listen must forward to local stripe-webhook (preview orchestrator starts it).
+  let stripeListenRunning = false;
+  let stripeListenDetail = 'not detected';
+  try {
+    const { stdout } = await execFileAsync('pgrep', ['-fl', 'stripe listen'], {
+      cwd: ROOT,
+      maxBuffer: 1024 * 1024,
+    });
+    stripeListenRunning = /stripe\s+listen/i.test(stdout);
+    stripeListenDetail = stripeListenRunning
+      ? stdout.trim().split('\n')[0]?.slice(0, 120) || 'process found'
+      : 'no matching process';
+  } catch {
+    stripeListenRunning = false;
+    stripeListenDetail = 'pgrep found no stripe listen process';
+  }
+  logCheck('stripe listen forwarding process', {
+    ok: stripeListenRunning,
+    detail: stripeListenDetail,
+  });
+  if (!stripeListenRunning) {
+    failAndExit(
+      'stripe listen is not running (webhooks will never fulfill paid orders).',
+      'Use one-command: npm run smoke:payments:preview\nOr: stripe listen --forward-to http://127.0.0.1:54321/functions/v1/stripe-webhook',
+    );
+  }
+
+  return {
+    publishableKey,
+    apiUrl,
+  };
 }
 
 async function bootstrapOrganizer(): Promise<string> {
@@ -733,8 +932,8 @@ async function createCheckoutSession(
     buyer_email: BUYER_EMAIL,
     buyer_name: 'Test Buyer',
     buyer_phone: '8085551212',
-    success_url: 'http://127.0.0.1:8081/purchase/success',
-    cancel_url: 'http://127.0.0.1:8081/purchase/cancel',
+    success_url: SUCCESS_PAGE_URL,
+    cancel_url: CANCEL_PAGE_URL,
   };
 
   const response = await fetch(CHECKOUT_FUNCTION_URL, {
@@ -880,9 +1079,37 @@ function assertPostPayment(
   if (order.status !== 'paid') {
     failures.push(`order.status expected paid, got ${order.status}`);
   }
+  if (!order.paid_at) failures.push('order.paid_at is null');
   if (!order.stripe_checkout_session_id) failures.push('order.stripe_checkout_session_id is null');
+
+  if (Number(order.subtotal_cents) !== EXPECTED_SUBTOTAL_CENTS) {
+    failures.push(`order.subtotal_cents expected ${EXPECTED_SUBTOTAL_CENTS}, got ${order.subtotal_cents}`);
+  }
+  if (Number(order.platform_fee_cents) !== EXPECTED_PLATFORM_FEE_CENTS) {
+    failures.push(
+      `order.platform_fee_cents expected ${EXPECTED_PLATFORM_FEE_CENTS}, got ${order.platform_fee_cents}`,
+    );
+  }
+  if (Number(order.processing_fee_cents ?? -1) !== EXPECTED_PROCESSING_FEE_CENTS) {
+    failures.push(
+      `order.processing_fee_cents expected ${EXPECTED_PROCESSING_FEE_CENTS}, got ${order.processing_fee_cents}`,
+    );
+  }
   if (Number(order.total_cents) !== EXPECTED_TOTAL_CENTS) {
     failures.push(`order.total_cents expected ${EXPECTED_TOTAL_CENTS}, got ${order.total_cents}`);
+  }
+  if (
+    Number(order.total_cents) !==
+    Number(order.subtotal_cents) +
+      Number(order.platform_fee_cents) +
+      Number(order.processing_fee_cents ?? 0)
+  ) {
+    failures.push('order.total_cents !== subtotal + platform_fee + processing_fee');
+  }
+  if (Number(order.organizer_net_cents) !== EXPECTED_SUBTOTAL_CENTS) {
+    failures.push(
+      `order.organizer_net_cents expected ${EXPECTED_SUBTOTAL_CENTS}, got ${order.organizer_net_cents}`,
+    );
   }
 
   if (!payment) failures.push('payment row missing');
@@ -929,12 +1156,346 @@ function assertPostPayment(
   if (Number(lookup.ticket_count) !== TICKET_QUANTITY) {
     failures.push(`lookup.ticket_count expected ${TICKET_QUANTITY}`);
   }
+  if (Number(lookup.platform_fee_cents) !== EXPECTED_PLATFORM_FEE_CENTS) {
+    failures.push('lookup.platform_fee_cents mismatch');
+  }
+  if (Number(lookup.processing_fee_cents) !== EXPECTED_PROCESSING_FEE_CENTS) {
+    failures.push('lookup.processing_fee_cents mismatch');
+  }
+  if (Number(lookup.total_cents) !== EXPECTED_TOTAL_CENTS) {
+    failures.push('lookup.total_cents mismatch');
+  }
   const tickets = lookup.tickets;
   if (!Array.isArray(tickets) || tickets.length !== TICKET_QUANTITY) {
     failures.push('lookup.tickets expected 2 entries after payment');
   }
 
   return failures;
+}
+
+async function saveCheckoutArtifacts(
+  page: {
+    screenshot: (opts: { path: string; fullPage: boolean }) => Promise<unknown>;
+    content: () => Promise<string>;
+    url: () => string;
+  },
+  label: string,
+): Promise<void> {
+  mkdirSync(ARTIFACT_DIR, { recursive: true });
+  const shotPath = join(ARTIFACT_DIR, 'checkout-latest.png');
+  const htmlPath = join(ARTIFACT_DIR, 'checkout-latest.html');
+  await page.screenshot({ path: shotPath, fullPage: true }).catch(() => undefined);
+  writeFileSync(htmlPath, await page.content());
+  appendArtifact(`${label} url=${page.url()}`);
+  appendArtifact(`checkout screenshot: ${shotPath}`);
+  appendArtifact(`checkout html: ${htmlPath}`);
+}
+
+async function fillFirstMatching(
+  // Playwright Page | Frame-compatible locator host
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  page: any,
+  selectors: string[],
+  value: string,
+): Promise<boolean> {
+  for (const selector of selectors) {
+    try {
+      const loc = page.locator(selector).first();
+      if ((await loc.count()) === 0) {
+        continue;
+      }
+      if (!(await loc.isVisible().catch(() => false))) {
+        continue;
+      }
+      await loc.click({ timeout: 5_000 });
+      await loc.fill('');
+      // Hosted Checkout formats card fields while typing; sequential keys are more reliable than fill().
+      if (typeof loc.pressSequentially === 'function') {
+        await loc.pressSequentially(value, { delay: 25 });
+      } else {
+        await loc.fill(value, { timeout: 5_000 });
+      }
+      return true;
+    } catch {
+      // try next selector
+    }
+  }
+
+  for (const frame of page.frames()) {
+    for (const selector of selectors) {
+      try {
+        const loc = frame.locator(selector).first();
+        if ((await loc.count()) === 0) {
+          continue;
+        }
+        await loc.fill(value, { timeout: 5_000 });
+        return true;
+      } catch {
+        // try next
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Complete hosted Stripe Checkout with test card 4242…
+ * PaymentIntent confirm-via-API is NOT viable: Stripe defers PI until Checkout is confirmed (API ≥ 2022-08-01).
+ */
+async function autoCompleteCheckoutViaPlaywright(checkoutUrl: string): Promise<void> {
+  console.log('\n=== Auto-pay: Stripe Checkout via Playwright (test card) ===\n');
+  appendArtifact(`auto-complete playwright: ${checkoutUrl}`);
+
+  const { chromium } = await import('playwright');
+  const headed = process.env.SMOKE_HEADED === 'true';
+  const browser = await chromium.launch({
+    headless: !headed,
+    args: ['--disable-blink-features=AutomationControlled'],
+  });
+  const context = await browser.newContext({
+    locale: 'en-US',
+    userAgent:
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  });
+  const page = await context.newPage();
+
+  try {
+    await page.goto(checkoutUrl, { waitUntil: 'domcontentloaded', timeout: 90_000 });
+    await sleep(2_500);
+
+    // Link/Wallet is often default — expand Card accordion on modern hosted Checkout.
+    const cardOpeners = [
+      page.locator('[data-testid="card-accordion-item-button"]'),
+      page.locator('[data-testid="card-accordion-item"]'),
+      page.getByRole('radio', { name: /^card$/i }),
+      page.getByRole('button', { name: /^card$/i }),
+      page.getByText(/^Card$/i),
+    ];
+    for (const opener of cardOpeners) {
+      try {
+        if ((await opener.count()) > 0 && (await opener.first().isVisible())) {
+          await opener.first().click({ timeout: 3_000 });
+          await sleep(800);
+          break;
+        }
+      } catch {
+        // try next opener
+      }
+    }
+
+    const numberFilled = await fillFirstMatching(
+      page,
+      [
+        '#cardNumber',
+        'input[name="cardNumber"]',
+        '[data-testid="card-number-input"]',
+        'input[autocomplete="cc-number"]',
+        'input[name="number"]',
+        'input[placeholder*="Card number" i]',
+      ],
+      '4242424242424242',
+    );
+    if (!numberFilled) {
+      try {
+        const labeled = page.getByLabel(/card number/i).first();
+        if ((await labeled.count()) > 0) {
+          await labeled.fill('4242424242424242');
+        } else {
+          throw new Error('no card number field');
+        }
+      } catch {
+        await saveCheckoutArtifacts(page, 'FAIL missing card number');
+        throw new Error(
+          'Could not locate Stripe card number input. Artifacts: qa/artifacts/smoke-payments/checkout-latest.{png,html}. Retry with SMOKE_HEADED=true or SMOKE_MANUAL_CHECKOUT=true.',
+        );
+      }
+    }
+
+    const expiryFilled =
+      (await fillFirstMatching(
+        page,
+        [
+          '#cardExpiry',
+          'input[name="cardExpiry"]',
+          '[data-testid="card-expiry-input"]',
+          'input[autocomplete="cc-exp"]',
+          'input[name="expiry"]',
+          'input[placeholder*="MM" i]',
+        ],
+        '1234',
+      )) ||
+      (await (async () => {
+        try {
+          const labeled = page.getByLabel(/expir/i).first();
+          if ((await labeled.count()) > 0) {
+            await labeled.fill('12 / 34');
+            return true;
+          }
+        } catch {
+          // ignore
+        }
+        return false;
+      })());
+
+    const cvcFilled =
+      (await fillFirstMatching(
+        page,
+        [
+          '#cardCvc',
+          'input[name="cardCvc"]',
+          '[data-testid="card-cvc-input"]',
+          'input[autocomplete="cc-csc"]',
+          'input[name="cvc"]',
+          'input[placeholder*="CVC" i]',
+        ],
+        '123',
+      )) ||
+      (await (async () => {
+        try {
+          const labeled = page.getByLabel(/cvc|security code/i).first();
+          if ((await labeled.count()) > 0) {
+            await labeled.fill('123');
+            return true;
+          }
+        } catch {
+          // ignore
+        }
+        return false;
+      })());
+
+    if (!expiryFilled || !cvcFilled) {
+      await saveCheckoutArtifacts(page, 'FAIL missing expiry/cvc');
+      throw new Error(
+        `Stripe card fields incomplete (expiry=${expiryFilled}, cvc=${cvcFilled}). See checkout artifacts.`,
+      );
+    }
+
+    await fillFirstMatching(
+      page,
+      [
+        '#billingName',
+        'input[name="billingName"]',
+        '[data-testid="billing-name-input"]',
+        'input[autocomplete="cc-name"]',
+      ],
+      'Test Buyer',
+    ).catch(() => false);
+    try {
+      const name = page.getByLabel(/name on card|cardholder|full name/i).first();
+      if ((await name.count()) > 0) {
+        await name.fill('Test Buyer');
+      }
+    } catch {
+      // optional
+    }
+
+    await fillFirstMatching(
+      page,
+      [
+        '#billingPostalCode',
+        'input[name="billingPostalCode"]',
+        '[data-testid="billing-postal-code-input"]',
+        'input[autocomplete="postal-code"]',
+      ],
+      '96815',
+    ).catch(() => false);
+    try {
+      const zip = page.getByLabel(/zip|postal/i).first();
+      if ((await zip.count()) > 0) {
+        await zip.fill('96815');
+      }
+    } catch {
+      // optional
+    }
+
+    // Link "Save my information" often auto-fills a phone that fails validation and blocks Pay.
+    try {
+      const saveInfo = page.getByRole('checkbox', {
+        name: /save my information|save.*faster checkout/i,
+      });
+      if ((await saveInfo.count()) > 0 && (await saveInfo.first().isChecked())) {
+        await saveInfo.first().uncheck({ timeout: 5_000 });
+        await sleep(500);
+      }
+    } catch {
+      try {
+        const label = page.getByText(/save my information for faster checkout/i).first();
+        if ((await label.count()) > 0) {
+          await label.click({ timeout: 3_000 });
+          await sleep(500);
+        }
+      } catch {
+        // optional
+      }
+    }
+
+    await saveCheckoutArtifacts(page, 'pre-submit checkout');
+
+    const submitCandidates = [
+      page.locator('[data-testid="hosted-payment-submit-button"]'),
+      page.getByRole('button', { name: /^pay(\s|$)/i }),
+      page.getByRole('button', { name: /pay|complete|submit|buy|process/i }),
+    ];
+    let clicked = false;
+    for (const candidate of submitCandidates) {
+      try {
+        if ((await candidate.count()) > 0) {
+          await candidate.first().click({ timeout: 15_000 });
+          clicked = true;
+          break;
+        }
+      } catch {
+        // try next
+      }
+    }
+    if (!clicked) {
+      await saveCheckoutArtifacts(page, 'FAIL missing pay button');
+      throw new Error('Could not find Stripe Checkout pay/submit button.');
+    }
+
+    // Allow Stripe a moment to process; surface inline validation errors early.
+    await sleep(2_000);
+    const inlineError = await page
+      .locator('[role="alert"], [data-testid*="error"], .FieldError')
+      .allTextContents()
+      .catch(() => [] as string[]);
+    const visibleErrors = inlineError.map((t) => t.trim()).filter(Boolean);
+    if (visibleErrors.length > 0) {
+      appendArtifact(`checkout inline errors: ${visibleErrors.join(' | ')}`);
+    }
+
+    try {
+      await page.waitForURL(
+        /127\.0\.0\.1:8081\/purchase\/success|localhost:8081\/purchase\/success|checkout\.stripe\.com\/.*success/i,
+        { timeout: 120_000 },
+      );
+    } catch {
+      await saveCheckoutArtifacts(page, 'FAIL after submit no redirect');
+      const errHint = visibleErrors.length > 0 ? ` Inline errors: ${visibleErrors.join(' | ')}` : '';
+      throw new Error(
+        `Checkout did not redirect to success after pay. Final URL: ${page.url()}.${errHint} See checkout artifacts.`,
+      );
+    }
+
+    appendArtifact(`playwright checkout finished url=${page.url()}`);
+    console.log(`Playwright finished at: ${page.url()}`);
+    logCheck('auto Stripe Checkout via Playwright', { ok: true, detail: page.url() });
+  } catch (error) {
+    try {
+      await saveCheckoutArtifacts(page, 'FAIL checkout');
+    } catch {
+      // ignore artifact errors
+    }
+    throw error;
+  } finally {
+    await context.close();
+    await browser.close();
+  }
+}
+
+async function autoPayCheckout(checkoutUrl: string): Promise<void> {
+  await autoCompleteCheckoutViaPlaywright(checkoutUrl);
 }
 
 async function runPostPaymentVerification(
@@ -973,8 +1534,12 @@ async function runPostPaymentVerification(
 
 async function main() {
   console.log('808Tix local Stripe payments smoke test\n');
+  appendArtifact('808Tix local Stripe payments smoke test');
+  console.log(`Redirect origin required: ${GUEST_WEB_ORIGIN}`);
+  console.log('Preferred one-command orchestrator: npm run smoke:payments:preview\n');
 
   const verifyOnlyToken = process.env.SMOKE_VERIFY_TOKEN?.trim();
+  const manualCheckout = process.env.SMOKE_MANUAL_CHECKOUT === 'true';
   let currentRunOrderPublicAccessToken: string;
   let checkoutUrl: string | undefined;
   let eventId = '(verify-only)';
@@ -1006,17 +1571,35 @@ async function main() {
       failAndExit('Pre-payment token exposure check failed.');
     }
 
-    console.log('\n=== Manual Stripe payment (required) ===\n');
-    console.log('1. Open checkout_url in your browser.');
-    console.log('2. Pay with test card 4242 4242 4242 4242, any future expiry, any CVC, any ZIP.');
-    console.log('3. Confirm Terminal B (stripe listen) shows checkout.session.completed.');
-    console.log('4. Press Enter here after payment completes.\n');
     console.log(`current_run_order_public_access_token: ${currentRunOrderPublicAccessToken}`);
     console.log(`checkout_url: ${checkoutUrl}\n`);
+    appendArtifact(`checkout_url: ${checkoutUrl}`);
+    appendArtifact(`order_token: ${currentRunOrderPublicAccessToken}`);
 
-    const rl = createInterface({ input, output });
-    await rl.question('Press Enter after payment completes... ');
-    rl.close();
+    if (manualCheckout) {
+      console.log('\n=== Manual Stripe payment (SMOKE_MANUAL_CHECKOUT=true) ===\n');
+      console.log('1. Open checkout_url in your browser.');
+      console.log('2. Pay with test card 4242 4242 4242 4242, any future expiry, any CVC, any ZIP.');
+      console.log('3. Confirm stripe listen shows checkout.session.completed.');
+      console.log('4. Press Enter here after payment completes.\n');
+
+      const rl = createInterface({ input, output });
+      await rl.question('Press Enter after payment completes... ');
+      rl.close();
+    } else {
+      try {
+        if (!checkoutUrl) {
+          throw new Error('checkout_url missing after create-checkout-session');
+        }
+        await autoPayCheckout(checkoutUrl);
+      } catch (error) {
+        logCheck('auto Stripe Checkout payment', { ok: false, detail: String(error) });
+        failAndExit(
+          `Automatic Stripe test payment failed: ${String(error)}`,
+          'Retry with SMOKE_HEADED=true npm run smoke:payments:preview, or SMOKE_MANUAL_CHECKOUT=true. Artifacts: qa/artifacts/smoke-payments/',
+        );
+      }
+    }
   }
 
   const state = await runPostPaymentVerification(currentRunOrderPublicAccessToken, checkoutUrl);
@@ -1029,28 +1612,39 @@ async function main() {
   console.log(`ticket_type_id: ${ticketTypeId}`);
   console.log(`order_id: ${state.order.order_id}`);
   console.log(`current_run_order_public_access_token: ${currentRunOrderPublicAccessToken}`);
+  console.log(
+    `fees: subtotal=${state.order.subtotal_cents} service=${state.order.platform_fee_cents} processing=${state.order.processing_fee_cents} total=${state.order.total_cents} organizer_net=${state.order.organizer_net_cents}`,
+  );
   if (checkoutUrl) {
     console.log(`checkout_url: ${checkoutUrl}`);
   }
   console.log(`paid ticket tokens: ${passTokens.join(', ')}`);
   for (const token of passTokens) {
-    console.log(`ticket URL: http://127.0.0.1:8081/pass/${token}`);
+    console.log(`ticket URL: ${GUEST_WEB_ORIGIN}/pass/${token}`);
   }
 
   if (failures.length > 0) {
     console.log('\nRESULT: FAIL\n');
     for (const failure of failures) {
       console.log(`- ${failure}`);
+      appendArtifact(`assert fail: ${failure}`);
     }
     await printVerificationDiagnostics(currentRunOrderPublicAccessToken, checkoutUrl);
+    flushArtifact({ failed: true, failures, order: state.order });
     process.exit(1);
   }
 
   console.log('\nRESULT: PASS');
-  console.log('\nVerified path: create-checkout-session → Stripe Checkout → stripe-webhook → fulfill_paid_order → paid passes');
+  console.log(
+    '\nVerified path: create-checkout-session → Stripe payment → stripe-webhook → fulfill_paid_order → paid passes + transparent fees',
+  );
+  appendArtifact('RESULT: PASS');
+  flushArtifact({ failed: false, order: state.order, passTokens });
 }
 
 main().catch((error) => {
   console.error('\nUnhandled smoke test error:', error);
+  appendArtifact(`Unhandled: ${String(error)}`);
+  flushArtifact({ failed: true, unhandled: String(error) });
   process.exit(1);
 });

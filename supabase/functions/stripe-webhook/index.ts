@@ -65,7 +65,9 @@ async function triggerOrderConfirmationEmail(orderId: string): Promise<void> {
 
     const { data: orderRow, error: orderError } = await supabase
       .from('orders')
-      .select('id, event_id, buyer_email, buyer_name, public_access_token, status')
+      .select(
+        'id, event_id, buyer_email, buyer_name, public_access_token, status, currency, subtotal_cents, platform_fee_cents, processing_fee_cents, total_cents',
+      )
       .eq('id', orderId)
       .maybeSingle();
 
@@ -130,6 +132,11 @@ async function triggerOrderConfirmationEmail(orderId: string): Promise<void> {
       event_date: orderLookup.event_date,
       start_time: orderLookup.start_time,
       tickets,
+      currency: orderRow.currency,
+      subtotal_cents: orderRow.subtotal_cents,
+      platform_fee_cents: orderRow.platform_fee_cents,
+      processing_fee_cents: orderRow.processing_fee_cents,
+      total_cents: orderRow.total_cents,
     });
 
     if (sendResult.ok) {

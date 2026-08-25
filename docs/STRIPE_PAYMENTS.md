@@ -357,18 +357,27 @@ npm run smoke:payments:preview
 This orchestrator (local only):
 
 - Verifies local Supabase and Stripe CLI
-- Starts or reuses Expo web at `http://localhost:8081` (Stripe success/cancel redirects require this)
+- Starts or reuses Expo web at `http://127.0.0.1:8081` (exact Stripe success/cancel redirect origin)
+- Proves `/purchase/success` is reachable before checkout
 - Starts `stripe listen` and captures the `whsec_...` signing secret for `stripe-webhook`
-- Serves `create-checkout-session` and `stripe-webhook` with preview email env (`PUBLIC_SITE_URL=http://localhost:8081`, `EMAIL_DELIVERY_MODE=preview`, default `EMAIL_OVERRIDE_TO=preview@example.test`)
-- Runs `npm run smoke:payments:local`
+- Serves `create-checkout-session` and `stripe-webhook` with preview email env (`PUBLIC_SITE_URL=http://127.0.0.1:8081`, `EMAIL_DELIVERY_MODE=preview`, default `EMAIL_OVERRIDE_TO=preview@example.test`)
+- Waits until both functions respond (GET → 405/400/401)
+- Runs `npm run smoke:payments:local` with automatic Stripe Checkout via Playwright (test card `4242…`) by default
+- Asserts paid order + transparent fees (`platform_fee_cents`, `processing_fee_cents`, organizer net = subtotal)
 - Queries `outbound_messages` for a preview `order_confirmation` row (`provider='preview'`, `status='sent'`)
-- Writes prefixed logs to `qa/artifacts/smoke-preview/latest.log` (`[stripe]`, `[functions]`, `[web]`, `[smoke]`)
+- Writes logs to `qa/artifacts/smoke-preview/latest.log` and smoke details to `qa/artifacts/smoke-payments/latest.log`
 
-**Card entry stays manual:** complete Stripe Checkout in the browser when the smoke script prints the URL. The command automates local services, not provider-hosted card entry.
+**Manual browser card entry (optional):**
+
+```bash
+SMOKE_MANUAL_CHECKOUT=true npm run smoke:payments:preview
+```
 
 If Expo web is already running on port 8081, the orchestrator reuses it and does not stop it on exit.
 
 Safety defaults: refuses non-local Supabase unless `SMOKE_ALLOW_REMOTE=true`; refuses `sk_live_...` unless `SMOKE_ALLOW_LIVE_STRIPE=true`; forces preview email unless `SMOKE_EMAIL_SEND=true`.
+
+**Do not run `smoke:payments:local` alone** unless Expo web, Edge Functions, and `stripe listen` (matching `STRIPE_WEBHOOK_SECRET`) are already up — otherwise Stripe can redirect to a spinning success page while the order never becomes `paid`.
 
 **Three-terminal fallback (debug):**
 

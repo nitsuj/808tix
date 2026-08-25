@@ -27,6 +27,11 @@ export type BuildOrderConfirmationEmailInput = {
   start_time: string | null;
   tickets: OrderConfirmationTicket[];
   site_origin?: string;
+  currency?: string | null;
+  subtotal_cents?: number | null;
+  platform_fee_cents?: number | null;
+  processing_fee_cents?: number | null;
+  total_cents?: number | null;
 };
 
 export type BuiltOrderConfirmationEmail = {
@@ -114,6 +119,18 @@ export function buildOrderConfirmationIdempotencyKey(orderId: string): string {
   return `order_confirmation:${orderId.trim()}`;
 }
 
+function formatMoneyCents(cents: number, currency: string): string {
+  const amount = cents / 100;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency.toUpperCase(),
+    }).format(amount);
+  } catch {
+    return `$${(cents / 100).toFixed(2)}`;
+  }
+}
+
 export function buildOrderConfirmationEmail(
   input: BuildOrderConfirmationEmailInput,
 ): BuiltOrderConfirmationEmail {
@@ -124,6 +141,12 @@ export function buildOrderConfirmationEmail(
   const dateLine = formatEventDateLine(input.event_date, input.start_time);
   const venueLine = input.venue_name?.trim() ?? null;
   const successUrl = buildPurchaseSuccessUrl(input.public_access_token, siteOrigin);
+  const currency = (input.currency?.trim() || 'usd').toLowerCase();
+  const hasFeeBreakdown =
+    typeof input.subtotal_cents === 'number' &&
+    typeof input.platform_fee_cents === 'number' &&
+    typeof input.processing_fee_cents === 'number' &&
+    typeof input.total_cents === 'number';
 
   const ticketLines = input.tickets.map((ticket, index) => {
     const ticketNumber = index + 1;
@@ -160,6 +183,20 @@ export function buildOrderConfirmationEmail(
     `You have ${ticketTotal} ticket${ticketTotal === 1 ? '' : 's'}.`,
     '',
     ...ticketLines.map((line) => line.text),
+  );
+
+  if (hasFeeBreakdown) {
+    textParts.push(
+      '',
+      'Payment summary',
+      `Subtotal: ${formatMoneyCents(input.subtotal_cents!, currency)}`,
+      `808Tickets service fee: ${formatMoneyCents(input.platform_fee_cents!, currency)}`,
+      `Payment processing fee: ${formatMoneyCents(input.processing_fee_cents!, currency)}`,
+      `Total paid: ${formatMoneyCents(input.total_cents!, currency)}`,
+    );
+  }
+
+  textParts.push(
     '',
     'On iPhone, open a ticket link and tap Add to Apple Wallet.',
     '',
@@ -184,6 +221,21 @@ export function buildOrderConfirmationEmail(
   htmlParts.push(
     `<p>You have <strong>${ticketTotal}</strong> ticket${ticketTotal === 1 ? '' : 's'}.</p>`,
     `<ul>${ticketLines.map((line) => line.html).join('')}</ul>`,
+  );
+
+  if (hasFeeBreakdown) {
+    htmlParts.push(
+      '<p><strong>Payment summary</strong></p>',
+      '<ul>',
+      `<li>Subtotal: ${escapeHtml(formatMoneyCents(input.subtotal_cents!, currency))}</li>`,
+      `<li>808Tickets service fee: ${escapeHtml(formatMoneyCents(input.platform_fee_cents!, currency))}</li>`,
+      `<li>Payment processing fee: ${escapeHtml(formatMoneyCents(input.processing_fee_cents!, currency))}</li>`,
+      `<li><strong>Total paid: ${escapeHtml(formatMoneyCents(input.total_cents!, currency))}</strong></li>`,
+      '</ul>',
+    );
+  }
+
+  htmlParts.push(
     '<p>On iPhone, open a ticket link and tap <strong>Add to Apple Wallet</strong>.</p>',
     `<p><a href="${escapeHtml(successUrl)}">View all tickets</a></p>`,
     '<p style="color:#666;font-size:12px;">Transactional email from 808Tickets.</p>',
@@ -203,6 +255,11 @@ export function buildOrderConfirmationEmail(
       event_date: input.event_date,
       start_time: input.start_time,
       success_url: successUrl,
+      currency,
+      subtotal_cents: input.subtotal_cents ?? null,
+      platform_fee_cents: input.platform_fee_cents ?? null,
+      processing_fee_cents: input.processing_fee_cents ?? null,
+      total_cents: input.total_cents ?? null,
     },
   };
 }

@@ -23,6 +23,7 @@ type PendingOrderResult = {
   status: string;
   subtotal_cents: number;
   platform_fee_cents: number;
+  processing_fee_cents: number;
   total_cents: number;
   organizer_net_cents: number;
   currency: string;
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
         ticketUnitAmountCents: orderItem.unit_price_cents,
         ticketQuantity: orderItem.quantity,
         platformFeeCents: order.platform_fee_cents,
+        processingFeeCents: order.processing_fee_cents ?? 0,
         customerEmail: buyerEmail,
         successUrl: appendOrderToken(successUrl, publicAccessToken),
         cancelUrl: appendOrderToken(cancelUrl, publicAccessToken),

@@ -38,6 +38,7 @@ declare
   v_po_past_tt_id uuid;
   v_po_order_id uuid;
   v_po_qty integer;
+  v_payout_id uuid;
 begin
   if v_organizer_id = '00000000-0000-0000-0000-000000000000'::uuid
      or v_other_organizer_id = '00000000-0000-0000-0000-000000000001'::uuid then
@@ -115,8 +116,8 @@ begin
     'paid',
     true,
     'usd',
-    300,
-    50
+    250,
+    99
   )
   returning id into v_paid_event_id;
 
@@ -152,11 +153,17 @@ begin
     raise exception 'create_pending_order subtotal mismatch: %', v_result ->> 'subtotal_cents';
   end if;
 
-  if (v_result ->> 'platform_fee_cents')::integer <> 200 then
+  -- Launch model: 2.5% + $0.99/ticket → 125 + 198 = 323
+  if (v_result ->> 'platform_fee_cents')::integer <> 323 then
     raise exception 'create_pending_order platform fee mismatch: %', v_result ->> 'platform_fee_cents';
   end if;
 
-  if (v_result ->> 'total_cents')::integer <> 5200 then
+  -- Processing fee gross-up of (subtotal + service) at 2.9% + $0.30 → 190
+  if (v_result ->> 'processing_fee_cents')::integer <> 190 then
+    raise exception 'create_pending_order processing fee mismatch: %', v_result ->> 'processing_fee_cents';
+  end if;
+
+  if (v_result ->> 'total_cents')::integer <> 5513 then
     raise exception 'create_pending_order total mismatch: %', v_result ->> 'total_cents';
   end if;
 
@@ -321,7 +328,7 @@ begin
   end;
 
   begin
-    v_result := public.fulfill_paid_order(v_order_id, 5200, 'eur');
+    v_result := public.fulfill_paid_order(v_order_id, 5513, 'eur');
     raise exception 'Expected currency mismatch rejection';
   exception
     when others then
@@ -332,7 +339,7 @@ begin
 
   v_result := public.fulfill_paid_order(
     v_order_id,
-    5200,
+    5513,
     'usd',
     'cs_test_verify',
     'pi_test_verify',
@@ -386,7 +393,7 @@ begin
 
   v_result := public.fulfill_paid_order(
     v_paid_order_id,
-    5200,
+    5513,
     'usd',
     'cs_test_verify_retry',
     'pi_test_verify_retry',
@@ -502,8 +509,8 @@ begin
     'paid',
     true,
     'usd',
-    300,
-    50
+    250,
+    99
   )
   returning id into v_po_event_id;
 
@@ -657,6 +664,93 @@ begin
 
   if v_po_qty <> 9 then
     raise exception 'expired reservations should not count against quantity_available, got %', v_po_qty;
+  end if;
+
+  -- ---------------------------------------------------------------------------
+  -- G. Platform admin fee lock + payout RPCs
+  -- ---------------------------------------------------------------------------
+  begin
+    perform set_config('request.jwt.claim.sub', v_organizer_id::text, true);
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    execute 'set local role authenticated';
+
+    perform public.admin_list_payouts();
+    raise exception 'Expected non-admin admin_list_payouts rejection';
+  exception
+    when insufficient_privilege then
+      null;
+    when others then
+      if sqlerrm not like '%Platform admin required%' then
+        raise;
+      end if;
+  end;
+
+  begin
+    perform set_config('request.jwt.claim.sub', v_organizer_id::text, true);
+    perform set_config('request.jwt.claim.role', 'authenticated', true);
+    execute 'set local role authenticated';
+
+    update public.events
+    set platform_fee_bps = 1
+    where id = v_paid_event_id;
+
+    if (select platform_fee_bps from public.events where id = v_paid_event_id) <> 250 then
+      raise exception 'Non-admin must not change platform_fee_bps';
+    end if;
+  end;
+
+  perform set_config('request.jwt.claim.sub', '', true);
+  perform set_config('request.jwt.claim.role', 'service_role', true);
+  execute 'set local role service_role';
+
+  update public.profiles
+  set is_platform_admin = true
+  where id = v_organizer_id;
+
+  perform set_config('request.jwt.claim.sub', v_organizer_id::text, true);
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  execute 'set local role authenticated';
+
+  update public.events
+  set platform_fee_bps = 275
+  where id = v_paid_event_id;
+
+  if (select platform_fee_bps from public.events where id = v_paid_event_id) <> 275 then
+    raise exception 'Platform admin should be able to change platform_fee_bps';
+  end if;
+
+  v_result := public.admin_list_payouts('pending', null, v_organizer_id);
+
+  if jsonb_typeof(v_result) <> 'array' or jsonb_array_length(v_result) < 1 then
+    raise exception 'admin_list_payouts should return pending payouts';
+  end if;
+
+  v_payout_id := (v_result -> 0 ->> 'payout_id')::uuid;
+
+  v_result := public.admin_set_payout_status(v_payout_id, 'paid', 'verification mark paid');
+
+  if (v_result ->> 'status') <> 'paid' then
+    raise exception 'admin_set_payout_status paid failed';
+  end if;
+
+  if (v_result ->> 'paid_at') is null then
+    raise exception 'admin_set_payout_status should set paid_at';
+  end if;
+
+  v_result := public.admin_set_payout_status(v_payout_id, 'paid', 'verification mark paid');
+
+  if (v_result ->> 'unchanged')::boolean is distinct from true then
+    raise exception 'admin_set_payout_status should be idempotent for same status';
+  end if;
+
+  v_result := public.admin_set_payout_status(v_payout_id, 'withheld', 'hold');
+
+  if (v_result ->> 'status') <> 'withheld' then
+    raise exception 'admin_set_payout_status withheld failed';
+  end if;
+
+  if (v_result ->> 'paid_at') is not null then
+    raise exception 'admin_set_payout_status withheld should clear paid_at';
   end if;
 
   raise notice 'Payments Phase 1.5 lifecycle verification passed.';

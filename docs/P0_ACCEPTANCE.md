@@ -18,7 +18,7 @@ Then manually run hosted checkout smoke on `https://808tickets.com` (not automat
 
 `release:proof` without a mode prints usage and exits — choose `--prelaunch` or `--live`.
 
-**Related:** [LAUNCH_STABILITY.md](./LAUNCH_STABILITY.md) · [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md) · [AUTH_EMAIL_RESEND.md](./AUTH_EMAIL_RESEND.md) · [qa/README.md](../qa/README.md)
+**Related:** [LAUNCH_STABILITY.md](./LAUNCH_STABILITY.md) · [EVENT_DAY_RUNBOOK.md](./EVENT_DAY_RUNBOOK.md) · [DOMAIN_CUTOVER.md](./DOMAIN_CUTOVER.md) · [AUTH_EMAIL_RESEND.md](./AUTH_EMAIL_RESEND.md) · [PAYOUT_RULES.md](./PAYOUT_RULES.md) · [qa/README.md](../qa/README.md)
 
 ---
 

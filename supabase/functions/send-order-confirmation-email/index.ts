@@ -142,7 +142,9 @@ Deno.serve(async (req) => {
 
     const { data: orderRow, error: orderError } = await supabase
       .from('orders')
-      .select('id, buyer_email, buyer_name, public_access_token')
+      .select(
+        'id, buyer_email, buyer_name, public_access_token, currency, subtotal_cents, platform_fee_cents, processing_fee_cents, total_cents',
+      )
       .eq('public_access_token', publicAccessToken)
       .maybeSingle();
 
@@ -161,6 +163,11 @@ Deno.serve(async (req) => {
       event_date: orderLookup.event_date,
       start_time: orderLookup.start_time,
       tickets,
+      currency: orderRow.currency,
+      subtotal_cents: orderRow.subtotal_cents,
+      platform_fee_cents: orderRow.platform_fee_cents,
+      processing_fee_cents: orderRow.processing_fee_cents,
+      total_cents: orderRow.total_cents,
     });
 
     if (!sendResult.ok) {

@@ -1,6 +1,7 @@
 import { Link, useLocalSearchParams } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { PurchaseFeeSummary } from '@/components/purchase/purchase-fee-summary';
 import { PurchaseOrderStatus } from '@/components/purchase/purchase-order-status';
 import { PurchasePaidTicketList } from '@/components/purchase/purchase-paid-ticket-list';
 import { PurchaseScreenShell } from '@/components/purchase/purchase-screen-shell';
@@ -76,6 +77,15 @@ function PurchaseSuccessContent({ orderToken }: { orderToken: string }) {
           <Text style={styles.title}>Your tickets are ready</Text>
           <Text style={styles.helper}>Show each QR code at the door.</Text>
         </View>
+        {typeof order.total_cents === 'number' && typeof order.subtotal_cents === 'number' ? (
+          <PurchaseFeeSummary
+            currency={order.currency ?? 'usd'}
+            platformFeeCents={order.platform_fee_cents ?? 0}
+            processingFeeCents={order.processing_fee_cents ?? 0}
+            subtotalCents={order.subtotal_cents}
+            totalCents={order.total_cents}
+          />
+        ) : null}
         <PurchasePaidTicketList
           eventDate={order.event_date}
           eventName={order.event_name}

@@ -12,6 +12,7 @@ import { spawn } from 'node:child_process';
 const FULL_SUITE = [
   'check:payments-schema',
   'check:payments-lifecycle',
+  'check:platform-admin-payouts',
   'check:payments-stripe-functions',
   'check:public-purchase-options',
   'check:purchase-ui',
@@ -25,6 +26,7 @@ const FAST_SUITE = ['check:preflight', 'lint'] as const;
 const PAYMENTS_SUITE = [
   'check:payments-schema',
   'check:payments-lifecycle',
+  'check:platform-admin-payouts',
   'check:payments-stripe-functions',
   'check:public-purchase-options',
   'check:purchase-ui',

@@ -78,6 +78,11 @@ const createCheckoutHelper = read(CREATE_CHECKOUT_HELPER);
 const getOrderHelper = read(GET_ORDER_HELPER);
 const purchaseUrls = read(PURCHASE_URLS);
 const passLink = read(PASS_LINK);
+
+assert(buyRoute.includes('SERVICE_FEE_LABEL'), 'buy page uses SERVICE_FEE_LABEL');
+assert(buyRoute.includes('PROCESSING_FEE_LABEL'), 'buy page uses PROCESSING_FEE_LABEL');
+assert(buyRoute.includes('calculateOrderFees'), 'buy page uses shared fee calculator');
+assert(successRoute.includes('PurchaseFeeSummary'), 'success page shows fee summary');
 const paidTicketCard = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-card.tsx'));
 const paidTicketList = read(join(SRC_DIR, 'components/purchase/purchase-paid-ticket-list.tsx'));
 const ticketShare = read(join(SRC_DIR, 'components/purchase/purchase-ticket-share.ts'));
@@ -238,8 +243,10 @@ const samplePayload = {
     capacity: 20,
     ticketing_mode: 'paid',
     sales_enabled: true,
-    platform_fee_bps: 300,
-    platform_fee_fixed_cents: 50,
+    platform_fee_bps: 250,
+    platform_fee_fixed_cents: 99,
+    processing_fee_bps: 290,
+    processing_fee_fixed_cents: 30,
   },
   ticket_types: [
     {

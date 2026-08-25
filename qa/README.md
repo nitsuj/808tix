@@ -181,7 +181,8 @@ Buyer-path coverage (`qa/tests/buyer-path-web.spec.ts`): homepage discovery → 
 
 ## Manual / alternate fixture sources
 
-- `npm run smoke:payments:local` — Stripe integration smoke (manual card payment)
+- `npm run smoke:payments:local` — Stripe integration smoke (auto Playwright Checkout; requires services up)
+- `npm run smoke:payments:preview` — recommended one-command orchestrator (web + functions + stripe listen + smoke)
 - Export `QA_*` env vars from smoke output to override fixtures
 
 ## What remains manual
@@ -251,8 +252,8 @@ Then start Expo with the printed commands, open a ticket on your phone, and scan
 - `npm run check:hosted` — hosted migrations/functions/secrets/domain readiness (secret values never printed)
 - `npm run check:all` — static validation (does not include `qa:seed` or `qa:web`)
 - `npm run check:env` — environment readiness (Supabase, Expo env, Stripe/email/wallet secrets)
-- `npm run smoke:payments:local` — Stripe API + DB integration smoke
-- `npm run smoke:payments:preview` — one-command Stripe + email preview smoke
+- `npm run smoke:payments:local` — Stripe API + DB integration smoke (requires web/functions/stripe listen already up; auto Playwright Checkout)
+- `npm run smoke:payments:preview` — **recommended one-command** Stripe + functions + Expo web + email preview smoke
 - `npm run smoke:checkin` — backend `validate_pass` check-in smoke (no camera)
 - `npm run seed:email-smoke-order` — fresh local paid order token for email smoke (no Stripe, no outbound row)
 - `npm run smoke:email:send` — real Resend order confirmation to `EMAIL_OVERRIDE_TO` (see [STRIPE_PAYMENTS.md](../docs/STRIPE_PAYMENTS.md))

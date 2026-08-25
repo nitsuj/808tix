@@ -110,6 +110,36 @@ assert(docs.includes('STRIPE_SECRET_KEY'), 'docs mention STRIPE_SECRET_KEY');
 assert(docs.includes('STRIPE_WEBHOOK_SECRET'), 'docs mention STRIPE_WEBHOOK_SECRET');
 assert(docs.includes('stripe listen'), 'docs include Stripe CLI webhook forwarding');
 
+assert(
+  sharedStripe.includes('processingFeeCents') &&
+    sharedStripe.includes('808Tickets service fee') &&
+    sharedStripe.includes('Payment processing fee'),
+  'Stripe checkout creates separate labeled service + processing fee line items',
+);
+assert(
+  checkoutFn.includes('processingFeeCents') || checkoutFn.includes('processing_fee_cents'),
+  'create-checkout-session passes processing fee to Stripe helper',
+);
+
+const smokeLocal = readFileSync(join(ROOT, 'scripts/smoke-payments-local.ts'), 'utf8');
+const smokePreview = readFileSync(join(ROOT, 'scripts/smoke-payments-preview.ts'), 'utf8');
+assert(
+  smokeLocal.includes('GUEST_WEB_ORIGIN') && smokeLocal.includes('stripe-webhook reachable'),
+  'smoke:payments:local preflights Expo web + webhook reachability',
+);
+assert(
+  smokeLocal.includes('processing_fee_cents') && smokeLocal.includes('platform_fee_cents'),
+  'smoke:payments:local asserts transparent fee columns',
+);
+assert(
+  smokeLocal.includes('autoPayCheckout') || smokeLocal.includes('autoCompleteCheckoutViaPlaywright'),
+  'smoke:payments:local supports automatic Stripe Checkout payment',
+);
+assert(
+  smokePreview.includes('127.0.0.1:8081') && smokePreview.includes('assertSuccessPageReachable'),
+  'smoke:payments:preview uses exact redirect origin and success-page preflight',
+);
+
 function walkTsFiles(dir: string): string[] {
   const entries = readdirSync(dir, { withFileTypes: true });
   const files: string[] = [];

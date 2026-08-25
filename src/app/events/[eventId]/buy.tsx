@@ -28,6 +28,11 @@ import {
   type PurchaseUnavailableReason,
 } from '@/lib/get-public-purchase-options';
 import { buildPurchaseCancelUrl, buildPurchaseSuccessUrl } from '@/lib/purchase-urls';
+import {
+  calculateOrderFees,
+  PROCESSING_FEE_LABEL,
+  SERVICE_FEE_LABEL,
+} from '@/lib/ticket-fees';
 import { formatTicketPriceLabel } from '@/lib/ticket-type-price';
 import { fan, text } from '@/theme';
 
@@ -39,14 +44,6 @@ type PurchasePagePhase =
   | 'submitting'
   | 'redirecting'
   | 'error';
-
-function estimatePlatformFeeCents(
-  subtotalCents: number,
-  platformFeeBps: number,
-  platformFeeFixedCents: number,
-): number {
-  return Math.round((subtotalCents * platformFeeBps) / 10000) + platformFeeFixedCents;
-}
 
 function isValidEmail(value: string): boolean {
   const trimmed = value.trim();
@@ -312,16 +309,20 @@ function EventBuyContent({
     }
 
     const subtotalCents = selectedTicketType.price_cents * quantity;
-    const platformFeeCents = estimatePlatformFeeCents(
+    const fees = calculateOrderFees({
       subtotalCents,
-      options.event.platform_fee_bps,
-      options.event.platform_fee_fixed_cents,
-    );
+      quantity,
+      platformFeeBps: options.event.platform_fee_bps,
+      platformFeeFixedCents: options.event.platform_fee_fixed_cents,
+      processingFeeBps: options.event.processing_fee_bps ?? 290,
+      processingFeeFixedCents: options.event.processing_fee_fixed_cents ?? 30,
+    });
 
     return {
-      subtotalCents,
-      platformFeeCents,
-      totalCents: subtotalCents + platformFeeCents,
+      subtotalCents: fees.subtotalCents,
+      platformFeeCents: fees.platformFeeCents,
+      processingFeeCents: fees.processingFeeCents,
+      totalCents: fees.totalCents,
       currency: selectedTicketType.currency || options.event.currency,
     };
   }, [options, quantity, selectedTicketType]);
@@ -533,19 +534,25 @@ function EventBuyContent({
           </Text>
         </View>
         <View style={styles.summaryRow}>
-          <Text style={styles.summaryLabel}>Service fee (est.)</Text>
+          <Text style={styles.summaryLabel}>{SERVICE_FEE_LABEL}</Text>
           <Text style={styles.summaryValue}>
             {formatTicketPriceLabel(pricing.platformFeeCents, pricing.currency)}
           </Text>
         </View>
+        <View style={styles.summaryRow}>
+          <Text style={styles.summaryLabel}>{PROCESSING_FEE_LABEL}</Text>
+          <Text style={styles.summaryValue}>
+            {formatTicketPriceLabel(pricing.processingFeeCents, pricing.currency)}
+          </Text>
+        </View>
         <View style={[styles.summaryRow, styles.summaryTotalRow]}>
-          <Text style={styles.summaryTotalLabel}>Total (est.)</Text>
+          <Text style={styles.summaryTotalLabel}>Total</Text>
           <Text style={styles.summaryTotalValue}>
             {formatTicketPriceLabel(pricing.totalCents, pricing.currency)}
           </Text>
         </View>
         <Text style={styles.stripeNote}>
-          Final payment is completed securely by Stripe. Your total is confirmed at checkout.
+          Final payment is completed securely by Stripe. Fees are shown separately before you pay.
         </Text>
       </View>
 

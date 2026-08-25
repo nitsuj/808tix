@@ -471,8 +471,8 @@ async function upsertPaidEvent(): Promise<void> {
       'paid',
       true,
       'usd',
-      300,
-      50
+      250,
+      99
     )
     on conflict (id) do update
     set

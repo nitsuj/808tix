@@ -3,12 +3,14 @@
  * One-command local Stripe preview smoke orchestrator.
  *
  * Starts stripe listen + supabase functions serve + Expo web (preview email env),
- * runs smoke:payments:local, then verifies outbound_messages preview rows.
- *
- * Card entry in Stripe Checkout remains manual.
+ * runs smoke:payments:local with automatic test PaymentIntent confirm by default,
+ * then verifies outbound_messages preview rows.
  *
  * Usage:
  *   npm run smoke:payments:preview
+ *
+ * Manual browser card entry fallback:
+ *   SMOKE_MANUAL_CHECKOUT=true npm run smoke:payments:preview
  */
 import { type ChildProcess, execFile, spawn } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -23,7 +25,10 @@ const PREVIEW_ENV_PATH = join(ROOT, 'qa/artifacts/smoke-preview.functions.env');
 const LOG_PATH = join(ROOT, 'qa/artifacts/smoke-preview/latest.log');
 const WEBHOOK_FORWARD_URL = 'http://127.0.0.1:54321/functions/v1/stripe-webhook';
 const CHECKOUT_FUNCTION_URL = 'http://127.0.0.1:54321/functions/v1/create-checkout-session';
-const EXPO_WEB_URL = 'http://localhost:8081';
+const WEBHOOK_FUNCTION_URL = 'http://127.0.0.1:54321/functions/v1/stripe-webhook';
+/** Must match smoke-payments-local success/cancel redirect origin. */
+const EXPO_WEB_URL = 'http://127.0.0.1:8081';
+const SUCCESS_PAGE_URL = `${EXPO_WEB_URL}/purchase/success`;
 const DEFAULT_EMAIL_OVERRIDE = 'preview@example.test';
 const STRIPE_SECRET_PATTERN = /whsec_[a-zA-Z0-9]+/;
 const STRIPE_LISTEN_READY_TIMEOUT_MS = 45_000;
@@ -437,9 +442,16 @@ async function waitForFunctionsReady(): Promise<void> {
 
   while (Date.now() < deadline) {
     try {
-      const response = await fetch(CHECKOUT_FUNCTION_URL, { method: 'GET' });
-      if (response.status === 405) {
-        const line = 'Functions ready: create-checkout-session reachable (GET → 405)';
+      const checkoutResponse = await fetch(CHECKOUT_FUNCTION_URL, { method: 'GET' });
+      const webhookResponse = await fetch(WEBHOOK_FUNCTION_URL, { method: 'GET' });
+      const checkoutOk = checkoutResponse.status === 405;
+      const webhookOk =
+        webhookResponse.status === 405 ||
+        webhookResponse.status === 400 ||
+        webhookResponse.status === 401;
+
+      if (checkoutOk && webhookOk) {
+        const line = `Functions ready: create-checkout-session GET→${checkoutResponse.status}, stripe-webhook GET→${webhookResponse.status}`;
         console.log(line);
         appendLog(line);
         return;
@@ -452,8 +464,30 @@ async function waitForFunctionsReady(): Promise<void> {
   }
 
   throw new Error(
-    `Timed out waiting for Edge Functions at ${CHECKOUT_FUNCTION_URL} (expected GET → 405).`,
+    `Timed out waiting for Edge Functions (checkout ${CHECKOUT_FUNCTION_URL} + webhook ${WEBHOOK_FUNCTION_URL}).`,
   );
+}
+
+async function assertSuccessPageReachable(): Promise<void> {
+  try {
+    const response = await fetch(`${SUCCESS_PAGE_URL}?order_token=preview-preflight`, {
+      method: 'GET',
+    });
+    if (response.status >= 500) {
+      failAndExit(
+        `Success page returned HTTP ${response.status} at ${SUCCESS_PAGE_URL}`,
+        'Ensure Expo web is serving /purchase/success on port 8081.',
+      );
+    }
+    const line = `Success page reachable: ${SUCCESS_PAGE_URL} (HTTP ${response.status})`;
+    console.log(line);
+    appendLog(line);
+  } catch (error) {
+    failAndExit(
+      `Success page not reachable at ${SUCCESS_PAGE_URL}: ${String(error)}`,
+      'Start Expo web on 127.0.0.1:8081 (this orchestrator starts it automatically if free).',
+    );
+  }
 }
 
 function runSmokePaymentsLocal(env: NodeJS.ProcessEnv): Promise<number> {
@@ -677,13 +711,13 @@ async function main(): Promise<void> {
   initLog();
 
   console.log('808Tix Stripe preview smoke orchestrator (local only)\n');
-  console.log('This command automates local services, not provider-hosted card entry.');
+  console.log('Starts Expo web + stripe listen + Edge Functions, then runs smoke:payments:local.');
   console.log(
-    'Complete the Stripe Checkout in the browser when the smoke script opens/prints the URL.\n',
+    'Default: automatic Stripe Checkout via Playwright (test card 4242…). Set SMOKE_MANUAL_CHECKOUT=true to pay in the browser.\n',
   );
-  appendLog('This command automates local services, not provider-hosted card entry.');
+  appendLog('Starts Expo web + stripe listen + Edge Functions, then runs smoke:payments:local.');
   appendLog(
-    'Complete the Stripe Checkout in the browser when the smoke script opens/prints the URL.',
+    'Default: automatic Stripe Checkout via Playwright (test card 4242…). Set SMOKE_MANUAL_CHECKOUT=true to pay in the browser.',
   );
 
   setupCleanupHandlers();
@@ -697,6 +731,7 @@ async function main(): Promise<void> {
   const { stripeSecretKey } = assertStripeSecrets(functionsEnv);
 
   await ensureExpoWeb();
+  await assertSuccessPageReachable();
 
   const stripeChild = spawnManaged(
     'stripe',
@@ -743,6 +778,8 @@ async function main(): Promise<void> {
     ...process.env,
     STRIPE_SECRET_KEY: previewEnv.STRIPE_SECRET_KEY,
     STRIPE_WEBHOOK_SECRET: previewEnv.STRIPE_WEBHOOK_SECRET,
+    // Prefer auto PaymentIntent confirm unless operator opted into manual browser pay.
+    SMOKE_MANUAL_CHECKOUT: process.env.SMOKE_MANUAL_CHECKOUT?.trim() || 'false',
   };
 
   console.log('\nStarting npm run smoke:payments:local ...\n');

@@ -229,6 +229,12 @@ assert(
 );
 
 assert(
+  orderEmailShared.includes('808Tickets service fee') &&
+    orderEmailShared.includes('Payment processing fee'),
+  'order confirmation email itemizes transparent fee labels',
+);
+
+assert(
   passLinkServer.includes('PUBLIC_SITE_URL') &&
     passLinkServer.includes('buildPassLinkUrl') &&
     passLinkServer.includes('buildPurchaseSuccessUrl') &&
