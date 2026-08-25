@@ -187,6 +187,7 @@ export type Event = {
   processing_fee_bps: number;
   processing_fee_fixed_cents: number;
   sales_enabled: boolean;
+  use_custom_fees: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -261,6 +262,11 @@ export type Order = {
   canceled_at: string | null;
   refunded_at: string | null;
   metadata: Record<string, unknown> | null;
+  fee_config_source: 'global' | 'organizer' | 'event' | null;
+  platform_fee_bps_used: number | null;
+  platform_fee_fixed_cents_used: number | null;
+  processing_fee_bps_used: number | null;
+  processing_fee_fixed_cents_used: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -503,6 +509,56 @@ export type Database = {
           p_status: string;
           p_notes?: string | null;
         };
+        Returns: unknown;
+      };
+      admin_dashboard_summary: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      admin_list_events: {
+        Args: { p_limit?: number };
+        Returns: unknown;
+      };
+      admin_list_recent_orders: {
+        Args: { p_limit?: number };
+        Returns: unknown;
+      };
+      admin_get_monetization_settings: {
+        Args: Record<string, never>;
+        Returns: unknown;
+      };
+      admin_update_global_fee_config: {
+        Args: {
+          p_platform_fee_bps: number;
+          p_platform_fee_fixed_cents: number;
+          p_processing_fee_bps: number;
+          p_processing_fee_fixed_cents: number;
+        };
+        Returns: unknown;
+      };
+      admin_upsert_organizer_fee_override: {
+        Args: {
+          p_organizer_id: string;
+          p_platform_fee_bps: number;
+          p_platform_fee_fixed_cents: number;
+          p_processing_fee_bps: number;
+          p_processing_fee_fixed_cents: number;
+        };
+        Returns: unknown;
+      };
+      admin_set_event_custom_fees: {
+        Args: {
+          p_event_id: string;
+          p_use_custom_fees: boolean;
+          p_platform_fee_bps?: number | null;
+          p_platform_fee_fixed_cents?: number | null;
+          p_processing_fee_bps?: number | null;
+          p_processing_fee_fixed_cents?: number | null;
+        };
+        Returns: unknown;
+      };
+      resolve_effective_fee_config: {
+        Args: { p_event_id: string };
         Returns: unknown;
       };
       list_public_upcoming_events: {

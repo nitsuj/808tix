@@ -162,7 +162,8 @@ assert(
   'verification asserts no stripe fields in purchase options JSON',
 );
 assert(
-  latestPurchaseOptionsEntry.name.endsWith('platform_admin_fees_payout_rpcs.sql') ||
+  latestPurchaseOptionsEntry.name.endsWith('platform_admin_cockpit.sql') ||
+    latestPurchaseOptionsEntry.name.endsWith('platform_admin_fees_payout_rpcs.sql') ||
     latestPurchaseOptionsEntry.name === '20260610150000_payments_public_purchase_options.sql',
   `latest purchase options definition is tracked (${latestPurchaseOptionsEntry.name})`,
 );

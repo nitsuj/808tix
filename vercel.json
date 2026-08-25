@@ -8,6 +8,10 @@
       "destination": "/login.html"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/privacy",
       "destination": "/privacy.html"
     },

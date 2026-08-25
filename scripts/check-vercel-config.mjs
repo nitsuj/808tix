@@ -15,6 +15,7 @@ const distDir = join(root, 'dist');
 /** Static Expo HTML pages that must resolve without a .html suffix. */
 const STATIC_CLEAN_URL_REWRITES = [
   { source: '/login', destination: '/login.html', distFile: 'login.html' },
+  { source: '/admin', destination: '/admin.html', distFile: 'admin.html' },
   { source: '/privacy', destination: '/privacy.html', distFile: 'privacy.html' },
   { source: '/terms', destination: '/terms.html', distFile: 'terms.html' },
   { source: '/home', destination: '/home.html', distFile: 'home.html' },

@@ -27,7 +27,13 @@ Defaults on `events`:
 
 Free/comp tickets (`price_cents = 0` or `passes.source = 'comp'`): **no** 808Tickets service fee and **no** payment processing fee.
 
-Fee overrides (`platform_fee_*`, `processing_fee_*`) are **platform-admin only**. Organizers cannot change them (DB trigger + admin identity).
+Fee overrides (`platform_fee_*`, `processing_fee_*`, `use_custom_fees`) and global/organizer fee config are **platform-admin only**. Organizers cannot change them (DB trigger + admin identity).
+
+**Fee precedence at checkout:** event custom (`events.use_custom_fees`) → organizer override (`organizer_fee_overrides`) → global (`platform_fee_config`).
+
+Paid orders snapshot cents **and** the rates/source used (`fee_config_source`, `*_bps_used`, `*_fixed_cents_used`). Changing fee config later does **not** recalculate existing orders.
+
+Platform ops UI: hidden route `/admin` (no public nav).
 
 ---
 
