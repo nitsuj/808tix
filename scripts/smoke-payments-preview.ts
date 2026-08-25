@@ -53,6 +53,7 @@ type OutboundMessageRow = {
   attempt_count: number;
   error: string | null;
   created_at: string;
+  payload_snapshot?: Record<string, unknown> | null;
 };
 
 const managedChildren: ManagedChild[] = [];
@@ -801,13 +802,14 @@ async function main(): Promise<void> {
   const outboundRows = await queryOutboundMessages();
   printOutboundTable(outboundRows);
 
-  const previewSent = outboundRows.some(
-    (row) => row.provider === 'preview' && row.status === 'sent' && row.message_type === 'order_confirmation',
+  const previewRow = outboundRows.find(
+    (row) =>
+      row.provider === 'preview' && row.status === 'sent' && row.message_type === 'order_confirmation',
   );
 
   await killManagedChildren();
 
-  if (!previewSent) {
+  if (!previewRow) {
     console.error(
       '\nFAIL: smoke fulfillment may have passed, but email preview was not recorded in outbound_messages.',
     );
@@ -818,6 +820,34 @@ async function main(): Promise<void> {
     console.error(`See log: ${LOG_PATH}`);
     process.exit(1);
   }
+
+  const snap = previewRow.payload_snapshot ?? null;
+  const contentFormat = snap?.content_format;
+  const htmlBytes = Number(snap?.html_bytes ?? 0);
+  const textBytes = Number(snap?.text_bytes ?? 0);
+  const hasCta = snap?.has_open_tickets_cta === true;
+  const siteOrigin =
+    typeof snap?.site_origin === 'string' ? snap.site_origin.replace(/\/+$/, '') : '';
+
+  if (
+    contentFormat !== 'html+text' ||
+    !(htmlBytes > 0) ||
+    !(textBytes > 0) ||
+    !hasCta ||
+    !siteOrigin
+  ) {
+    console.error('\nFAIL: outbound_messages.payload_snapshot missing html+text proof.');
+    console.error(
+      `content_format=${String(contentFormat)} html_bytes=${htmlBytes} text_bytes=${textBytes} has_open_tickets_cta=${String(hasCta)} site_origin=${siteOrigin || '(missing)'}`,
+    );
+    appendLog('FAIL: outbound_messages.payload_snapshot missing html+text proof.');
+    console.error(`See log: ${LOG_PATH}`);
+    process.exit(1);
+  }
+
+  const snapLine = `Email payload proof: content_format=${contentFormat} html_bytes=${htmlBytes} text_bytes=${textBytes} cta=${hasCta} site_origin=${siteOrigin}`;
+  console.log(snapLine);
+  appendLog(snapLine);
 
   const passLine =
     '\nPASS: Stripe preview smoke completed with order_confirmation preview email recorded.';

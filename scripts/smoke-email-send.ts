@@ -48,6 +48,7 @@ type OutboundMessageRow = {
   error: string | null;
   provider_message_id: string | null;
   created_at: string;
+  payload_snapshot: Record<string, unknown> | null;
 };
 
 let functionsChild: ChildProcess | null = null;
@@ -615,7 +616,8 @@ async function queryLatestOrderConfirmations(): Promise<OutboundMessageRow[]> {
             attempt_count,
             error,
             provider_message_id,
-            created_at
+            created_at,
+            payload_snapshot
           from public.outbound_messages
           where message_type = 'order_confirmation'
           order by created_at desc
@@ -627,6 +629,41 @@ async function queryLatestOrderConfirmations(): Promise<OutboundMessageRow[]> {
   `;
 
   return queryResultJson<OutboundMessageRow[]>(sql);
+}
+
+function assertHtmlTextPayloadSnapshot(
+  snapshot: Record<string, unknown> | null | undefined,
+  expectedSiteOrigin: string,
+): void {
+  if (!snapshot || typeof snapshot !== 'object') {
+    throw new Error('outbound_messages.payload_snapshot missing after send.');
+  }
+
+  const contentFormat = snapshot.content_format;
+  const htmlBytes = Number(snapshot.html_bytes ?? 0);
+  const textBytes = Number(snapshot.text_bytes ?? 0);
+  const hasCta = snapshot.has_open_tickets_cta === true;
+  const siteOrigin =
+    typeof snapshot.site_origin === 'string' ? snapshot.site_origin.replace(/\/+$/, '') : '';
+  const expectedOrigin = expectedSiteOrigin.replace(/\/+$/, '');
+
+  if (contentFormat !== 'html+text') {
+    throw new Error(`payload_snapshot.content_format expected html+text, got ${String(contentFormat)}`);
+  }
+  if (!(htmlBytes > 0)) {
+    throw new Error(`payload_snapshot.html_bytes expected > 0, got ${htmlBytes}`);
+  }
+  if (!(textBytes > 0)) {
+    throw new Error(`payload_snapshot.text_bytes expected > 0, got ${textBytes}`);
+  }
+  if (!hasCta) {
+    throw new Error('payload_snapshot.has_open_tickets_cta expected true');
+  }
+  if (siteOrigin !== expectedOrigin) {
+    throw new Error(
+      `payload_snapshot.site_origin expected ${expectedOrigin}, got ${siteOrigin || '(missing)'}`,
+    );
+  }
 }
 
 function writeFunctionsEnv(params: {
@@ -902,6 +939,27 @@ async function main(): Promise<void> {
     latestRow.recipient.toLowerCase() === emailOverrideTo.toLowerCase() ? 'PASS' : 'WARN',
     false,
   );
+
+  try {
+    assertHtmlTextPayloadSnapshot(latestRow.payload_snapshot, publicSiteUrl);
+    const snap = latestRow.payload_snapshot ?? {};
+    addCheck(
+      'payload_snapshot html+text',
+      'html+text + bytes + CTA',
+      `${String(snap.content_format)} html=${String(snap.html_bytes)} text=${String(snap.text_bytes)}`,
+      'PASS',
+    );
+    addCheck(
+      'payload_snapshot site_origin',
+      publicSiteUrl.replace(/\/+$/, ''),
+      String(snap.site_origin ?? ''),
+      'PASS',
+    );
+  } catch (error) {
+    addCheck('payload_snapshot html+text', 'html+text metadata', String(error), 'FAIL');
+    printChecks();
+    throw error;
+  }
 
   printChecks();
 

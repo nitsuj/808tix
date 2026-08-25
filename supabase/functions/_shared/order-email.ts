@@ -169,6 +169,8 @@ export function buildOrderConfirmationEmail(
   const html = renderOrderConfirmationHtml(templateInput);
   const text = renderOrderConfirmationText(templateInput);
 
+  assertOrderConfirmationBodies({ html, text, siteOrigin });
+
   return {
     to: input.buyer_email.trim(),
     subject,
@@ -179,6 +181,7 @@ export function buildOrderConfirmationEmail(
       content_format: 'html+text',
       has_html_body: true,
       has_text_body: true,
+      has_open_tickets_cta: true,
       html_bytes: html.length,
       text_bytes: text.length,
       primary_cta_label: OPEN_TICKETS_CTA_LABEL,
@@ -199,6 +202,47 @@ export function buildOrderConfirmationEmail(
       // Tokenized URLs intentionally omitted from snapshot.
     },
   };
+}
+
+/**
+ * Fail loudly if HTML generation produced a text-only / incomplete body.
+ * Hosted send must never silently fall back to plain text.
+ */
+export function assertOrderConfirmationBodies(params: {
+  html: string;
+  text: string;
+  siteOrigin?: string;
+}): void {
+  const html = params.html?.trim() ?? '';
+  const text = params.text?.trim() ?? '';
+
+  if (!html || html.length < 200) {
+    throw new Error('Order confirmation HTML body is missing or too short.');
+  }
+  if (!text || text.length < 40) {
+    throw new Error('Order confirmation plain-text body is missing or too short.');
+  }
+  if (!html.includes('<!DOCTYPE html>') && !html.toLowerCase().includes('<html')) {
+    throw new Error('Order confirmation HTML body is not a full HTML document.');
+  }
+  if (!html.includes('808Tickets')) {
+    throw new Error('Order confirmation HTML missing 808Tickets brand header.');
+  }
+  if (!html.includes(OPEN_TICKETS_CTA_LABEL) || !text.includes(OPEN_TICKETS_CTA_LABEL)) {
+    throw new Error(`Order confirmation missing "${OPEN_TICKETS_CTA_LABEL}" CTA.`);
+  }
+  // When fee summary is rendered, both bodies must keep transparent labels.
+  if (html.includes('Order summary') || text.includes('Order summary')) {
+    if (!html.includes(SERVICE_FEE_LABEL) || !text.includes(SERVICE_FEE_LABEL)) {
+      throw new Error(`Order confirmation missing "${SERVICE_FEE_LABEL}" label.`);
+    }
+    if (!html.includes(PROCESSING_FEE_LABEL) || !text.includes(PROCESSING_FEE_LABEL)) {
+      throw new Error(`Order confirmation missing "${PROCESSING_FEE_LABEL}" label.`);
+    }
+  }
+  if (params.siteOrigin && !html.includes(params.siteOrigin.replace(/\/+$/, ''))) {
+    throw new Error('Order confirmation HTML links do not use configured PUBLIC_SITE_URL origin.');
+  }
 }
 
 
@@ -371,6 +415,14 @@ export async function sendEmailWithResend(params: {
 
   if (!apiKey) {
     return { ok: false, error: 'RESEND_API_KEY is not configured.' };
+  }
+
+  try {
+    assertOrderConfirmationBodies({ html: params.html, text: params.text });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[order-email] refusing text-only / invalid Resend payload', { message });
+    return { ok: false, error: message };
   }
 
   const response = await fetch('https://api.resend.com/emails', {

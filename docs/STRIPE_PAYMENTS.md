@@ -293,6 +293,15 @@ npm run preview:order-email
 
 Optional: set `EMAIL_PREVIEW_ARTIFACT_DIR` when serving functions in preview mode to write the same artifacts from a live `sendOrderConfirmationEmail` call.
 
+**Hosted deploy (required for buyers to receive branded HTML):** both functions import `_shared/order-email.ts` → `_shared/order-email-template.ts`. Redeploy both after email template changes:
+
+```bash
+supabase functions deploy stripe-webhook
+supabase functions deploy send-order-confirmation-email
+```
+
+After deploy, verify with a real test purchase (or `smoke:email:send` against a fresh paid order) and confirm the inbox shows the branded HTML (808Tickets header + **Open Tickets** button), not the old plain layout. Check `outbound_messages.payload_snapshot` for `content_format: "html+text"`, `html_bytes > 0`, and `has_open_tickets_cta: true`.
+
 **Webhook flow (`checkout.session.completed`, `payment_status=paid`):**
 
 1. Verify Stripe signature

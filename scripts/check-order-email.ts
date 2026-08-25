@@ -281,10 +281,34 @@ assert(
   orderEmailShared.includes("content_format: 'html+text'") &&
     orderEmailShared.includes('has_html_body: true') &&
     orderEmailShared.includes('has_text_body: true') &&
+    orderEmailShared.includes('has_open_tickets_cta: true') &&
     orderEmailShared.includes('primary_cta_label') &&
     orderEmailShared.includes('site_origin: siteOrigin') &&
     !orderEmailShared.includes('success_url: successUrl'),
   'payload_snapshot records HTML mode without tokenized success URLs',
+);
+
+assert(
+  orderEmailShared.includes('assertOrderConfirmationBodies') &&
+    orderEmailShared.includes('refusing text-only / invalid Resend payload'),
+  'send path refuses text-only Resend payloads',
+);
+
+assert(
+  orderEmailShared.includes('sendEmailWithResend') &&
+    orderEmailShared.includes('html: params.html') &&
+    orderEmailShared.includes('text: params.text') &&
+    orderEmailShared.includes('subject: params.subject') &&
+    orderEmailShared.includes('from: params.from') &&
+    orderEmailShared.includes('to: [params.to]'),
+  'Resend API payload includes from, to, subject, html, and text',
+);
+
+assert(
+  stripeWebhook.includes('sendOrderConfirmationEmail') &&
+    sendOrderEmailFn.includes('sendOrderConfirmationEmail') &&
+    orderEmailShared.includes("from './order-email-template.ts'"),
+  'stripe-webhook and send-order-confirmation-email both send via shared HTML template builder',
 );
 
 assert(
@@ -320,6 +344,12 @@ assert(
   stripePaymentsDoc.includes('preview:order-email') ||
     stripePaymentsDoc.includes('branded HTML'),
   'STRIPE_PAYMENTS.md documents branded HTML email preview',
+);
+
+assert(
+  stripePaymentsDoc.includes('supabase functions deploy stripe-webhook') &&
+    stripePaymentsDoc.includes('supabase functions deploy send-order-confirmation-email'),
+  'STRIPE_PAYMENTS.md documents redeploy of stripe-webhook + send-order-confirmation-email',
 );
 
 assert(
