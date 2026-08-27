@@ -5,7 +5,8 @@ import { useRouter } from 'expo-router';
 import { AdminGate } from '@/components/admin/admin-gate';
 import { adminStyles as styles } from '@/components/admin/admin-styles';
 import {
-  AdminCopyButton,
+  AdminBadge,
+  AdminMetricCell,
   AdminSummaryCard,
   asAdminArray,
 } from '@/components/admin/admin-ui';
@@ -13,6 +14,11 @@ import {
   buildAdminCockpitEventPath,
   downloadCsv,
   formatAdminCents,
+  formatAdminEventWhen,
+  formatAdminFeeSourceLabel,
+  formatAdminPayoutStatusSummary,
+  formatAdminSalesLabel,
+  formatAdminStatusLabel,
 } from '@/lib/admin-support';
 import { supabase } from '@/lib/supabase';
 import { organizer } from '@/theme/colors';
@@ -31,17 +37,11 @@ type DashboardSummary = {
 type AdminEventRow = {
   event_id: string;
   event_name: string;
-  event_slug: string;
   status: string;
   sales_enabled: boolean;
-  ticketing_mode: string;
   event_date: string | null;
   start_time: string | null;
   venue_name: string | null;
-  organizer_id: string;
-  organizer_email: string | null;
-  organizer_name: string | null;
-  use_custom_fees: boolean;
   fee_config_source: string | null;
   paid_order_count: number;
   paid_ticket_count: number;
@@ -51,50 +51,7 @@ type AdminEventRow = {
   processing_fee_cents: number;
   organizer_net_cents: number;
   payout_statuses: string[] | null;
-};
-
-type AdminOrderTicket = {
-  secure_token: string;
-  sequence: number | null;
-  status: string;
-};
-
-type AdminOrderRow = {
-  order_id: string;
-  public_access_token: string;
-  status: string;
-  buyer_email: string;
-  buyer_name: string | null;
-  event_id: string;
-  event_name: string;
-  subtotal_cents: number;
-  platform_fee_cents: number;
-  processing_fee_cents: number | null;
-  total_cents: number;
-  organizer_net_cents: number;
-  fee_config_source: string | null;
-  currency: string;
-  created_at: string;
-  paid_at: string | null;
-  ticket_count: number;
-  tickets: AdminOrderTicket[] | null;
-};
-
-type AdminPayoutRow = {
-  payout_id: string;
-  status: string;
-  amount_cents: number;
-  currency: string;
   organizer_email: string | null;
-  event_name: string | null;
-  event_id: string | null;
-  order_id: string;
-  paid_at: string | null;
-  notes: string | null;
-  subtotal_cents: number | null;
-  platform_fee_cents: number | null;
-  processing_fee_cents: number | null;
-  organizer_net_cents: number | null;
 };
 
 type MonetizationSettings = {
@@ -105,15 +62,6 @@ type MonetizationSettings = {
     processing_fee_fixed_cents: number;
     updated_at: string | null;
   };
-  organizer_overrides: {
-    organizer_id: string;
-    organizer_email: string | null;
-    organizer_name: string | null;
-    platform_fee_bps: number;
-    platform_fee_fixed_cents: number;
-    processing_fee_bps: number;
-    processing_fee_fixed_cents: number;
-  }[];
   precedence: string[];
 };
 
@@ -123,8 +71,6 @@ function AdminCockpit() {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [events, setEvents] = useState<AdminEventRow[]>([]);
-  const [orders, setOrders] = useState<AdminOrderRow[]>([]);
-  const [payouts, setPayouts] = useState<AdminPayoutRow[]>([]);
   const [monetization, setMonetization] = useState<MonetizationSettings | null>(null);
   const [savingFees, setSavingFees] = useState(false);
   const [feeDraft, setFeeDraft] = useState({
@@ -133,20 +79,15 @@ function AdminCockpit() {
     processing_fee_bps: '290',
     processing_fee_fixed_cents: '30',
   });
-  const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
 
   const applyLoadedData = useCallback(
     (payload: {
       summary: DashboardSummary;
       events: AdminEventRow[];
-      orders: AdminOrderRow[];
-      payouts: AdminPayoutRow[];
       monetization: MonetizationSettings;
     }) => {
       setSummary(payload.summary);
       setEvents(payload.events);
-      setOrders(payload.orders);
-      setPayouts(payload.payouts);
       setMonetization(payload.monetization);
       if (payload.monetization?.global) {
         setFeeDraft({
@@ -161,25 +102,19 @@ function AdminCockpit() {
   );
 
   const fetchCockpit = useCallback(async () => {
-    const [summaryRes, eventsRes, ordersRes, payoutsRes, monetizationRes] = await Promise.all([
+    const [summaryRes, eventsRes, monetizationRes] = await Promise.all([
       supabase.rpc('admin_dashboard_summary'),
       supabase.rpc('admin_list_events', { p_limit: 80 }),
-      supabase.rpc('admin_list_recent_orders', { p_limit: 50 }),
-      supabase.rpc('admin_list_payouts'),
       supabase.rpc('admin_get_monetization_settings'),
     ]);
 
     if (summaryRes.error) throw summaryRes.error;
     if (eventsRes.error) throw eventsRes.error;
-    if (ordersRes.error) throw ordersRes.error;
-    if (payoutsRes.error) throw payoutsRes.error;
     if (monetizationRes.error) throw monetizationRes.error;
 
     return {
       summary: summaryRes.data as DashboardSummary,
       events: asAdminArray<AdminEventRow>(eventsRes.data),
-      orders: asAdminArray<AdminOrderRow>(ordersRes.data),
-      payouts: asAdminArray<AdminPayoutRow>(payoutsRes.data),
       monetization: monetizationRes.data as MonetizationSettings,
     };
   }, []);
@@ -224,6 +159,8 @@ function AdminCockpit() {
         [
           'event_name',
           'organizer_email',
+          'status',
+          'sales_enabled',
           'ticket_subtotal_cents',
           'platform_fee_cents',
           'processing_fee_cents',
@@ -234,6 +171,8 @@ function AdminCockpit() {
         ...events.map((event) => [
           event.event_name,
           event.organizer_email ?? '',
+          event.status,
+          String(event.sales_enabled),
           String(event.ticket_subtotal_cents ?? 0),
           String(event.platform_fee_cents ?? 0),
           String(event.processing_fee_cents ?? 0),
@@ -248,20 +187,6 @@ function AdminCockpit() {
     },
     [events],
   );
-
-  const setPayoutStatus = async (payoutId: string, status: 'pending' | 'paid' | 'withheld') => {
-    const notes = payoutNotes[payoutId]?.trim() || null;
-    const { error: rpcError } = await supabase.rpc('admin_set_payout_status', {
-      p_payout_id: payoutId,
-      p_status: status,
-      p_notes: notes,
-    });
-    if (rpcError) {
-      setError(rpcError.message);
-      return;
-    }
-    await loadAll();
-  };
 
   const saveGlobalFees = async () => {
     setSavingFees(true);
@@ -299,12 +224,18 @@ function AdminCockpit() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.h2}>Dashboard</Text>
+        <Text style={styles.h2}>Overview</Text>
         <Pressable onPress={() => void loadAll()} style={styles.linkBtn}>
           <Text style={styles.linkBtnText}>Refresh</Text>
         </Pressable>
       </View>
       <View style={styles.cardGrid}>
+        <AdminSummaryCard
+          label="Organizer net owed"
+          value={formatAdminCents(summary?.organizer_net_cents)}
+        />
+        <AdminSummaryCard label="Pending payouts" value={String(summary?.pending_payout_count ?? 0)} />
+        <AdminSummaryCard label="Paid orders" value={String(summary?.paid_orders_count ?? 0)} />
         <AdminSummaryCard
           label="Ticket subtotal"
           value={formatAdminCents(summary?.ticket_subtotal_cents)}
@@ -317,12 +248,6 @@ function AdminCockpit() {
           label="Payment processing fee"
           value={formatAdminCents(summary?.processing_fee_cents)}
         />
-        <AdminSummaryCard
-          label="Organizer net owed"
-          value={formatAdminCents(summary?.organizer_net_cents)}
-        />
-        <AdminSummaryCard label="Pending payouts" value={String(summary?.pending_payout_count ?? 0)} />
-        <AdminSummaryCard label="Paid orders" value={String(summary?.paid_orders_count ?? 0)} />
         <AdminSummaryCard
           label="Paid tickets issued"
           value={String(summary?.paid_tickets_issued_count ?? 0)}
@@ -339,138 +264,67 @@ function AdminCockpit() {
         ) : null}
       </View>
       <Text style={styles.muted}>
-        Open an event for buy/scanner links, orders, payouts, and event fee overrides.
+        Open an event for orders, payouts, scanner/buy links, and event fee overrides.
       </Text>
       {events.length === 0 ? <Text style={styles.muted}>No events.</Text> : null}
-      {events.map((event) => (
-        <View key={event.event_id} style={styles.rowCard}>
+      {events.map((event) => {
+        const salesOn = Boolean(event.sales_enabled);
+        const statusLabel = formatAdminStatusLabel(event.status);
+        return (
           <Pressable
+            key={event.event_id}
             accessibilityRole="link"
             onPress={() => router.push(buildAdminCockpitEventPath(event.event_id) as never)}
+            style={styles.rowCard}
           >
             <Text style={styles.rowTitleLink}>{event.event_name}</Text>
-          </Pressable>
-          <Text style={styles.muted}>
-            {event.organizer_email ?? '—'} · {event.event_date ?? 'no date'}{' '}
-            {event.start_time ?? ''} · {event.venue_name ?? 'no venue'}
-          </Text>
-          <Text style={styles.muted}>
-            status={event.status} · sales={String(event.sales_enabled)} · fee source=
-            {event.fee_config_source ?? '—'} · payouts=
-            {Array.isArray(event.payout_statuses) && event.payout_statuses.length > 0
-              ? event.payout_statuses.join(', ')
-              : 'none'}
-          </Text>
-          <Text style={styles.body}>
-            orders {event.paid_order_count} · tickets {event.paid_ticket_count} · checked-in{' '}
-            {event.checked_in_count}
-          </Text>
-          <Text style={styles.body}>
-            subtotal {formatAdminCents(event.ticket_subtotal_cents)} · 808Tickets service fee{' '}
-            {formatAdminCents(event.platform_fee_cents)} · Payment processing fee{' '}
-            {formatAdminCents(event.processing_fee_cents)} · net{' '}
-            {formatAdminCents(event.organizer_net_cents)}
-          </Text>
-          <View style={styles.btnRow}>
-            <AdminCopyButton label="Copy event ID" value={event.event_id} />
-            {event.organizer_email ? (
-              <AdminCopyButton label="Copy organizer email" value={event.organizer_email} />
+            <Text style={styles.metaLine}>{formatAdminEventWhen(event.event_date, event.start_time)}</Text>
+            {event.venue_name?.trim() ? (
+              <Text style={styles.metaLine}>{event.venue_name.trim()}</Text>
             ) : null}
-          </View>
-        </View>
-      ))}
-
-      <Text style={styles.h2}>Recent orders</Text>
-      {orders.length === 0 ? <Text style={styles.muted}>No orders.</Text> : null}
-      {orders.map((order) => (
-        <View key={order.order_id} style={styles.rowCard}>
-          <Pressable
-            accessibilityRole="link"
-            onPress={() => router.push(buildAdminCockpitEventPath(order.event_id) as never)}
-          >
-            <Text style={styles.rowTitleLink}>
-              {order.event_name} · {order.status}
-            </Text>
+            <View style={styles.badgeRow}>
+              <AdminBadge
+                label={statusLabel}
+                tone={event.status === 'published' ? 'positive' : 'neutral'}
+              />
+              <AdminBadge label={formatAdminSalesLabel(salesOn)} tone={salesOn ? 'positive' : 'warn'} />
+              <AdminBadge label={`Fee: ${formatAdminFeeSourceLabel(event.fee_config_source)}`} />
+              <AdminBadge
+                label={`Payouts: ${formatAdminPayoutStatusSummary(event.payout_statuses)}`}
+              />
+            </View>
+            <View style={styles.metricGrid}>
+              <AdminMetricCell label="Orders" value={String(event.paid_order_count ?? 0)} />
+              <AdminMetricCell label="Tickets" value={String(event.paid_ticket_count ?? 0)} />
+              <AdminMetricCell label="Checked in" value={String(event.checked_in_count ?? 0)} />
+              <AdminMetricCell
+                label="Ticket subtotal"
+                value={formatAdminCents(event.ticket_subtotal_cents)}
+              />
+              <AdminMetricCell
+                label="808Tickets service fee"
+                value={formatAdminCents(event.platform_fee_cents)}
+              />
+              <AdminMetricCell
+                label="Payment processing fee"
+                value={formatAdminCents(event.processing_fee_cents)}
+              />
+              <AdminMetricCell
+                label="Organizer net"
+                value={formatAdminCents(event.organizer_net_cents)}
+              />
+            </View>
           </Pressable>
-          <Text style={styles.muted}>
-            {order.buyer_name ?? 'Buyer'} · {order.buyer_email}
-          </Text>
-          <Text style={styles.body}>
-            total {formatAdminCents(order.total_cents, order.currency)} · subtotal{' '}
-            {formatAdminCents(order.subtotal_cents, order.currency)} · 808Tickets service fee{' '}
-            {formatAdminCents(order.platform_fee_cents, order.currency)} · Payment processing fee{' '}
-            {formatAdminCents(order.processing_fee_cents, order.currency)} · net{' '}
-            {formatAdminCents(order.organizer_net_cents, order.currency)}
-          </Text>
-          <Text style={styles.muted}>
-            fee source={order.fee_config_source ?? '—'} · tickets={order.ticket_count} · paid_at=
-            {order.paid_at ?? '—'}
-          </Text>
-        </View>
-      ))}
+        );
+      })}
 
-      <Text style={styles.h2}>Payout queue</Text>
-      {payouts.length === 0 ? <Text style={styles.muted}>No payouts.</Text> : null}
-      {payouts.map((payout) => (
-        <View key={payout.payout_id} style={styles.rowCard}>
-          <Text style={styles.rowTitle}>
-            {payout.event_name ?? 'Event'} · {formatAdminCents(payout.amount_cents, payout.currency)} ·{' '}
-            {payout.status}
-          </Text>
-          <Text style={styles.muted}>{payout.organizer_email ?? '—'}</Text>
-          <Text style={styles.body}>
-            subtotal {formatAdminCents(payout.subtotal_cents)} · 808Tickets service fee{' '}
-            {formatAdminCents(payout.platform_fee_cents)} · Payment processing fee{' '}
-            {formatAdminCents(payout.processing_fee_cents)} · net{' '}
-            {formatAdminCents(payout.organizer_net_cents)}
-          </Text>
-          <TextInput
-            value={payoutNotes[payout.payout_id] ?? payout.notes ?? ''}
-            onChangeText={(value) =>
-              setPayoutNotes((prev) => ({ ...prev, [payout.payout_id]: value }))
-            }
-            placeholder="Notes"
-            placeholderTextColor="#666"
-            style={styles.input}
-          />
-          <View style={styles.btnRow}>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'paid')}
-            >
-              <Text style={styles.linkBtnText}>Mark paid</Text>
-            </Pressable>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'withheld')}
-            >
-              <Text style={styles.linkBtnText}>Mark withheld</Text>
-            </Pressable>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'pending')}
-            >
-              <Text style={styles.linkBtnText}>Return pending</Text>
-            </Pressable>
-            {payout.event_id ? (
-              <Pressable
-                style={styles.linkBtn}
-                onPress={() => router.push(buildAdminCockpitEventPath(payout.event_id!) as never)}
-              >
-                <Text style={styles.linkBtnText}>Open event</Text>
-              </Pressable>
-            ) : null}
-          </View>
-        </View>
-      ))}
-
-      <Text style={styles.h2}>Monetization</Text>
+      <Text style={styles.h2}>Global monetization</Text>
       <Text style={styles.muted}>
         Precedence: {(monetization?.precedence ?? ['event', 'organizer', 'global']).join(' → ')}.
-        Changing global fees does not recalculate existing orders. Event-level overrides live on each
-        event admin page.
+        Changing global fees does not recalculate existing orders. Event-level custom fees are edited
+        on each event admin page.
       </Text>
-      <View style={styles.rowCard}>
+      <View style={[styles.rowCard, { marginBottom: 40 }]}>
         <Text style={styles.rowTitle}>Global defaults</Text>
         {(
           [
@@ -498,24 +352,6 @@ function AdminCockpit() {
           <Text style={styles.primaryBtnText}>{savingFees ? 'Saving…' : 'Save global fees'}</Text>
         </Pressable>
       </View>
-
-      <Text style={styles.h3}>Organizer overrides</Text>
-      {(monetization?.organizer_overrides ?? []).length === 0 ? (
-        <Text style={[styles.muted, { marginBottom: 40 }]}>
-          No organizer overrides. Event custom fees are edited on /admin/events/:eventId.
-        </Text>
-      ) : (
-        (monetization?.organizer_overrides ?? []).map((override) => (
-          <View key={override.organizer_id} style={styles.rowCard}>
-            <Text style={styles.rowTitle}>{override.organizer_email ?? override.organizer_id}</Text>
-            <Text style={styles.body}>
-              808Tickets service fee {override.platform_fee_bps}bps +{' '}
-              {override.platform_fee_fixed_cents}¢ · Payment processing fee{' '}
-              {override.processing_fee_bps}bps + {override.processing_fee_fixed_cents}¢
-            </Text>
-          </View>
-        ))
-      )}
     </ScrollView>
   );
 }

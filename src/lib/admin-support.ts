@@ -1,19 +1,20 @@
 import { buildAbsoluteAppUrl } from '@/lib/app-base-url';
+import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 
 /** In-app platform admin event cockpit path (Expo Router). */
 export function buildAdminCockpitEventPath(eventId: string): string {
   return `/admin/events/${encodeURIComponent(eventId.trim())}`;
 }
 
-/** Support deep-links for platform admin cockpit (real app routes only). */
-export function buildAdminEventDetailUrl(eventId: string): string {
-  return buildAbsoluteAppUrl(`/events/${encodeURIComponent(eventId.trim())}`);
-}
-
+/**
+ * Support deep-links for platform admin cockpit (real app routes only).
+ * /events/:id is organizer-gated — do not expose as a “public event” support link.
+ */
 export function buildAdminEventBuyUrl(eventId: string): string {
   return buildAbsoluteAppUrl(`/events/${encodeURIComponent(eventId.trim())}/buy`);
 }
 
+/** Organizer/admin scanner route (auth required). */
 export function buildAdminEventScanUrl(eventId: string): string {
   return buildAbsoluteAppUrl(`/events/${encodeURIComponent(eventId.trim())}/scan`);
 }
@@ -37,6 +38,74 @@ export function formatAdminCents(cents: number | null | undefined, currency = 'u
   } catch {
     return `$${amount.toFixed(2)}`;
   }
+}
+
+/** Human-readable event date/time for admin surfaces. */
+export function formatAdminEventWhen(
+  eventDate: string | null | undefined,
+  startTime: string | null | undefined,
+): string {
+  return formatEventDateTimeLong(eventDate, startTime) ?? 'Date TBD';
+}
+
+export function formatAdminStatusLabel(status: string | null | undefined): string {
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'published') return 'Published';
+  if (value === 'draft') return 'Draft';
+  if (value === 'canceled' || value === 'cancelled') return 'Canceled';
+  if (!value) return 'Unknown';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+export function formatAdminSalesLabel(salesEnabled: boolean | null | undefined): string {
+  return salesEnabled ? 'Sales on' : 'Sales off';
+}
+
+export function formatAdminFeeSourceLabel(source: string | null | undefined): string {
+  const value = (source ?? '').trim().toLowerCase();
+  if (value === 'global') return 'Global';
+  if (value === 'organizer') return 'Organizer';
+  if (value === 'event') return 'Event';
+  return '—';
+}
+
+export function formatAdminPayoutStatusSummary(
+  statuses: string[] | null | undefined,
+): string {
+  if (!Array.isArray(statuses) || statuses.length === 0) return 'None';
+  const labels = statuses
+    .map((status) => {
+      const value = String(status).trim().toLowerCase();
+      if (value === 'pending') return 'Pending';
+      if (value === 'paid') return 'Paid';
+      if (value === 'withheld') return 'Withheld';
+      return status;
+    })
+    .filter(Boolean);
+  return labels.length > 0 ? labels.join(', ') : 'None';
+}
+
+export function formatAdminDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+export function formatAdminOrderStatus(status: string | null | undefined): string {
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'paid') return 'Paid';
+  if (value === 'pending') return 'Pending';
+  if (value === 'canceled' || value === 'cancelled') return 'Canceled';
+  if (value === 'expired') return 'Expired';
+  if (!value) return 'Unknown';
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 export function downloadCsv(filename: string, rows: string[][]): void {

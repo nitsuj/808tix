@@ -51,3 +51,34 @@ export function AdminSummaryCard({ label, value }: { label: string; value: strin
     </View>
   );
 }
+
+type BadgeTone = 'neutral' | 'positive' | 'warn';
+
+export function AdminBadge({ label, tone = 'neutral' }: { label: string; tone?: BadgeTone }) {
+  const badgeStyle =
+    tone === 'positive' ? styles.badgePositive : tone === 'warn' ? styles.badgeWarn : styles.badgeNeutral;
+  const textStyle = tone === 'positive' ? styles.badgeTextAccent : styles.badgeText;
+  return (
+    <View style={[styles.badge, badgeStyle]}>
+      <Text style={textStyle}>{label}</Text>
+    </View>
+  );
+}
+
+export function AdminMetricCell({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.metricCell}>
+      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={styles.metricValue}>{value}</Text>
+    </View>
+  );
+}
+
+export function AdminField({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.fieldRow}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={styles.fieldValue}>{value}</Text>
+    </View>
+  );
+}
