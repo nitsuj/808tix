@@ -16,6 +16,21 @@ const distDir = join(root, 'dist');
 const STATIC_CLEAN_URL_REWRITES = [
   { source: '/login', destination: '/login.html', distFile: 'login.html' },
   { source: '/admin', destination: '/admin/index.html', distFile: 'admin/index.html' },
+  {
+    source: '/design/admin-dashboard-prototype',
+    destination: '/design/admin-dashboard-prototype.html',
+    distFile: 'design/admin-dashboard-prototype.html',
+  },
+  {
+    source: '/design/admin-event-detail-prototype',
+    destination: '/design/admin-event-detail-prototype.html',
+    distFile: 'design/admin-event-detail-prototype.html',
+  },
+  {
+    source: '/design/admin-dashboard-review',
+    destination: '/design/admin-dashboard-review.html',
+    distFile: 'design/admin-dashboard-review.html',
+  },
   { source: '/privacy', destination: '/privacy.html', distFile: 'privacy.html' },
   { source: '/terms', destination: '/terms.html', distFile: 'terms.html' },
   { source: '/home', destination: '/home.html', distFile: 'home.html' },

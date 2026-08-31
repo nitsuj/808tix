@@ -15,6 +15,7 @@ const EVENT_DETAIL_MIGRATION = join(
   'supabase/migrations/20260825140000_platform_admin_event_detail.sql',
 );
 const ADMIN_PAGE = join(ROOT, 'src/app/admin/index.tsx');
+const GLOBAL_DASHBOARD_VIEW = join(ROOT, 'src/components/dashboard/global-admin-dashboard-view.tsx');
 const ADMIN_EVENT_PAGE = join(ROOT, 'src/app/admin/events/[eventId].tsx');
 const ADMIN_SUPPORT = join(ROOT, 'src/lib/admin-support.ts');
 const HOME = join(ROOT, 'src/app/home.tsx');
@@ -49,6 +50,8 @@ assert(existsSync(PASS_ROUTE), 'pass route exists for ticket links');
 const migration = readFileSync(MIGRATION, 'utf8');
 const eventDetailMigration = readFileSync(EVENT_DETAIL_MIGRATION, 'utf8');
 const adminPage = readFileSync(ADMIN_PAGE, 'utf8');
+const globalDashboardView = readFileSync(GLOBAL_DASHBOARD_VIEW, 'utf8');
+const adminUiSurface = adminPage + '\n' + globalDashboardView;
 const adminEventPage = readFileSync(ADMIN_EVENT_PAGE, 'utf8');
 const adminSupport = readFileSync(ADMIN_SUPPORT, 'utf8');
 const home = readFileSync(HOME, 'utf8');
@@ -125,6 +128,9 @@ assert(
   readFileSync(join(ROOT, 'src/components/admin/admin-gate.tsx'), 'utf8').includes('/login'),
   'logged-out prompts login',
 );
+assert(adminPage.includes('GlobalAdminDashboardView'), 'production /admin uses shared global dashboard view');
+assert(!adminPage.includes('REVIEW_SUMMARY'), 'production /admin does not use review mock summary');
+assert(!adminPage.includes('design-review/dashboard-review-data'), 'production /admin does not import review mock data');
 assert(adminPage.includes('admin_dashboard_summary'), 'admin UI calls dashboard summary RPC');
 assert(adminPage.includes('admin_list_events'), 'admin UI calls events RPC');
 assert(!adminPage.includes('admin_list_recent_orders'), 'global admin does not load recent orders list');
@@ -132,8 +138,27 @@ assert(!adminPage.includes('admin_list_payouts'), 'global admin does not load pa
 assert(adminPage.includes('admin_get_monetization_settings'), 'admin UI calls monetization RPC');
 assert(!adminPage.includes('admin_set_payout_status'), 'global admin does not set payout status');
 assert(adminPage.includes('admin_update_global_fee_config'), 'admin UI can update global fees');
-assert(adminPage.includes('808Tickets service fee') && adminPage.includes('Payment processing fee'), 'exact fee labels in admin UI');
-assert(adminPage.includes('Export CSV') || adminSupport.includes('downloadCsv'), 'CSV export available');
+assert(
+  adminUiSurface.includes('808Tickets service fee') && adminUiSurface.includes('Payment processing fee'),
+  'exact fee labels in admin UI',
+);
+assert(
+  adminUiSurface.includes('Gross ticket sales') || adminUiSurface.includes('Ticket subtotal'),
+  'global admin uses gross ticket sales / ticket subtotal language',
+);
+assert(!adminUiSurface.includes('Gross Merchandise Value'), 'global admin does not use Gross Merchandise Value');
+assert(!/\bGMV\b/.test(adminUiSurface), 'global admin does not use GMV');
+assert(
+  adminUiSurface.includes('Platform operations') || adminUiSurface.includes('event performance'),
+  'global admin has operational subtitle',
+);
+assert(
+  adminPage.includes('TicketSalesChartCard') ||
+    adminPage.includes('GlobalAdminDashboardView') ||
+    adminPage.includes('Ticket sales over time'),
+  'global admin includes ticket sales chart section',
+);
+assert(adminPage.includes('downloadCsv') || adminUiSurface.includes('Export CSV'), 'CSV export available');
 assert(adminPage.includes('buildAdminCockpitEventPath'), 'global admin links event names to event cockpit');
 assert(
   !adminPage.includes('label="Buy"') &&

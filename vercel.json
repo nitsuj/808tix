@@ -16,6 +16,18 @@
       "destination": "/admin/events/[eventId].html"
     },
     {
+      "source": "/design/admin-dashboard-prototype",
+      "destination": "/design/admin-dashboard-prototype.html"
+    },
+    {
+      "source": "/design/admin-event-detail-prototype",
+      "destination": "/design/admin-event-detail-prototype.html"
+    },
+    {
+      "source": "/design/admin-dashboard-review",
+      "destination": "/design/admin-dashboard-review.html"
+    },
+    {
       "source": "/privacy",
       "destination": "/privacy.html"
     },

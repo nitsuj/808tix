@@ -19,6 +19,10 @@ const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 const QA_ORGANIZER_ID = 'a1000001-0000-4000-8000-000000000001';
 const QA_ORGANIZER_EMAIL = 'qa@808tix.test';
 const QA_ORGANIZER_PASSWORD = 'qa';
+/** Local-only platform admin for /admin QA (never seed on hosted). */
+const QA_PLATFORM_ADMIN_ID = 'a1000001-0000-4000-8000-000000000099';
+const QA_PLATFORM_ADMIN_EMAIL = 'platform-admin@808tix.test';
+const QA_PLATFORM_ADMIN_PASSWORD = 'qa-admin-password';
 const QA_EVENT_ID = 'a1000001-0000-4000-8000-000000000002';
 const QA_TICKET_TYPE_ID = 'a1000001-0000-4000-8000-000000000003';
 const QA_EVENT_SLUG = 'qa-paid-event';
@@ -442,6 +446,62 @@ async function bootstrapOrganizer(): Promise<void> {
   );
 }
 
+async function bootstrapPlatformAdmin(): Promise<void> {
+  await queryResultJson<{ admin_id: string }>(
+    `
+    insert into auth.users (
+      id,
+      instance_id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      created_at,
+      updated_at,
+      raw_app_meta_data,
+      raw_user_meta_data
+    )
+    values (
+      ${sqlLiteral(QA_PLATFORM_ADMIN_ID)}::uuid,
+      '00000000-0000-0000-0000-000000000000',
+      'authenticated',
+      'authenticated',
+      ${sqlLiteral(QA_PLATFORM_ADMIN_EMAIL)},
+      crypt(${sqlLiteral(QA_PLATFORM_ADMIN_PASSWORD)}, gen_salt('bf')),
+      now(),
+      now(),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{}'::jsonb
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      encrypted_password = excluded.encrypted_password,
+      email_confirmed_at = coalesce(auth.users.email_confirmed_at, now())
+    returning json_build_object('admin_id', id::text)::text as result;
+  `,
+    'bootstrapPlatformAdmin',
+  );
+
+  await runSupabaseStatement(
+    `
+    insert into public.profiles (id, email, is_platform_admin)
+    values (
+      ${sqlLiteral(QA_PLATFORM_ADMIN_ID)}::uuid,
+      ${sqlLiteral(QA_PLATFORM_ADMIN_EMAIL)},
+      true
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      is_platform_admin = true;
+  `,
+    'bootstrapPlatformAdminProfile',
+  );
+}
+
 async function upsertPaidEvent(): Promise<void> {
   await queryResultJson<{ event_id: string }>(`
     insert into public.events (
@@ -622,6 +682,7 @@ async function main(): Promise<void> {
 
   await assertLocalSupabase();
   await bootstrapOrganizer();
+  await bootstrapPlatformAdmin();
   await upsertPaidEvent();
   await upsertTicketType();
   await cleanupPreviousQaOrders();
@@ -657,7 +718,11 @@ async function main(): Promise<void> {
   console.log(`paid_order_token:    ${fixtures.paid_order_token}`);
   console.log(`pass_tokens:         ${fixtures.pass_tokens.join(', ')}`);
   console.log(`\nWrote ${FIXTURES_PATH}`);
-  console.log('\nNext: npm run qa:web');
+  console.log('\nLocal platform admin (local Supabase only):');
+  console.log(`  email:    ${QA_PLATFORM_ADMIN_EMAIL}`);
+  console.log(`  password: ${QA_PLATFORM_ADMIN_PASSWORD}`);
+  console.log('  admin:    http://localhost:8081/admin?qaAdmin=1');
+  console.log('\nNext: npm run qa:web  |  npm run qa:admin');
 }
 
 main().catch((error) => {

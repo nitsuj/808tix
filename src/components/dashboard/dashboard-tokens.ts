@@ -1,0 +1,23 @@
+/** Shared dashboard color tokens — dark premium SaaS with magenta accent. */
+export const dash = {
+  bg: '#0A0A12',
+  bgElevated: '#12121C',
+  card: '#161622',
+  cardBorder: 'rgba(255,255,255,0.06)',
+  magenta: '#FF2D78',
+  magentaSoft: 'rgba(255,45,120,0.16)',
+  purple: '#A25BFF',
+  violet: '#7B8CFF',
+  rose: '#FF5C8A',
+  green: '#39FF14',
+  greenSoft: 'rgba(57,255,20,0.14)',
+  amber: '#FFB020',
+  amberSoft: 'rgba(255,176,32,0.14)',
+  blueSoft: 'rgba(123,140,255,0.16)',
+  text: '#FFFFFF',
+  textMuted: '#9AA0AE',
+  textDim: '#6F7686',
+  divider: 'rgba(255,255,255,0.07)',
+  input: '#1A1A28',
+  error: '#FF6B6B',
+} as const;
