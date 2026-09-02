@@ -31,6 +31,7 @@ export type EventAdminPayout = {
   amountLabel: string;
   statusLabel: string;
   statusTone: StatusBadgeTone;
+  statusValue: 'pending' | 'paid' | 'withheld';
   paidAtLabel: string | null;
   notes: string;
 };
@@ -287,6 +288,7 @@ export const EVENT_REVIEW_PAYOUT: EventAdminPayout = {
   amountLabel: '$1,250.00',
   statusLabel: 'Pending',
   statusTone: 'warn',
+  statusValue: 'pending',
   paidAtLabel: null,
   notes: 'Hold until event settles · Howzit Beer Co. ACH on file',
 };

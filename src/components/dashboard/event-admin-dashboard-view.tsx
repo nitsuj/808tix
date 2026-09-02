@@ -43,6 +43,7 @@ export type EventAdminPayoutView = {
   amountLabel: string;
   statusLabel: string;
   statusTone: StatusBadgeTone;
+  statusValue: 'pending' | 'paid' | 'withheld' | string;
   paidAtLabel: string | null;
   notes: string;
 };
@@ -87,27 +88,54 @@ type FeeDraft = {
   processing_fee_fixed_cents: string;
 };
 
+export type EventAdminFeeSavePayload = {
+  useEventOverride: boolean;
+  fees: EventAdminFeeSliceView;
+};
+
+export type EventAdminPayoutActionPayload = {
+  payoutId: string;
+  status: 'pending' | 'paid' | 'withheld';
+  notes: string;
+};
+
 export type EventAdminDashboardViewProps = {
   detail: EventAdminDetailView;
   orders: EventAdminOrderView[];
-  payout: EventAdminPayoutView | null;
+  payouts: EventAdminPayoutView[];
   globalFees: EventAdminFeeSliceView;
   organizerOverride: EventAdminFeeSliceView | null;
   eventOverrideDraft: EventAdminFeeSliceView;
+  /** Initial/synced event override toggle (from live monetization.use_custom_fees). */
+  initialUseEventOverride?: boolean;
   buyHref?: string;
   scanHref?: string;
   chartSeries?: readonly number[];
   chartLabels?: readonly string[];
   chartYAxisLabels?: readonly [string, string, string];
   topBanner?: ReactNode;
+  overviewTools?: ReactNode;
+  error?: string | null;
   onBackToAdmin: () => void;
   onOpenTicket?: (secureToken: string) => void;
+  onSetPayoutStatus?: (payload: EventAdminPayoutActionPayload) => void;
+  onSaveEventFees?: (payload: EventAdminFeeSavePayload) => void;
+  savingFees?: boolean;
   readOnly?: boolean;
   footnote?: string;
 };
 
 function formatFeeSlice(slice: EventAdminFeeSliceView): string {
   return `808Tickets service fee ${slice.platform_fee_bps} bps + ${slice.platform_fee_fixed_cents}¢/ticket · Payment processing fee ${slice.processing_fee_bps} bps + ${slice.processing_fee_fixed_cents}¢`;
+}
+
+function draftFromSlice(slice: EventAdminFeeSliceView): FeeDraft {
+  return {
+    platform_fee_bps: String(slice.platform_fee_bps),
+    platform_fee_fixed_cents: String(slice.platform_fee_fixed_cents),
+    processing_fee_bps: String(slice.processing_fee_bps),
+    processing_fee_fixed_cents: String(slice.processing_fee_fixed_cents),
+  };
 }
 
 function OrderCard({
@@ -156,31 +184,34 @@ function OrderCard({
 export function EventAdminDashboardView({
   detail,
   orders,
-  payout,
+  payouts,
   globalFees,
   organizerOverride,
   eventOverrideDraft,
+  initialUseEventOverride = false,
   buyHref,
   scanHref,
   chartSeries,
   chartLabels,
   chartYAxisLabels,
   topBanner,
+  overviewTools,
+  error,
   onBackToAdmin,
   onOpenTicket,
+  onSetPayoutStatus,
+  onSaveEventFees,
+  savingFees = false,
   readOnly = false,
   footnote,
 }: EventAdminDashboardViewProps) {
   const { width } = useWindowDimensions();
   const isCompact = width < 860;
-  const [useEventOverride, setUseEventOverride] = useState(false);
-  const [feeDraft, setFeeDraft] = useState<FeeDraft>({
-    platform_fee_bps: String(eventOverrideDraft.platform_fee_bps),
-    platform_fee_fixed_cents: String(eventOverrideDraft.platform_fee_fixed_cents),
-    processing_fee_bps: String(eventOverrideDraft.processing_fee_bps),
-    processing_fee_fixed_cents: String(eventOverrideDraft.processing_fee_fixed_cents),
-  });
-  const [payoutNotes, setPayoutNotes] = useState(payout?.notes ?? '');
+  const [useEventOverride, setUseEventOverride] = useState(initialUseEventOverride);
+  const [feeDraft, setFeeDraft] = useState<FeeDraft>(() => draftFromSlice(eventOverrideDraft));
+  const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(payouts.map((payout) => [payout.payoutId, payout.notes])),
+  );
   const [copied, setCopied] = useState<string | null>(null);
 
   const copyText = async (label: string, value: string) => {
@@ -194,6 +225,31 @@ export function EventAdminDashboardView({
   const openHref = (href?: string) => {
     if (!href) return;
     void Linking.openURL(href);
+  };
+
+  const runPayoutAction = (
+    payout: EventAdminPayoutView,
+    status: 'pending' | 'paid' | 'withheld',
+  ) => {
+    if (readOnly) return;
+    onSetPayoutStatus?.({
+      payoutId: payout.payoutId,
+      status,
+      notes: (payoutNotes[payout.payoutId] ?? payout.notes).trim(),
+    });
+  };
+
+  const saveFees = () => {
+    if (readOnly || !onSaveEventFees) return;
+    onSaveEventFees({
+      useEventOverride,
+      fees: {
+        platform_fee_bps: Number(feeDraft.platform_fee_bps),
+        platform_fee_fixed_cents: Number(feeDraft.platform_fee_fixed_cents),
+        processing_fee_bps: Number(feeDraft.processing_fee_bps),
+        processing_fee_fixed_cents: Number(feeDraft.processing_fee_fixed_cents),
+      },
+    });
   };
 
   return (
@@ -228,7 +284,9 @@ export function EventAdminDashboardView({
         </View>
       </View>
 
-      <DashboardSectionHeader title="Overview" />
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      <DashboardSectionHeader title="Overview" tools={overviewTools} />
       <View style={styles.kpiRow}>
         <KpiCard label="Gross ticket sales" value={detail.grossTicketSalesLabel} hint="Ticket subtotal" />
         <KpiCard label="Tickets sold" value={String(detail.ticketsSold)} />
@@ -259,6 +317,7 @@ export function EventAdminDashboardView({
             <GhostButton
               label={copied === 'email' ? 'Copied email' : 'Copy organizer email'}
               onPress={() => void copyText('email', detail.organizerEmail)}
+              disabled={!detail.organizerEmail.trim()}
             />
           </View>
           <Text style={[styles.muted, { marginTop: 8, color: dash.textDim }]}>
@@ -293,37 +352,64 @@ export function EventAdminDashboardView({
       <View style={styles.midRow}>
         <View style={[styles.sectionCard, { flexGrow: 1, flexBasis: 320, minWidth: 280 }]}>
           <DashboardSectionHeader title="Payout" />
-          {payout ? (
-            <>
-              <View style={styles.feeGrid}>
-                <InfoField label="Organizer net owed" value={payout.amountLabel} />
-                <InfoField label="Status" value={payout.statusLabel} />
-                <InfoField label="Paid at" value={payout.paidAtLabel ?? '—'} />
-              </View>
-              <Text style={styles.fieldLabel}>Notes</Text>
-              <TextInput
-                value={payoutNotes}
-                onChangeText={setPayoutNotes}
-                editable={!readOnly}
-                multiline
-                placeholderTextColor={dash.textDim}
-                style={[styles.input, { minHeight: 72 }]}
-              />
-              <View style={styles.actionRow}>
-                <Pressable
-                  style={[styles.primaryBtn, readOnly && styles.disabled]}
-                  disabled={readOnly}
-                  onPress={() => undefined}
-                >
-                  <Text style={styles.primaryBtnText}>Mark paid</Text>
-                </Pressable>
-                <GhostButton label="Mark withheld" onPress={() => undefined} disabled={readOnly} />
-                <GhostButton label="Return pending" onPress={() => undefined} disabled={readOnly} />
-                <GhostButton label="Save notes" onPress={() => undefined} disabled={readOnly} />
-              </View>
-            </>
-          ) : (
+          {payouts.length === 0 ? (
             <EmptyState title="No payout row" body="Payout visibility appears once organizer net is tracked." />
+          ) : (
+            <View style={{ gap: 16 }}>
+              {payouts.map((payout) => (
+                <View key={payout.payoutId} style={{ gap: 10 }}>
+                  <View style={styles.feeGrid}>
+                    <InfoField label="Organizer net owed" value={payout.amountLabel} />
+                    <InfoField label="Status" value={payout.statusLabel} />
+                    <InfoField label="Paid at" value={payout.paidAtLabel ?? '—'} />
+                  </View>
+                  <Text style={styles.fieldLabel}>Notes</Text>
+                  <TextInput
+                    value={payoutNotes[payout.payoutId] ?? payout.notes}
+                    onChangeText={(value) =>
+                      setPayoutNotes((prev) => ({ ...prev, [payout.payoutId]: value }))
+                    }
+                    editable={!readOnly}
+                    multiline
+                    placeholderTextColor={dash.textDim}
+                    style={[styles.input, { minHeight: 72 }]}
+                  />
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      style={[styles.primaryBtn, readOnly && styles.disabled]}
+                      disabled={readOnly}
+                      onPress={() => runPayoutAction(payout, 'paid')}
+                    >
+                      <Text style={styles.primaryBtnText}>Mark paid</Text>
+                    </Pressable>
+                    <GhostButton
+                      label="Mark withheld"
+                      onPress={() => runPayoutAction(payout, 'withheld')}
+                      disabled={readOnly}
+                    />
+                    <GhostButton
+                      label="Return pending"
+                      onPress={() => runPayoutAction(payout, 'pending')}
+                      disabled={readOnly}
+                    />
+                    <GhostButton
+                      label="Save notes"
+                      onPress={() =>
+                        runPayoutAction(
+                          payout,
+                          payout.statusValue === 'paid' ||
+                            payout.statusValue === 'withheld' ||
+                            payout.statusValue === 'pending'
+                            ? payout.statusValue
+                            : 'pending',
+                        )
+                      }
+                      disabled={readOnly}
+                    />
+                  </View>
+                </View>
+              ))}
+            </View>
           )}
         </View>
 
@@ -380,12 +466,24 @@ export function EventAdminDashboardView({
               </View>
             ))}
           </View>
+          {!useEventOverride && !readOnly ? (
+            <Text style={[styles.muted, { color: dash.textDim }]}>
+              Saving with “Use global/organizer effective” turns off the event override flag. Stored
+              event fee columns are kept but unused.
+            </Text>
+          ) : null}
           <Pressable
-            style={[styles.primaryBtn, (readOnly || !useEventOverride) && styles.disabled, { marginTop: 4 }]}
-            disabled={readOnly || !useEventOverride}
-            onPress={() => undefined}
+            style={[
+              styles.primaryBtn,
+              (readOnly || savingFees) && styles.disabled,
+              { marginTop: 4 },
+            ]}
+            disabled={readOnly || savingFees}
+            onPress={saveFees}
           >
-            <Text style={styles.primaryBtnText}>Save event fee override</Text>
+            <Text style={styles.primaryBtnText}>
+              {savingFees ? 'Saving…' : 'Save event fee settings'}
+            </Text>
           </Pressable>
         </View>
       </View>

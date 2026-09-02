@@ -195,6 +195,14 @@ assert(adminEventPage.includes('admin_get_event_monetization'), 'event admin cal
 assert(adminEventPage.includes('admin_list_payouts'), 'event admin lists payouts');
 assert(adminEventPage.includes('admin_set_event_custom_fees'), 'event admin can mutate event fees');
 assert(adminEventPage.includes('admin_set_payout_status'), 'event admin can set payout status');
+assert(adminEventPage.includes('EventAdminDashboardView'), 'event admin uses shared EventAdminDashboardView');
+assert(adminEventPage.includes('AdminGate'), 'event admin remains AdminGate gated');
+assert(
+  !adminEventPage.includes('design-review') &&
+    !adminEventPage.includes('admin-event-detail-review-data') &&
+    !adminEventPage.includes('EVENT_REVIEW_'),
+  'event admin does not import mock review data',
+);
 assert(adminEventPage.includes('buildAdminEventBuyUrl'), 'event admin has buy support link');
 assert(adminEventPage.includes('buildAdminEventScanUrl'), 'event admin has scanner support link');
 assert(!adminEventPage.includes('buildAdminEventDetailUrl'), 'event admin omits organizer-only event detail as public link');
@@ -202,13 +210,22 @@ assert(
   eventIndexRoute.includes('useOrganizerAuthGate'),
   '/events/:eventId is organizer-gated (not a public buyer page)',
 );
-assert(adminEventPage.includes('808Tickets service fee') && adminEventPage.includes('Payment processing fee'), 'exact fee labels on event admin');
-assert(adminEventPage.includes('Existing orders are not recalculated'), 'event fee copy warns existing orders');
-assert(adminEventPage.includes('breadcrumbLink') || adminEventPage.includes('Admin'), 'event admin breadcrumb back to /admin');
+const eventView = readFileSync(
+  join(ROOT, 'src/components/dashboard/event-admin-dashboard-view.tsx'),
+  'utf8',
+);
+assert(
+  eventView.includes('808Tickets service fee') && eventView.includes('Payment processing fee'),
+  'exact fee labels on shared event admin view',
+);
+assert(eventView.includes('Existing orders are not recalculated'), 'event fee copy warns existing orders');
+assert(eventView.includes('breadcrumbLink') || eventView.includes('Admin'), 'event admin breadcrumb back to /admin');
 assert(!adminEventPage.includes('Back to global admin'), 'event admin has no large Back to global admin support link');
 assert(!adminEventPage.includes('Public event page'), 'event admin has no public event page support link');
 assert(!adminEventPage.includes('status=') && !adminEventPage.includes('sales='), 'event admin avoids raw key=value status text');
+assert(!/\bGMV\b/.test(adminEventPage + eventView) && !(adminEventPage + eventView).includes('Gross Merchandise Value'), 'event admin has no GMV language');
 assert(adminEventPage.includes('buildAdminPassUrl'), 'event admin can link tickets via /pass/:token');
+assert(!adminEventPage.includes('chartSeries'), 'event admin does not inject mock chart series');
 
 assert(adminSupport.includes('buildAdminCockpitEventPath'), 'admin cockpit event path helper');
 assert(adminSupport.includes('/admin/events/'), 'event cockpit path uses /admin/events/');

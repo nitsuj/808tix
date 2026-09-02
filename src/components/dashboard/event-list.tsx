@@ -95,6 +95,7 @@ export function DashboardEventList({ events, onOpenEvent, onExportCsv }: Dashboa
             <Pressable
               key={event.eventId}
               accessibilityRole="link"
+              accessibilityLabel={`Open admin event ${event.eventName}`}
               onPress={() => onOpenEvent(event.eventId)}
               style={styles.mobileEventCard}
             >
@@ -143,6 +144,7 @@ export function DashboardEventList({ events, onOpenEvent, onExportCsv }: Dashboa
               <Pressable
                 key={event.eventId}
                 accessibilityRole="link"
+                accessibilityLabel={`Open admin event ${event.eventName}`}
                 onPress={() => onOpenEvent(event.eventId)}
                 style={styles.tr}
               >

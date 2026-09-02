@@ -73,7 +73,17 @@ assert(
 );
 
 assert(!adminEvent.includes('design-review'), 'production /admin/events/:eventId not coupled to review');
-assert(!adminEvent.includes('EventAdminDashboardView'), 'production event admin not yet wired to shared view');
+assert(
+  !adminEvent.includes('admin-event-detail-review-data') && !adminEvent.includes('EVENT_REVIEW_'),
+  'production event admin does not import mock review data',
+);
+assert(adminEvent.includes('EventAdminDashboardView'), 'production event admin uses shared EventAdminDashboardView');
+assert(adminEvent.includes('AdminGate'), 'production event admin remains AdminGate gated');
+assert(adminEvent.includes('admin_get_event_detail'), 'production event admin uses live detail RPC');
+assert(adminEvent.includes('admin_list_event_orders'), 'production event admin uses live orders RPC');
+assert(adminEvent.includes('admin_get_event_monetization'), 'production event admin uses live monetization RPC');
+assert(adminEvent.includes('admin_list_payouts'), 'production event admin uses live payouts RPC');
+assert(!adminEvent.includes('chartSeries'), 'production event admin does not pass mock chart series');
 assert(!buy.includes('design-review'), 'buy page not coupled to review');
 assert(!scan.includes('design-review'), 'scanner page not coupled to review');
 
@@ -88,6 +98,14 @@ assert(
 assert(
   capture.includes('admin-event-detail-review-mobile.png'),
   'screenshot script writes mobile event detail review artifact',
+);
+assert(
+  capture.includes('admin-event-detail-authenticated-desktop.png'),
+  'screenshot script writes authenticated event detail desktop artifact',
+);
+assert(
+  capture.includes('admin-event-detail-authenticated-mobile.png'),
+  'screenshot script writes authenticated event detail mobile artifact',
 );
 
 if (failures > 0) {

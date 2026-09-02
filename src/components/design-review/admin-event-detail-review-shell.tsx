@@ -25,7 +25,7 @@ export function AdminEventDetailReviewShell() {
     <EventAdminDashboardView
       detail={EVENT_REVIEW_DETAIL}
       orders={EVENT_REVIEW_ORDERS}
-      payout={EVENT_REVIEW_PAYOUT}
+      payouts={[EVENT_REVIEW_PAYOUT]}
       globalFees={EVENT_REVIEW_GLOBAL_FEES}
       organizerOverride={EVENT_REVIEW_ORGANIZER_OVERRIDE}
       eventOverrideDraft={EVENT_REVIEW_EVENT_OVERRIDE_DRAFT}

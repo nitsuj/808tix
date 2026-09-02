@@ -1,18 +1,22 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Linking, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 
 import { AdminGate } from '@/components/admin/admin-gate';
-import { adminStyles as styles } from '@/components/admin/admin-styles';
+import { asAdminArray } from '@/components/admin/admin-ui';
 import {
-  AdminBadge,
-  AdminCopyButton,
-  AdminField,
-  AdminLinkButton,
-  AdminMetricCell,
-  AdminSummaryCard,
-  asAdminArray,
-} from '@/components/admin/admin-ui';
+  EventAdminDashboardView,
+  type EventAdminDetailView,
+  type EventAdminFeeSavePayload,
+  type EventAdminFeeSliceView,
+  type EventAdminOrderView,
+  type EventAdminPayoutActionPayload,
+  type EventAdminPayoutView,
+} from '@/components/dashboard/event-admin-dashboard-view';
+import { GhostButton } from '@/components/dashboard/ghost-button';
+import { dashboardStyles as styles } from '@/components/dashboard/dashboard-styles';
+import { dash } from '@/components/dashboard/dashboard-tokens';
+import type { StatusBadgeTone } from '@/components/dashboard/status-badge';
 import {
   buildAdminEventBuyUrl,
   buildAdminEventScanUrl,
@@ -27,7 +31,6 @@ import {
   formatAdminStatusLabel,
 } from '@/lib/admin-support';
 import { supabase } from '@/lib/supabase';
-import { organizer } from '@/theme/colors';
 
 type EventDetail = {
   event_id: string;
@@ -106,9 +109,129 @@ function firstParam(value: string | string[] | undefined): string {
   return value ?? '';
 }
 
-function formatFeeSlice(slice: FeeSlice | null | undefined): string {
-  if (!slice) return '—';
-  return `808Tickets service fee ${slice.platform_fee_bps} bps + ${slice.platform_fee_fixed_cents}¢/ticket · Payment processing fee ${slice.processing_fee_bps} bps + ${slice.processing_fee_fixed_cents}¢`;
+function asFeeSlice(value: FeeSlice | null | undefined, fallback?: FeeSlice): EventAdminFeeSliceView {
+  const source = value ?? fallback;
+  return {
+    platform_fee_bps: Number(source?.platform_fee_bps ?? 0),
+    platform_fee_fixed_cents: Number(source?.platform_fee_fixed_cents ?? 0),
+    processing_fee_bps: Number(source?.processing_fee_bps ?? 0),
+    processing_fee_fixed_cents: Number(source?.processing_fee_fixed_cents ?? 0),
+  };
+}
+
+function statusTone(status: string | null | undefined): StatusBadgeTone {
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'published' || value === 'paid' || value === 'checked_in' || value === 'valid') {
+    return 'positive';
+  }
+  if (value === 'draft') return 'draft';
+  if (value === 'canceled' || value === 'cancelled' || value === 'void' || value === 'revoked') {
+    return 'cancelled';
+  }
+  if (value === 'pending' || value === 'withheld' || value === 'expired') return 'warn';
+  return 'neutral';
+}
+
+function payoutTone(statuses: string[] | null | undefined): StatusBadgeTone {
+  const values = (statuses ?? []).map((status) => String(status).trim().toLowerCase());
+  if (values.includes('withheld')) return 'warn';
+  if (values.includes('pending')) return 'warn';
+  if (values.length > 0 && values.every((status) => status === 'paid')) return 'positive';
+  return 'neutral';
+}
+
+function formatPassStatus(status: string | null | undefined): string {
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'checked_in') return 'Checked in';
+  if (value === 'issued') return 'Issued';
+  if (value === 'void') return 'Void';
+  if (value === 'revoked') return 'Revoked';
+  if (!value) return 'Unknown';
+  return value.charAt(0).toUpperCase() + value.slice(1).replaceAll('_', ' ');
+}
+
+function formatTicketingMode(mode: string | null | undefined): string {
+  const value = (mode ?? '').trim();
+  if (!value) return '—';
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function toDetailView(detail: EventDetail, pendingPayoutCents: number): EventAdminDetailView {
+  const salesOn = Boolean(detail.sales_enabled);
+  return {
+    eventId: detail.event_id,
+    eventName: detail.event_name,
+    organizerName: detail.organizer_name?.trim() || 'Organizer',
+    organizerEmail: detail.organizer_email?.trim() || '',
+    venueName: detail.venue_name?.trim() || 'Venue TBD',
+    venueAddress: '',
+    whenLabel: formatAdminEventWhen(detail.event_date, detail.start_time),
+    statusLabel: formatAdminStatusLabel(detail.status),
+    statusTone: statusTone(detail.status),
+    salesLabel: formatAdminSalesLabel(salesOn),
+    salesTone: salesOn ? 'positive' : 'warn',
+    feeSourceLabel: formatAdminFeeSourceLabel(detail.fee_config_source),
+    payoutLabel: formatAdminPayoutStatusSummary(detail.payout_statuses),
+    payoutTone: payoutTone(detail.payout_statuses),
+    ticketingModeLabel: formatTicketingMode(detail.ticketing_mode),
+    grossTicketSalesLabel: formatAdminCents(detail.ticket_subtotal_cents),
+    ticketsSold: Number(detail.paid_ticket_count ?? 0),
+    orders: Number(detail.paid_order_count ?? 0),
+    checkedIn: Number(detail.checked_in_count ?? 0),
+    platformFeeLabel: formatAdminCents(detail.platform_fee_cents),
+    processingFeeLabel: formatAdminCents(detail.processing_fee_cents),
+    organizerNetLabel: formatAdminCents(detail.organizer_net_cents),
+    pendingPayoutLabel: formatAdminCents(pendingPayoutCents),
+  };
+}
+
+function toOrderViews(orders: AdminOrderRow[]): EventAdminOrderView[] {
+  return orders.map((order) => {
+    const tickets = (order.tickets ?? []).map((ticket) => ({
+      secureToken: ticket.secure_token,
+      sequence: ticket.sequence ?? 0,
+      statusLabel: formatPassStatus(ticket.status),
+      statusTone: statusTone(ticket.status),
+      ticketTypeLabel: 'Ticket',
+    }));
+    return {
+      orderId: order.order_id,
+      buyerName: order.buyer_name?.trim() || 'Buyer',
+      buyerEmail: order.buyer_email,
+      statusLabel: formatAdminOrderStatus(order.status),
+      statusTone: statusTone(order.status),
+      paidAtLabel: order.paid_at ? `Paid ${formatAdminDateTime(order.paid_at)}` : 'Not paid',
+      ticketCount: Number(order.ticket_count ?? tickets.length),
+      ticketTypeSummary: tickets.length > 0 ? 'Ticket' : '—',
+      ticketSubtotalLabel: formatAdminCents(order.subtotal_cents, order.currency),
+      platformFeeLabel: formatAdminCents(order.platform_fee_cents, order.currency),
+      processingFeeLabel: formatAdminCents(order.processing_fee_cents, order.currency),
+      organizerNetLabel: formatAdminCents(order.organizer_net_cents, order.currency),
+      tickets,
+    };
+  });
+}
+
+function toPayoutViews(payouts: AdminPayoutRow[]): EventAdminPayoutView[] {
+  return payouts.map((payout) => {
+    const statusValue = String(payout.status ?? '').trim().toLowerCase();
+    return {
+      payoutId: payout.payout_id,
+      amountLabel: formatAdminCents(
+        payout.organizer_net_cents ?? payout.amount_cents,
+        payout.currency,
+      ),
+      statusLabel: formatAdminOrderStatus(payout.status),
+      statusTone: statusTone(payout.status),
+      statusValue,
+      paidAtLabel: payout.paid_at ? formatAdminDateTime(payout.paid_at) : null,
+      notes: payout.notes ?? '',
+    };
+  });
 }
 
 function EventAdminCockpit({ eventId }: { eventId: string }) {
@@ -119,15 +242,8 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
   const [orders, setOrders] = useState<AdminOrderRow[]>([]);
   const [payouts, setPayouts] = useState<AdminPayoutRow[]>([]);
   const [monetization, setMonetization] = useState<EventMonetization | null>(null);
-  const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>({});
   const [savingFees, setSavingFees] = useState(false);
-  const [useCustomFees, setUseCustomFees] = useState(false);
-  const [feeDraft, setFeeDraft] = useState({
-    platform_fee_bps: '250',
-    platform_fee_fixed_cents: '99',
-    processing_fee_bps: '290',
-    processing_fee_fixed_cents: '30',
-  });
+  const [viewEpoch, setViewEpoch] = useState(0);
 
   const applyLoadedData = useCallback(
     (payload: {
@@ -140,20 +256,7 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
       setOrders(payload.orders);
       setPayouts(payload.payouts);
       setMonetization(payload.monetization);
-      setUseCustomFees(Boolean(payload.monetization?.use_custom_fees));
-      const draftSource =
-        payload.monetization?.event_override ??
-        payload.monetization?.effective ??
-        payload.monetization?.event_stored_fees ??
-        payload.monetization?.global;
-      if (draftSource) {
-        setFeeDraft({
-          platform_fee_bps: String(draftSource.platform_fee_bps),
-          platform_fee_fixed_cents: String(draftSource.platform_fee_fixed_cents),
-          processing_fee_bps: String(draftSource.processing_fee_bps),
-          processing_fee_fixed_cents: String(draftSource.processing_fee_fixed_cents),
-        });
-      }
+      setViewEpoch((value) => value + 1);
     },
     [],
   );
@@ -213,12 +316,12 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
     };
   }, [applyLoadedData, fetchEventAdmin]);
 
-  const setPayoutStatus = async (payoutId: string, status: 'pending' | 'paid' | 'withheld') => {
-    const notes = payoutNotes[payoutId]?.trim() || null;
+  const setPayoutStatus = async (payload: EventAdminPayoutActionPayload) => {
+    setError(null);
     const { error: rpcError } = await supabase.rpc('admin_set_payout_status', {
-      p_payout_id: payoutId,
-      p_status: status,
-      p_notes: notes,
+      p_payout_id: payload.payoutId,
+      p_status: payload.status,
+      p_notes: payload.notes.trim() || null,
     });
     if (rpcError) {
       setError(rpcError.message);
@@ -227,20 +330,20 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
     await loadAll();
   };
 
-  const saveEventFees = async () => {
+  const saveEventFees = async (payload: EventAdminFeeSavePayload) => {
     setSavingFees(true);
     setError(null);
     try {
       const { error: rpcError } = await supabase.rpc('admin_set_event_custom_fees', {
         p_event_id: eventId,
-        p_use_custom_fees: useCustomFees,
-        p_platform_fee_bps: useCustomFees ? Number(feeDraft.platform_fee_bps) : null,
-        p_platform_fee_fixed_cents: useCustomFees
-          ? Number(feeDraft.platform_fee_fixed_cents)
+        p_use_custom_fees: payload.useEventOverride,
+        p_platform_fee_bps: payload.useEventOverride ? payload.fees.platform_fee_bps : null,
+        p_platform_fee_fixed_cents: payload.useEventOverride
+          ? payload.fees.platform_fee_fixed_cents
           : null,
-        p_processing_fee_bps: useCustomFees ? Number(feeDraft.processing_fee_bps) : null,
-        p_processing_fee_fixed_cents: useCustomFees
-          ? Number(feeDraft.processing_fee_fixed_cents)
+        p_processing_fee_bps: payload.useEventOverride ? payload.fees.processing_fee_bps : null,
+        p_processing_fee_fixed_cents: payload.useEventOverride
+          ? payload.fees.processing_fee_fixed_cents
           : null,
       });
       if (rpcError) throw rpcError;
@@ -252,308 +355,70 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
     }
   };
 
+  const pendingPayoutCents = useMemo(
+    () =>
+      payouts
+        .filter((payout) => String(payout.status).toLowerCase() === 'pending')
+        .reduce(
+          (sum, payout) => sum + Number(payout.organizer_net_cents ?? payout.amount_cents ?? 0),
+          0,
+        ),
+    [payouts],
+  );
+
+  const eventOverrideDraft = useMemo(() => {
+    if (!monetization) {
+      return asFeeSlice(null);
+    }
+    return asFeeSlice(
+      monetization.event_override ?? monetization.effective ?? monetization.event_stored_fees,
+      monetization.global,
+    );
+  }, [monetization]);
+
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator color={organizer.accent} />
+        <ActivityIndicator color={dash.magenta} />
         <Text style={styles.muted}>Loading event admin…</Text>
       </View>
     );
   }
 
-  if (!detail) {
+  if (!detail || !monetization) {
     return (
       <View style={styles.centered}>
         <Text style={styles.h1}>Event not found</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Pressable style={styles.primaryBtn} onPress={() => router.push('/admin')}>
-          <Text style={styles.primaryBtnText}>Admin</Text>
-        </Pressable>
+        <GhostButton label="Admin" onPress={() => router.push('/admin')} />
       </View>
     );
   }
 
-  const salesOn = Boolean(detail.sales_enabled);
-  const organizerLabel = [detail.organizer_name, detail.organizer_email]
-    .filter((part) => Boolean(part?.trim()))
-    .join(' · ');
-
   return (
-    <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.breadcrumbRow}>
-        <Pressable accessibilityRole="link" onPress={() => router.push('/admin')}>
-          <Text style={styles.breadcrumbLink}>Admin</Text>
-        </Pressable>
-        <Text style={styles.breadcrumbSep}>/</Text>
-        <Text style={styles.breadcrumbCurrent} numberOfLines={1}>
-          {detail.event_name}
-        </Text>
-      </View>
-
-      <Text style={styles.h1}>{detail.event_name}</Text>
-      <View style={styles.badgeRow}>
-        <AdminBadge
-          label={formatAdminStatusLabel(detail.status)}
-          tone={detail.status === 'published' ? 'positive' : 'neutral'}
-        />
-        <AdminBadge label={formatAdminSalesLabel(salesOn)} tone={salesOn ? 'positive' : 'warn'} />
-      </View>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <View style={styles.rowCard}>
-        <AdminField
-          label="Organizer"
-          value={organizerLabel || '—'}
-        />
-        <AdminField
-          label="Date & time"
-          value={formatAdminEventWhen(detail.event_date, detail.start_time)}
-        />
-        <AdminField label="Venue" value={detail.venue_name?.trim() || '—'} />
-        <AdminField
-          label="Ticketing mode"
-          value={detail.ticketing_mode?.replaceAll('_', ' ') || '—'}
-        />
-        <View style={styles.btnRow}>
-          <AdminCopyButton label="Copy event ID" value={detail.event_id} />
-          {detail.organizer_email ? (
-            <AdminCopyButton label="Copy organizer email" value={detail.organizer_email} />
-          ) : null}
-          <AdminLinkButton label="Buy page" href={buildAdminEventBuyUrl(detail.event_id)} />
-          <AdminLinkButton label="Scanner" href={buildAdminEventScanUrl(detail.event_id)} />
-        </View>
-        <Text style={styles.muted}>Scanner requires an authenticated organizer/admin session.</Text>
-      </View>
-
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.h2}>Metrics</Text>
-        <Pressable onPress={() => void loadAll()} style={styles.linkBtn}>
-          <Text style={styles.linkBtnText}>Refresh</Text>
-        </Pressable>
-      </View>
-      <View style={styles.cardGrid}>
-        <AdminSummaryCard label="Orders" value={String(detail.paid_order_count ?? 0)} />
-        <AdminSummaryCard label="Tickets" value={String(detail.paid_ticket_count ?? 0)} />
-        <AdminSummaryCard label="Checked in" value={String(detail.checked_in_count ?? 0)} />
-        <AdminSummaryCard
-          label="Ticket subtotal"
-          value={formatAdminCents(detail.ticket_subtotal_cents)}
-        />
-        <AdminSummaryCard
-          label="808Tickets service fee"
-          value={formatAdminCents(detail.platform_fee_cents)}
-        />
-        <AdminSummaryCard
-          label="Payment processing fee"
-          value={formatAdminCents(detail.processing_fee_cents)}
-        />
-        <AdminSummaryCard
-          label="Organizer net"
-          value={formatAdminCents(detail.organizer_net_cents)}
-        />
-        <AdminSummaryCard
-          label="Payout status"
-          value={formatAdminPayoutStatusSummary(detail.payout_statuses)}
-        />
-      </View>
-
-      <Text style={styles.h2}>Monetization</Text>
-      <Text style={styles.muted}>
-        {(monetization?.notes ??
-          'Existing orders are not recalculated. Changes affect new orders only.') +
-          ' Old orders continue to report their stored snapshot values.'}
-      </Text>
-      <View style={styles.rowCard}>
-        <AdminField
-          label="Effective fee source"
-          value={formatAdminFeeSourceLabel(
-            monetization?.effective?.source ?? detail.fee_config_source,
-          )}
-        />
-        <AdminField label="Effective rates" value={formatFeeSlice(monetization?.effective)} />
-        <AdminField label="Global defaults" value={formatFeeSlice(monetization?.global)} />
-        <AdminField
-          label="Organizer override"
-          value={
-            monetization?.organizer_override
-              ? formatFeeSlice(monetization.organizer_override)
-              : 'None'
-          }
-        />
-        <AdminField
-          label="Event override"
-          value={
-            monetization?.use_custom_fees
-              ? formatFeeSlice(monetization.event_override)
-              : 'Inactive — using organizer/global effective config'
-          }
-        />
-
-        <Text style={styles.h3}>Edit event fees</Text>
-        <View style={styles.toggleRow}>
-          <Pressable
-            style={useCustomFees ? styles.toggleIdle : styles.toggleActive}
-            onPress={() => setUseCustomFees(false)}
-          >
-            <Text style={useCustomFees ? styles.toggleIdleText : styles.toggleActiveText}>
-              Use global/organizer effective
-            </Text>
-          </Pressable>
-          <Pressable
-            style={useCustomFees ? styles.toggleActive : styles.toggleIdle}
-            onPress={() => setUseCustomFees(true)}
-          >
-            <Text style={useCustomFees ? styles.toggleActiveText : styles.toggleIdleText}>
-              Use event-specific override
-            </Text>
-          </Pressable>
-        </View>
-
-        {useCustomFees ? (
-          (
-            [
-              ['platform_fee_bps', '808Tickets service fee bps'],
-              ['platform_fee_fixed_cents', '808Tickets service fee ¢ / ticket'],
-              ['processing_fee_bps', 'Payment processing fee bps'],
-              ['processing_fee_fixed_cents', 'Payment processing fee fixed ¢'],
-            ] as const
-          ).map(([key, label]) => (
-            <View key={key} style={styles.feeField}>
-              <Text style={styles.muted}>{label}</Text>
-              <TextInput
-                value={feeDraft[key]}
-                onChangeText={(value) => setFeeDraft((prev) => ({ ...prev, [key]: value }))}
-                keyboardType="number-pad"
-                style={styles.input}
-              />
-            </View>
-          ))
-        ) : (
-          <Text style={styles.muted}>
-            Saving with “Use global/organizer effective” turns off the event override flag. Stored
-            event fee columns are kept but unused.
-          </Text>
-        )}
-
-        <Pressable
-          style={[styles.primaryBtn, savingFees && styles.disabled]}
-          disabled={savingFees}
-          onPress={() => void saveEventFees()}
-        >
-          <Text style={styles.primaryBtnText}>
-            {savingFees ? 'Saving…' : 'Save event fee settings'}
-          </Text>
-        </Pressable>
-      </View>
-
-      <Text style={styles.h2}>Orders / tickets</Text>
-      {orders.length === 0 ? <Text style={styles.muted}>No orders for this event.</Text> : null}
-      {orders.map((order) => (
-        <View key={order.order_id} style={styles.rowCard}>
-          <View style={styles.badgeRow}>
-            <AdminBadge
-              label={formatAdminOrderStatus(order.status)}
-              tone={order.status === 'paid' ? 'positive' : 'neutral'}
-            />
-            <AdminBadge
-              label={`Fee: ${formatAdminFeeSourceLabel(order.fee_config_source)}`}
-            />
-          </View>
-          <AdminField
-            label="Buyer"
-            value={`${order.buyer_name?.trim() || 'Buyer'} · ${order.buyer_email}`}
-          />
-          <AdminField label="Paid" value={formatAdminDateTime(order.paid_at)} />
-          <View style={styles.metricGrid}>
-            <AdminMetricCell label="Tickets" value={String(order.ticket_count ?? 0)} />
-            <AdminMetricCell
-              label="Ticket subtotal"
-              value={formatAdminCents(order.subtotal_cents, order.currency)}
-            />
-            <AdminMetricCell
-              label="808Tickets service fee"
-              value={formatAdminCents(order.platform_fee_cents, order.currency)}
-            />
-            <AdminMetricCell
-              label="Payment processing fee"
-              value={formatAdminCents(order.processing_fee_cents, order.currency)}
-            />
-            <AdminMetricCell
-              label="Organizer net"
-              value={formatAdminCents(order.organizer_net_cents, order.currency)}
-            />
-          </View>
-          {(order.tickets ?? []).length > 0 ? (
-            <View style={styles.btnRow}>
-              {(order.tickets ?? []).slice(0, 8).map((ticket) => (
-                <AdminLinkButton
-                  key={ticket.secure_token}
-                  label={`Ticket ${ticket.sequence ?? '?'}`}
-                  href={buildAdminPassUrl(ticket.secure_token)}
-                />
-              ))}
-            </View>
-          ) : null}
-        </View>
-      ))}
-
-      <Text style={styles.h2}>Payouts</Text>
-      {payouts.length === 0 ? <Text style={styles.muted}>No payouts for this event.</Text> : null}
-      {payouts.map((payout) => (
-        <View key={payout.payout_id} style={[styles.rowCard, { marginBottom: 16 }]}>
-          <View style={styles.badgeRow}>
-            <AdminBadge
-              label={formatAdminOrderStatus(payout.status)}
-              tone={
-                payout.status === 'paid'
-                  ? 'positive'
-                  : payout.status === 'withheld'
-                    ? 'warn'
-                    : 'neutral'
-              }
-            />
-          </View>
-          <AdminField
-            label="Amount"
-            value={formatAdminCents(payout.amount_cents, payout.currency)}
-          />
-          <AdminField
-            label="Organizer net"
-            value={formatAdminCents(payout.organizer_net_cents, payout.currency)}
-          />
-          <AdminField label="Paid at" value={formatAdminDateTime(payout.paid_at)} />
-          <TextInput
-            value={payoutNotes[payout.payout_id] ?? payout.notes ?? ''}
-            onChangeText={(value) =>
-              setPayoutNotes((prev) => ({ ...prev, [payout.payout_id]: value }))
-            }
-            placeholder="Notes"
-            placeholderTextColor="#666"
-            style={styles.input}
-          />
-          <View style={styles.btnRow}>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'paid')}
-            >
-              <Text style={styles.linkBtnText}>Mark paid</Text>
-            </Pressable>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'withheld')}
-            >
-              <Text style={styles.linkBtnText}>Mark withheld</Text>
-            </Pressable>
-            <Pressable
-              style={styles.linkBtn}
-              onPress={() => void setPayoutStatus(payout.payout_id, 'pending')}
-            >
-              <Text style={styles.linkBtnText}>Return pending</Text>
-            </Pressable>
-          </View>
-        </View>
-      ))}
-    </ScrollView>
+    <EventAdminDashboardView
+      key={`${eventId}:${viewEpoch}`}
+      detail={toDetailView(detail, pendingPayoutCents)}
+      orders={toOrderViews(orders)}
+      payouts={toPayoutViews(payouts)}
+      globalFees={asFeeSlice(monetization.global)}
+      organizerOverride={
+        monetization.organizer_override ? asFeeSlice(monetization.organizer_override) : null
+      }
+      eventOverrideDraft={eventOverrideDraft}
+      initialUseEventOverride={Boolean(monetization.use_custom_fees)}
+      buyHref={buildAdminEventBuyUrl(detail.event_id)}
+      scanHref={buildAdminEventScanUrl(detail.event_id)}
+      error={error}
+      overviewTools={<GhostButton label="Refresh" onPress={() => void loadAll()} />}
+      onBackToAdmin={() => router.push('/admin')}
+      onOpenTicket={(secureToken) => {
+        void Linking.openURL(buildAdminPassUrl(secureToken));
+      }}
+      onSetPayoutStatus={(payload) => void setPayoutStatus(payload)}
+      onSaveEventFees={(payload) => void saveEventFees(payload)}
+      savingFees={savingFees}
+    />
   );
 }
 

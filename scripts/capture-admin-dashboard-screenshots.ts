@@ -76,6 +76,66 @@ async function assertWebServer(): Promise<void> {
   }
 }
 
+/**
+ * Resolve a live event id for authenticated event-detail screenshots.
+ * Prefer SCREENSHOT_EVENT_ID; otherwise open /admin and click the first event row.
+ */
+async function resolveAuthenticatedEventId(
+  context: Awaited<
+    ReturnType<Awaited<ReturnType<typeof import('playwright')>['chromium']['launch']>['newContext']>
+  >,
+): Promise<string | null> {
+  const override = process.env.SCREENSHOT_EVENT_ID?.trim();
+  if (override) return override;
+
+  const page = await context.newPage();
+  try {
+    await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle', timeout: 45000 });
+    await page.waitForTimeout(4000);
+
+    // Prefer labeled event rows from the shared events list.
+    const labeled = page.getByRole('link', { name: /Open admin event /i });
+    if ((await labeled.count()) > 0) {
+      await labeled.first().click();
+      await page.waitForTimeout(3500);
+      const match = page.url().match(/\/admin\/events\/([^/?#]+)/);
+      if (match?.[1]) {
+        const resolved = decodeURIComponent(match[1]);
+        await page.close();
+        return resolved;
+      }
+    }
+
+    // Fallback: click the first Events-section link that is not breadcrumb/nav chrome.
+    const candidates = page.getByRole('link');
+    const count = await candidates.count();
+    for (let i = 0; i < count; i += 1) {
+      const link = candidates.nth(i);
+      const label = ((await link.textContent()) || '').trim();
+      if (!label || label === 'Admin' || label === 'Export CSV' || label === 'Refresh') continue;
+      if (label.startsWith('Fee:') || label.startsWith('Payouts:') || label === 'Published') continue;
+      if (label === 'Sales on' || label === 'Sales off' || label === 'Draft') continue;
+      await link.click();
+      await page.waitForTimeout(3500);
+      const url = page.url();
+      const match = url.match(/\/admin\/events\/([^/?#]+)/);
+      if (match?.[1]) {
+        const resolved = decodeURIComponent(match[1]);
+        await page.close();
+        return resolved;
+      }
+      await page.goto(`${BASE_URL}/admin`, { waitUntil: 'networkidle', timeout: 45000 });
+      await page.waitForTimeout(2000);
+    }
+    await page.close();
+    return null;
+  } catch (error) {
+    await page.close().catch(() => undefined);
+    console.warn('Could not resolve authenticated event id:', error);
+    return null;
+  }
+}
+
 async function main() {
   await assertWebServer();
 
@@ -202,6 +262,28 @@ async function main() {
       join(OUT_DIR, 'admin-dashboard-refreshed-mobile.png'),
       2000,
     );
+
+    const eventId = await resolveAuthenticatedEventId(authDesktop);
+    if (eventId) {
+      console.log(`Capturing authenticated /admin/events/${eventId}…`);
+      await capturePath(
+        authDesktop,
+        `/admin/events/${encodeURIComponent(eventId)}`,
+        join(OUT_DIR, 'admin-event-detail-authenticated-desktop.png'),
+        5000,
+      );
+      await capturePath(
+        authMobile,
+        `/admin/events/${encodeURIComponent(eventId)}`,
+        join(OUT_DIR, 'admin-event-detail-authenticated-mobile.png'),
+        5000,
+      );
+    } else {
+      console.log(
+        'Skipping authenticated event-detail screenshots (no event id found on /admin event list).',
+      );
+    }
+
     await authDesktop.close();
     await authMobile.close();
   } else if (overrideEmail && overridePassword) {
@@ -242,6 +324,28 @@ async function main() {
       join(OUT_DIR, 'admin-dashboard-refreshed-mobile.png'),
       2000,
     );
+
+    const eventId = await resolveAuthenticatedEventId(authDesktop);
+    if (eventId) {
+      console.log(`Capturing authenticated /admin/events/${eventId}…`);
+      await capturePath(
+        authDesktop,
+        `/admin/events/${encodeURIComponent(eventId)}`,
+        join(OUT_DIR, 'admin-event-detail-authenticated-desktop.png'),
+        5000,
+      );
+      await capturePath(
+        authMobile,
+        `/admin/events/${encodeURIComponent(eventId)}`,
+        join(OUT_DIR, 'admin-event-detail-authenticated-mobile.png'),
+        5000,
+      );
+    } else {
+      console.log(
+        'Skipping authenticated event-detail screenshots (no event id found on /admin event list).',
+      );
+    }
+
     await authDesktop.close();
     await authMobile.close();
   } else {
