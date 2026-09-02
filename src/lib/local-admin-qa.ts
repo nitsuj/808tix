@@ -44,3 +44,53 @@ export function isLocalAdminQaEnabled(): boolean {
 
   return true;
 }
+
+/**
+ * Map Auth / local QA failures to actionable remediation.
+ * Never surface bare GoTrue "Database error querying schema" without next steps.
+ */
+export function formatLocalAdminQaSignInError(error: {
+  message?: string;
+  code?: string;
+  status?: number;
+  name?: string;
+}): string {
+  const message = error.message ?? 'Sign in failed';
+  const lower = message.toLowerCase();
+  const supabase = getSupabaseTargetInfo();
+
+  if (!supabase.isConfigured) {
+    return 'Missing Supabase env. Run: eval "$(npm run -s qa:env -- --exports-only)" then restart Expo web.';
+  }
+
+  if (!supabase.isLocal) {
+    return 'Local admin QA is disabled because this app is not pointed at local Supabase. Run: eval "$(npm run -s qa:env -- --exports-only)" and restart Expo.';
+  }
+
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('network request failed') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed')
+  ) {
+    return 'Local Supabase is not reachable. Run: supabase start';
+  }
+
+  if (lower.includes('invalid login') || lower.includes('invalid email or password')) {
+    return 'Local platform admin user missing or password mismatch. Run: npm run qa:seed';
+  }
+
+  if (
+    lower.includes('database error querying schema') ||
+    lower.includes('unexpected_failure') ||
+    error.code === 'unexpected_failure'
+  ) {
+    return 'Local Auth user is incomplete (missing auth.identities). Run: npm run qa:seed';
+  }
+
+  if (lower.includes('email not confirmed')) {
+    return 'Local platform admin email is unconfirmed. Run: npm run qa:seed';
+  }
+
+  return `${message} — try: npm run qa:seed`;
+}

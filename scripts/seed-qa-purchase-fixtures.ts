@@ -398,8 +398,15 @@ async function assertLocalSupabase(): Promise<string> {
   return apiUrl;
 }
 
-async function bootstrapOrganizer(): Promise<void> {
-  await queryResultJson<{ organizer_id: string }>(
+async function ensureAuthEmailUser(opts: {
+  id: string;
+  email: string;
+  password: string;
+  label: string;
+}): Promise<void> {
+  const { id, email, password, label } = opts;
+
+  await queryResultJson<{ user_id: string }>(
     `
     insert into auth.users (
       id,
@@ -409,19 +416,35 @@ async function bootstrapOrganizer(): Promise<void> {
       email,
       encrypted_password,
       email_confirmed_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
+      phone_change,
+      phone_change_token,
+      email_change_token_current,
+      reauthentication_token,
       created_at,
       updated_at,
       raw_app_meta_data,
       raw_user_meta_data
     )
     values (
-      ${sqlLiteral(QA_ORGANIZER_ID)}::uuid,
+      ${sqlLiteral(id)}::uuid,
       '00000000-0000-0000-0000-000000000000',
       'authenticated',
       'authenticated',
-      ${sqlLiteral(QA_ORGANIZER_EMAIL)},
-      crypt(${sqlLiteral(QA_ORGANIZER_PASSWORD)}, gen_salt('bf')),
+      ${sqlLiteral(email)},
+      crypt(${sqlLiteral(password)}, gen_salt('bf')),
       now(),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
       now(),
       now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
@@ -430,11 +453,67 @@ async function bootstrapOrganizer(): Promise<void> {
     on conflict (id) do update
     set
       email = excluded.email,
-      encrypted_password = excluded.encrypted_password
-    returning json_build_object('organizer_id', id::text)::text as result;
+      encrypted_password = excluded.encrypted_password,
+      email_confirmed_at = coalesce(auth.users.email_confirmed_at, now()),
+      confirmation_token = coalesce(auth.users.confirmation_token, ''),
+      recovery_token = coalesce(auth.users.recovery_token, ''),
+      email_change_token_new = coalesce(auth.users.email_change_token_new, ''),
+      email_change = coalesce(auth.users.email_change, ''),
+      phone_change = coalesce(auth.users.phone_change, ''),
+      phone_change_token = coalesce(auth.users.phone_change_token, ''),
+      email_change_token_current = coalesce(auth.users.email_change_token_current, ''),
+      reauthentication_token = coalesce(auth.users.reauthentication_token, ''),
+      raw_app_meta_data = excluded.raw_app_meta_data
+    returning json_build_object('user_id', id::text)::text as result;
   `,
-    'bootstrapOrganizer',
+    `${label}AuthUser`,
   );
+
+  // GoTrue password grant requires auth.identities. Missing rows surface as:
+  // "Database error querying schema" / unexpected_failure.
+  await runSupabaseStatement(
+    `
+    insert into auth.identities (
+      id,
+      user_id,
+      identity_data,
+      provider,
+      provider_id,
+      last_sign_in_at,
+      created_at,
+      updated_at
+    )
+    values (
+      ${sqlLiteral(id)}::uuid,
+      ${sqlLiteral(id)}::uuid,
+      jsonb_build_object(
+        'sub', ${sqlLiteral(id)},
+        'email', ${sqlLiteral(email)},
+        'email_verified', true
+      ),
+      'email',
+      ${sqlLiteral(id)},
+      now(),
+      now(),
+      now()
+    )
+    on conflict (provider_id, provider) do update
+    set
+      user_id = excluded.user_id,
+      identity_data = excluded.identity_data,
+      updated_at = now();
+  `,
+    `${label}AuthIdentity`,
+  );
+}
+
+async function bootstrapOrganizer(): Promise<void> {
+  await ensureAuthEmailUser({
+    id: QA_ORGANIZER_ID,
+    email: QA_ORGANIZER_EMAIL,
+    password: QA_ORGANIZER_PASSWORD,
+    label: 'bootstrapOrganizer',
+  });
 
   await runSupabaseStatement(
     `
@@ -447,43 +526,12 @@ async function bootstrapOrganizer(): Promise<void> {
 }
 
 async function bootstrapPlatformAdmin(): Promise<void> {
-  await queryResultJson<{ admin_id: string }>(
-    `
-    insert into auth.users (
-      id,
-      instance_id,
-      aud,
-      role,
-      email,
-      encrypted_password,
-      email_confirmed_at,
-      created_at,
-      updated_at,
-      raw_app_meta_data,
-      raw_user_meta_data
-    )
-    values (
-      ${sqlLiteral(QA_PLATFORM_ADMIN_ID)}::uuid,
-      '00000000-0000-0000-0000-000000000000',
-      'authenticated',
-      'authenticated',
-      ${sqlLiteral(QA_PLATFORM_ADMIN_EMAIL)},
-      crypt(${sqlLiteral(QA_PLATFORM_ADMIN_PASSWORD)}, gen_salt('bf')),
-      now(),
-      now(),
-      now(),
-      '{"provider":"email","providers":["email"]}'::jsonb,
-      '{}'::jsonb
-    )
-    on conflict (id) do update
-    set
-      email = excluded.email,
-      encrypted_password = excluded.encrypted_password,
-      email_confirmed_at = coalesce(auth.users.email_confirmed_at, now())
-    returning json_build_object('admin_id', id::text)::text as result;
-  `,
-    'bootstrapPlatformAdmin',
-  );
+  await ensureAuthEmailUser({
+    id: QA_PLATFORM_ADMIN_ID,
+    email: QA_PLATFORM_ADMIN_EMAIL,
+    password: QA_PLATFORM_ADMIN_PASSWORD,
+    label: 'bootstrapPlatformAdmin',
+  });
 
   await runSupabaseStatement(
     `

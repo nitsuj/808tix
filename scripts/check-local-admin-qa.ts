@@ -19,6 +19,7 @@ const REVIEW_ROUTE = join(ROOT, 'src/app/design/admin-dashboard-review.tsx');
 const REVIEW_SHELL = join(ROOT, 'src/components/design-review/admin-dashboard-review-shell.tsx');
 const REVIEW_DATA = join(ROOT, 'src/components/design-review/dashboard-review-data.ts');
 const QA_ADMIN_SCRIPT = join(ROOT, 'scripts/qa-admin.ts');
+const QA_ADMIN_LOCAL_SCRIPT = join(ROOT, 'scripts/qa-admin-local.ts');
 const SEED = join(ROOT, 'scripts/seed-qa-purchase-fixtures.ts');
 const CAPTURE = join(ROOT, 'scripts/capture-admin-dashboard-screenshots.ts');
 const PACKAGE_JSON = join(ROOT, 'package.json');
@@ -43,6 +44,7 @@ function assert(condition: boolean, message: string) {
 
 assert(existsSync(LOCAL_QA), 'local-admin-qa helper exists');
 assert(existsSync(QA_ADMIN_SCRIPT), 'qa-admin script exists');
+assert(existsSync(QA_ADMIN_LOCAL_SCRIPT), 'qa-admin:local script exists');
 assert(existsSync(REVIEW_ROUTE), 'design review route exists');
 
 const localQa = readFileSync(LOCAL_QA, 'utf8');
@@ -52,6 +54,7 @@ const reviewRoute = readFileSync(REVIEW_ROUTE, 'utf8');
 const reviewShell = readFileSync(REVIEW_SHELL, 'utf8');
 const reviewData = readFileSync(REVIEW_DATA, 'utf8');
 const qaAdmin = readFileSync(QA_ADMIN_SCRIPT, 'utf8');
+const qaAdminLocal = readFileSync(QA_ADMIN_LOCAL_SCRIPT, 'utf8');
 const seed = readFileSync(SEED, 'utf8');
 const capture = readFileSync(CAPTURE, 'utf8');
 const pkg = readFileSync(PACKAGE_JSON, 'utf8');
@@ -92,13 +95,44 @@ assert(reviewData.includes('REVIEW_EVENTS'), 'review uses static mock events');
 assert(seed.includes('platform-admin@808tix.test'), 'qa:seed creates platform-admin@808tix.test');
 assert(seed.includes('qa-admin-password'), 'qa:seed sets platform admin password');
 assert(seed.includes('is_platform_admin = true') || seed.includes('is_platform_admin,'), 'qa:seed sets is_platform_admin');
+assert(seed.includes('auth.identities'), 'qa:seed upserts auth.identities for GoTrue');
 assert(seed.includes('assertLocalSupabase') || seed.includes('isLocalSupabaseUrl'), 'qa:seed refuses non-local Supabase');
 
+assert(localQa.includes('formatLocalAdminQaSignInError'), 'local QA formats actionable sign-in errors');
+assert(
+  localQa.includes('Database error querying schema') || localQa.includes('database error querying schema'),
+  'local QA remaps Database error querying schema',
+);
+assert(
+  adminGate.includes('formatLocalAdminQaSignInError'),
+  'AdminGate uses actionable local QA error formatter',
+);
+assert(
+  !adminGate.includes('setError(signInError.message') && !adminGate.includes('setError(\n          /invalid login'),
+  'AdminGate does not surface raw GoTrue messages alone',
+);
+
 assert(pkg.includes('"qa:admin"'), 'package.json has qa:admin script');
+assert(pkg.includes('"qa:admin:local"'), 'package.json has qa:admin:local script');
 assert(qaAdmin.includes(LOCAL_ADMIN_URL_SNIPPET()), 'qa:admin documents local admin URL');
 assert(qaAdmin.includes('/design/admin-dashboard-review'), 'qa:admin documents design review URL');
 assert(qaAdmin.includes('https://808tickets.com/admin'), 'qa:admin documents hosted admin URL');
 assert(qaAdmin.includes('mock data'), 'qa:admin documents mock vs real lanes');
+assert(qaAdmin.includes('Prerequisite check') || qaAdmin.includes('auth.identities'), 'qa:admin validates prerequisites');
+assert(qaAdmin.includes('password grant') || qaAdmin.includes('probePasswordGrant') || qaAdmin.includes('Auth password grant'), 'qa:admin probes Auth password grant');
+assert(qaAdmin.includes('qa:admin:local'), 'qa:admin points operators to qa:admin:local for full setup');
+
+assert(qaAdminLocal.includes('EXPO_PUBLIC_SUPABASE_URL'), 'qa:admin:local sets Expo local Supabase URL');
+assert(qaAdminLocal.includes('EXPO_PUBLIC_SUPABASE_ANON_KEY'), 'qa:admin:local sets Expo local anon key');
+assert(qaAdminLocal.includes('isLocalSupabaseUrl'), 'qa:admin:local refuses non-local Supabase');
+assert(qaAdminLocal.includes('expo') && qaAdminLocal.includes('start'), 'qa:admin:local launches Expo');
+assert(qaAdminLocal.includes('migration') && qaAdminLocal.includes('up'), 'qa:admin:local runs local migrations');
+assert(qaAdminLocal.includes('qa:seed') || qaAdminLocal.includes('runQaSeed'), 'qa:admin:local runs qa:seed');
+assert(qaAdminLocal.includes('/admin?qaAdmin=1'), 'qa:admin:local opens local admin QA URL');
+assert(qaAdminLocal.includes('--screenshots'), 'qa:admin:local supports --screenshots');
+assert(!qaAdminLocal.includes('writeFileSync') || !/writeFileSync\([^)]*\.env/.test(qaAdminLocal), 'qa:admin:local does not rewrite .env');
+assert(!/808tickets\.com\/rest|dbwfoptoqfnzechcushj/.test(qaAdminLocal), 'qa:admin:local does not hardcode hosted Supabase');
+assert(!/SERVICE_ROLE|service_role/.test(qaAdminLocal), 'qa:admin:local has no service role key');
 
 assert(
   capture.includes('admin-dashboard-authenticated-desktop.png'),

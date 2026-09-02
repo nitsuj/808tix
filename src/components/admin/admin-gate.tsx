@@ -8,6 +8,7 @@ import { dashboardStyles as styles } from '@/components/dashboard/dashboard-styl
 import { dash } from '@/components/dashboard/dashboard-tokens';
 import { useAuth } from '@/contexts/auth-context';
 import {
+  formatLocalAdminQaSignInError,
   isLocalAdminQaEnabled,
   LOCAL_QA_ADMIN_PARAM,
   LOCAL_QA_PLATFORM_ADMIN_EMAIL,
@@ -34,15 +35,14 @@ function LocalAdminQaControls() {
         LOCAL_QA_PLATFORM_ADMIN_PASSWORD,
       );
       if (signInError) {
-        const message = signInError.message ?? 'Sign in failed';
-        setError(
-          /invalid login|invalid email or password/i.test(message)
-            ? 'Local platform admin not found. Run: npm run qa:seed'
-            : message,
-        );
+        setError(formatLocalAdminQaSignInError(signInError));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(
+        formatLocalAdminQaSignInError({
+          message: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } finally {
       setBusy(false);
     }
@@ -75,7 +75,7 @@ function LocalAdminQaControls() {
           {busy ? 'Signing in…' : 'Continue as local platform admin'}
         </Text>
       </Pressable>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? <Text style={[styles.error, { textAlign: 'center' }]}>{error}</Text> : null}
     </View>
   );
 }
@@ -123,8 +123,8 @@ export function AdminGate({ children }: AdminGateProps) {
           </Text>
           {localQa ? (
             <Text style={[styles.muted, { marginTop: 8, textAlign: 'center' }]}>
-              Local QA: sign out, then use “Continue as local platform admin” or open
-              /admin?qaAdmin=1 after npm run qa:seed.
+              Local QA user exists but is_platform_admin is false (or profile missing). Run: npm run
+              qa:seed — then sign out and retry /admin?qaAdmin=1.
             </Text>
           ) : null}
         </View>

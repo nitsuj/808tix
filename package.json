@@ -110,6 +110,7 @@
     "qa:purchase": "tsx scripts/qa-web.ts -- --grep purchase",
     "qa:seed": "tsx scripts/seed-qa-purchase-fixtures.ts",
     "qa:admin": "tsx scripts/qa-admin.ts",
+    "qa:admin:local": "tsx scripts/qa-admin-local.ts",
     "check:local-admin-qa": "tsx scripts/check-local-admin-qa.ts",
     "check:all": "tsx scripts/run-checks.ts",
     "check:env": "tsx scripts/check-env.ts",
