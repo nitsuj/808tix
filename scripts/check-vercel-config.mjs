@@ -31,6 +31,11 @@ const STATIC_CLEAN_URL_REWRITES = [
     destination: '/design/admin-dashboard-review.html',
     distFile: 'design/admin-dashboard-review.html',
   },
+  {
+    source: '/design/admin-event-detail-review',
+    destination: '/design/admin-event-detail-review.html',
+    distFile: 'design/admin-event-detail-review.html',
+  },
   { source: '/privacy', destination: '/privacy.html', distFile: 'privacy.html' },
   { source: '/terms', destination: '/terms.html', distFile: 'terms.html' },
   { source: '/home', destination: '/home.html', distFile: 'home.html' },

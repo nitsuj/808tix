@@ -1,0 +1,400 @@
+import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+
+import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header';
+import { DashboardShell } from '@/components/dashboard/dashboard-shell';
+import { dashboardStyles as styles } from '@/components/dashboard/dashboard-styles';
+import { dash } from '@/components/dashboard/dashboard-tokens';
+import { EmptyState } from '@/components/dashboard/empty-state';
+import { GhostButton } from '@/components/dashboard/ghost-button';
+import { InfoField } from '@/components/dashboard/info-field';
+import { KpiCard } from '@/components/dashboard/kpi-card';
+import { MetricChip } from '@/components/dashboard/metric-chip';
+import { StatusBadge, type StatusBadgeTone } from '@/components/dashboard/status-badge';
+import { TicketSalesChartCard } from '@/components/dashboard/ticket-sales-chart-card';
+
+export type EventAdminOrderTicketView = {
+  secureToken: string;
+  sequence: number;
+  statusLabel: string;
+  statusTone: StatusBadgeTone;
+  ticketTypeLabel: string;
+};
+
+export type EventAdminOrderView = {
+  orderId: string;
+  buyerName: string;
+  buyerEmail: string;
+  statusLabel: string;
+  statusTone: StatusBadgeTone;
+  paidAtLabel: string;
+  ticketCount: number;
+  ticketTypeSummary: string;
+  ticketSubtotalLabel: string;
+  platformFeeLabel: string;
+  processingFeeLabel: string;
+  organizerNetLabel: string;
+  tickets: EventAdminOrderTicketView[];
+};
+
+export type EventAdminPayoutView = {
+  payoutId: string;
+  amountLabel: string;
+  statusLabel: string;
+  statusTone: StatusBadgeTone;
+  paidAtLabel: string | null;
+  notes: string;
+};
+
+export type EventAdminFeeSliceView = {
+  platform_fee_bps: number;
+  platform_fee_fixed_cents: number;
+  processing_fee_bps: number;
+  processing_fee_fixed_cents: number;
+};
+
+export type EventAdminDetailView = {
+  eventId: string;
+  eventName: string;
+  organizerName: string;
+  organizerEmail: string;
+  venueName: string;
+  venueAddress: string;
+  whenLabel: string;
+  statusLabel: string;
+  statusTone: StatusBadgeTone;
+  salesLabel: string;
+  salesTone: StatusBadgeTone;
+  feeSourceLabel: string;
+  payoutLabel: string;
+  payoutTone: StatusBadgeTone;
+  ticketingModeLabel: string;
+  grossTicketSalesLabel: string;
+  ticketsSold: number;
+  orders: number;
+  checkedIn: number;
+  platformFeeLabel: string;
+  processingFeeLabel: string;
+  organizerNetLabel: string;
+  pendingPayoutLabel: string;
+};
+
+type FeeDraft = {
+  platform_fee_bps: string;
+  platform_fee_fixed_cents: string;
+  processing_fee_bps: string;
+  processing_fee_fixed_cents: string;
+};
+
+export type EventAdminDashboardViewProps = {
+  detail: EventAdminDetailView;
+  orders: EventAdminOrderView[];
+  payout: EventAdminPayoutView | null;
+  globalFees: EventAdminFeeSliceView;
+  organizerOverride: EventAdminFeeSliceView | null;
+  eventOverrideDraft: EventAdminFeeSliceView;
+  buyHref?: string;
+  scanHref?: string;
+  chartSeries?: readonly number[];
+  chartLabels?: readonly string[];
+  chartYAxisLabels?: readonly [string, string, string];
+  topBanner?: ReactNode;
+  onBackToAdmin: () => void;
+  onOpenTicket?: (secureToken: string) => void;
+  readOnly?: boolean;
+  footnote?: string;
+};
+
+function formatFeeSlice(slice: EventAdminFeeSliceView): string {
+  return `808Tickets service fee ${slice.platform_fee_bps} bps + ${slice.platform_fee_fixed_cents}¢/ticket · Payment processing fee ${slice.processing_fee_bps} bps + ${slice.processing_fee_fixed_cents}¢`;
+}
+
+function OrderCard({
+  order,
+  onOpenTicket,
+}: {
+  order: EventAdminOrderView;
+  onOpenTicket?: (secureToken: string) => void;
+}) {
+  return (
+    <View style={styles.orderCard}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.tdStrong}>{order.buyerName}</Text>
+          <Text style={styles.eventMeta}>{order.buyerEmail}</Text>
+        </View>
+        <StatusBadge label={order.statusLabel} tone={order.statusTone} />
+      </View>
+      <Text style={styles.eventMeta}>{order.paidAtLabel}</Text>
+      <Text style={styles.tdStrong}>
+        {order.ticketCount} tickets · {order.ticketTypeSummary}
+      </Text>
+      <View style={styles.metricGrid}>
+        <MetricChip label="Ticket subtotal" value={order.ticketSubtotalLabel} />
+        <MetricChip label="808Tickets service fee" value={order.platformFeeLabel} />
+        <MetricChip label="Payment processing fee" value={order.processingFeeLabel} />
+        <MetricChip label="Organizer net owed" value={order.organizerNetLabel} accent />
+      </View>
+      <View style={styles.badgeRow}>
+        {order.tickets.map((ticket) => (
+          <Pressable
+            key={ticket.secureToken}
+            onPress={() => onOpenTicket?.(ticket.secureToken)}
+            style={styles.ghostBtn}
+          >
+            <Text style={styles.ghostBtnText}>
+              #{ticket.sequence} {ticket.ticketTypeLabel} · {ticket.statusLabel}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+export function EventAdminDashboardView({
+  detail,
+  orders,
+  payout,
+  globalFees,
+  organizerOverride,
+  eventOverrideDraft,
+  buyHref,
+  scanHref,
+  chartSeries,
+  chartLabels,
+  chartYAxisLabels,
+  topBanner,
+  onBackToAdmin,
+  onOpenTicket,
+  readOnly = false,
+  footnote,
+}: EventAdminDashboardViewProps) {
+  const { width } = useWindowDimensions();
+  const isCompact = width < 860;
+  const [useEventOverride, setUseEventOverride] = useState(false);
+  const [feeDraft, setFeeDraft] = useState<FeeDraft>({
+    platform_fee_bps: String(eventOverrideDraft.platform_fee_bps),
+    platform_fee_fixed_cents: String(eventOverrideDraft.platform_fee_fixed_cents),
+    processing_fee_bps: String(eventOverrideDraft.processing_fee_bps),
+    processing_fee_fixed_cents: String(eventOverrideDraft.processing_fee_fixed_cents),
+  });
+  const [payoutNotes, setPayoutNotes] = useState(payout?.notes ?? '');
+  const [copied, setCopied] = useState<string | null>(null);
+
+  const copyText = async (label: string, value: string) => {
+    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      setTimeout(() => setCopied(null), 1200);
+    }
+  };
+
+  const openHref = (href?: string) => {
+    if (!href) return;
+    void Linking.openURL(href);
+  };
+
+  return (
+    <DashboardShell>
+      {topBanner}
+
+      <View style={styles.breadcrumbRow}>
+        <Pressable accessibilityRole="link" onPress={onBackToAdmin}>
+          <Text style={styles.breadcrumbLink}>Admin</Text>
+        </Pressable>
+        <Text style={styles.breadcrumbSep}>/</Text>
+        <Text style={styles.breadcrumbCurrent} numberOfLines={1}>
+          {detail.eventName}
+        </Text>
+      </View>
+
+      <View style={styles.titleBlock}>
+        <Text style={styles.h1}>{detail.eventName}</Text>
+        <Text style={styles.subtitle}>
+          {detail.organizerName} · {detail.organizerEmail}
+        </Text>
+        <Text style={[styles.muted, { marginTop: 6 }]}>{detail.whenLabel}</Text>
+        <Text style={styles.muted}>
+          {detail.venueName}
+          {detail.venueAddress ? ` · ${detail.venueAddress}` : ''}
+        </Text>
+        <View style={[styles.badgeRow, { marginTop: 10 }]}>
+          <StatusBadge label={detail.statusLabel} tone={detail.statusTone} />
+          <StatusBadge label={detail.salesLabel} tone={detail.salesTone} />
+          <StatusBadge label={`Fee: ${detail.feeSourceLabel}`} tone="magenta" />
+          <StatusBadge label={`Payouts: ${detail.payoutLabel}`} tone={detail.payoutTone} />
+        </View>
+      </View>
+
+      <DashboardSectionHeader title="Overview" />
+      <View style={styles.kpiRow}>
+        <KpiCard label="Gross ticket sales" value={detail.grossTicketSalesLabel} hint="Ticket subtotal" />
+        <KpiCard label="Tickets sold" value={String(detail.ticketsSold)} />
+        <KpiCard label="Orders" value={String(detail.orders)} />
+        <KpiCard label="Checked in" value={String(detail.checkedIn)} />
+        <KpiCard label="808Tickets service fee" value={detail.platformFeeLabel} />
+        <KpiCard label="Payment processing fee" value={detail.processingFeeLabel} />
+        <KpiCard label="Organizer net owed" value={detail.organizerNetLabel} />
+        <KpiCard label="Pending payout" value={detail.pendingPayoutLabel} />
+      </View>
+
+      <View style={styles.midRow}>
+        <TicketSalesChartCard
+          series={chartSeries}
+          labels={chartLabels}
+          yAxisLabels={chartYAxisLabels}
+        />
+        <View style={styles.summaryCard}>
+          <DashboardSectionHeader title="Support tools" />
+          <Text style={styles.muted}>Event ops links and copy helpers for this event.</Text>
+          <View style={styles.actionRow}>
+            <GhostButton label="Open buy page" onPress={() => openHref(buyHref)} />
+            <GhostButton label="Open scanner" onPress={() => openHref(scanHref)} />
+            <GhostButton
+              label={copied === 'id' ? 'Copied event ID' : 'Copy event ID'}
+              onPress={() => void copyText('id', detail.eventId)}
+            />
+            <GhostButton
+              label={copied === 'email' ? 'Copied email' : 'Copy organizer email'}
+              onPress={() => void copyText('email', detail.organizerEmail)}
+            />
+          </View>
+          <Text style={[styles.muted, { marginTop: 8, color: dash.textDim }]}>
+            Scanner requires an authenticated organizer/admin session. Ticketing mode:{' '}
+            {detail.ticketingModeLabel}.
+          </Text>
+        </View>
+      </View>
+
+      <View style={styles.sectionCard}>
+        <DashboardSectionHeader title="Orders / tickets" />
+        <Text style={styles.muted}>
+          Stored order snapshots · 808Tickets service fee and Payment processing fee are not recalculated.
+        </Text>
+        {orders.length === 0 ? (
+          <EmptyState title="No orders yet" body="Paid and issued tickets for this event appear here." />
+        ) : isCompact ? (
+          <View style={styles.mobileCards}>
+            {orders.map((order) => (
+              <OrderCard key={order.orderId} order={order} onOpenTicket={onOpenTicket} />
+            ))}
+          </View>
+        ) : (
+          <View style={{ gap: 10 }}>
+            {orders.map((order) => (
+              <OrderCard key={order.orderId} order={order} onOpenTicket={onOpenTicket} />
+            ))}
+          </View>
+        )}
+      </View>
+
+      <View style={styles.midRow}>
+        <View style={[styles.sectionCard, { flexGrow: 1, flexBasis: 320, minWidth: 280 }]}>
+          <DashboardSectionHeader title="Payout" />
+          {payout ? (
+            <>
+              <View style={styles.feeGrid}>
+                <InfoField label="Organizer net owed" value={payout.amountLabel} />
+                <InfoField label="Status" value={payout.statusLabel} />
+                <InfoField label="Paid at" value={payout.paidAtLabel ?? '—'} />
+              </View>
+              <Text style={styles.fieldLabel}>Notes</Text>
+              <TextInput
+                value={payoutNotes}
+                onChangeText={setPayoutNotes}
+                editable={!readOnly}
+                multiline
+                placeholderTextColor={dash.textDim}
+                style={[styles.input, { minHeight: 72 }]}
+              />
+              <View style={styles.actionRow}>
+                <Pressable
+                  style={[styles.primaryBtn, readOnly && styles.disabled]}
+                  disabled={readOnly}
+                  onPress={() => undefined}
+                >
+                  <Text style={styles.primaryBtnText}>Mark paid</Text>
+                </Pressable>
+                <GhostButton label="Mark withheld" onPress={() => undefined} disabled={readOnly} />
+                <GhostButton label="Return pending" onPress={() => undefined} disabled={readOnly} />
+                <GhostButton label="Save notes" onPress={() => undefined} disabled={readOnly} />
+              </View>
+            </>
+          ) : (
+            <EmptyState title="No payout row" body="Payout visibility appears once organizer net is tracked." />
+          )}
+        </View>
+
+        <View style={[styles.sectionCard, { flexGrow: 1, flexBasis: 320, minWidth: 280 }]}>
+          <DashboardSectionHeader title="Monetization" />
+          <Text style={styles.muted}>
+            Effective fee source: {detail.feeSourceLabel}. Existing orders are not recalculated. Changes
+            affect new orders only.
+          </Text>
+          <InfoField label="Global default" value={formatFeeSlice(globalFees)} />
+          <InfoField
+            label="Organizer override"
+            value={organizerOverride ? formatFeeSlice(organizerOverride) : 'None'}
+          />
+          <View style={styles.toggleRow}>
+            <Pressable
+              style={!useEventOverride ? styles.toggleActive : styles.toggleIdle}
+              onPress={() => setUseEventOverride(false)}
+              disabled={readOnly}
+            >
+              <Text style={!useEventOverride ? styles.toggleActiveText : styles.toggleIdleText}>
+                Use global/organizer effective
+              </Text>
+            </Pressable>
+            <Pressable
+              style={useEventOverride ? styles.toggleActive : styles.toggleIdle}
+              onPress={() => setUseEventOverride(true)}
+              disabled={readOnly}
+            >
+              <Text style={useEventOverride ? styles.toggleActiveText : styles.toggleIdleText}>
+                Use event-specific override
+              </Text>
+            </Pressable>
+          </View>
+          <View style={styles.feeGrid}>
+            {(
+              [
+                ['platform_fee_bps', '808Tickets service fee bps'],
+                ['platform_fee_fixed_cents', '808Tickets service fee fixed ¢ / ticket'],
+                ['processing_fee_bps', 'Payment processing fee bps'],
+                ['processing_fee_fixed_cents', 'Payment processing fee fixed ¢'],
+              ] as const
+            ).map(([key, label]) => (
+              <View key={key} style={styles.fieldBlock}>
+                <Text style={styles.fieldLabel}>{label}</Text>
+                <TextInput
+                  value={feeDraft[key]}
+                  editable={!readOnly && useEventOverride}
+                  onChangeText={(value) => setFeeDraft((prev) => ({ ...prev, [key]: value }))}
+                  keyboardType="number-pad"
+                  placeholderTextColor={dash.textDim}
+                  style={[styles.input, (!useEventOverride || readOnly) && styles.disabled]}
+                />
+              </View>
+            ))}
+          </View>
+          <Pressable
+            style={[styles.primaryBtn, (readOnly || !useEventOverride) && styles.disabled, { marginTop: 4 }]}
+            disabled={readOnly || !useEventOverride}
+            onPress={() => undefined}
+          >
+            <Text style={styles.primaryBtnText}>Save event fee override</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {footnote ? (
+        <Text style={[styles.muted, { textAlign: 'center', color: dash.textDim, marginTop: 8 }]}>
+          {footnote}
+        </Text>
+      ) : null}
+    </DashboardShell>
+  );
+}

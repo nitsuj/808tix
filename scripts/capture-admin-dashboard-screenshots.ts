@@ -114,6 +114,20 @@ async function main() {
     3500,
   );
 
+  console.log('Capturing design-review event detail (no login required)…');
+  await capturePath(
+    desktopContext,
+    '/design/admin-event-detail-review',
+    join(OUT_DIR, 'admin-event-detail-review-desktop.png'),
+    3500,
+  );
+  await capturePath(
+    mobileContext,
+    '/design/admin-event-detail-review',
+    join(OUT_DIR, 'admin-event-detail-review-mobile.png'),
+    3500,
+  );
+
   const dotenv = parseEnvFile(join(ROOT, '.env'));
   const supabaseUrl =
     process.env.EXPO_PUBLIC_SUPABASE_URL?.trim() || dotenv.EXPO_PUBLIC_SUPABASE_URL?.trim() || '';

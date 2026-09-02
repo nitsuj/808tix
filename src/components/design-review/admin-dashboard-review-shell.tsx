@@ -21,7 +21,7 @@ export function AdminDashboardReviewShell() {
       summary={REVIEW_SUMMARY}
       events={REVIEW_EVENTS}
       monetization={REVIEW_MONETIZATION}
-      onOpenEvent={() => router.push('/design/admin-event-detail-prototype' as never)}
+      onOpenEvent={() => router.push('/design/admin-event-detail-review' as never)}
       chartSeries={REVIEW_CHART_SERIES}
       chartLabels={REVIEW_CHART_LABELS}
       chartYAxisLabels={REVIEW_CHART_Y_AXIS}
