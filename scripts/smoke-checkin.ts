@@ -22,6 +22,11 @@ const FIXTURES_PATH = join(ROOT, 'qa/fixtures.json');
 const QA_ORGANIZER_EMAIL = 'qa@808tix.test';
 const QA_ORGANIZER_PASSWORD = 'qa';
 const QA_ORGANIZER_ID = 'a1000001-0000-4000-8000-000000000001';
+const QA_PLATFORM_ADMIN_EMAIL = 'platform-admin@808tix.test';
+const QA_PLATFORM_ADMIN_PASSWORD = 'qa-admin-password';
+const QA_DENIED_SCANNER_EMAIL = 'scanner-denied@808tix.test';
+const QA_DENIED_SCANNER_PASSWORD = 'qa-denied-password';
+const QA_DENIED_SCANNER_ID = 'a1000001-0000-4000-8000-000000000098';
 const WRONG_EVENT_ID = 'a1000001-0000-4000-8000-000000000004';
 
 type QaFixtures = {
@@ -392,9 +397,108 @@ async function ensureQaOrganizerGoTrueReady(): Promise<void> {
   `);
 }
 
-async function signInOrganizer(apiUrl: string, anonKey: string): Promise<SupabaseClient> {
-  await ensureQaOrganizerGoTrueReady();
+async function ensureDeniedScannerUser(): Promise<void> {
+  await runSupabaseQuery(`
+    insert into auth.users (
+      id,
+      instance_id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      confirmation_token,
+      recovery_token,
+      email_change_token_new,
+      email_change,
+      phone_change,
+      phone_change_token,
+      email_change_token_current,
+      reauthentication_token,
+      created_at,
+      updated_at,
+      raw_app_meta_data,
+      raw_user_meta_data
+    )
+    values (
+      '${QA_DENIED_SCANNER_ID}'::uuid,
+      '00000000-0000-0000-0000-000000000000',
+      'authenticated',
+      'authenticated',
+      '${QA_DENIED_SCANNER_EMAIL}',
+      crypt('${QA_DENIED_SCANNER_PASSWORD}', gen_salt('bf')),
+      now(),
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      now(),
+      now(),
+      '{"provider":"email","providers":["email"]}'::jsonb,
+      '{}'::jsonb
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      encrypted_password = excluded.encrypted_password,
+      email_confirmed_at = coalesce(auth.users.email_confirmed_at, now()),
+      confirmation_token = coalesce(auth.users.confirmation_token, ''),
+      recovery_token = coalesce(auth.users.recovery_token, '');
+  `);
 
+  await runSupabaseQuery(`
+    insert into auth.identities (
+      id,
+      user_id,
+      identity_data,
+      provider,
+      provider_id,
+      last_sign_in_at,
+      created_at,
+      updated_at
+    )
+    values (
+      '${QA_DENIED_SCANNER_ID}'::uuid,
+      '${QA_DENIED_SCANNER_ID}'::uuid,
+      jsonb_build_object('sub', '${QA_DENIED_SCANNER_ID}', 'email', '${QA_DENIED_SCANNER_EMAIL}'),
+      'email',
+      '${QA_DENIED_SCANNER_ID}',
+      now(),
+      now(),
+      now()
+    )
+    on conflict (provider_id, provider) do update
+    set
+      user_id = excluded.user_id,
+      identity_data = excluded.identity_data,
+      updated_at = now();
+  `);
+
+  await runSupabaseQuery(`
+    insert into public.profiles (id, email, is_platform_admin)
+    values (
+      '${QA_DENIED_SCANNER_ID}'::uuid,
+      '${QA_DENIED_SCANNER_EMAIL}',
+      false
+    )
+    on conflict (id) do update
+    set
+      email = excluded.email,
+      is_platform_admin = false;
+  `);
+}
+
+async function signInWithPassword(
+  apiUrl: string,
+  anonKey: string,
+  email: string,
+  password: string,
+  label: string,
+): Promise<SupabaseClient> {
   const client = createClient(apiUrl, anonKey, {
     auth: {
       autoRefreshToken: false,
@@ -403,18 +507,30 @@ async function signInOrganizer(apiUrl: string, anonKey: string): Promise<Supabas
   });
 
   const { data, error } = await client.auth.signInWithPassword({
-    email: QA_ORGANIZER_EMAIL,
-    password: QA_ORGANIZER_PASSWORD,
+    email,
+    password,
   });
 
   if (error || !data.session) {
     failAndExit(
-      `Could not sign in as QA organizer (${QA_ORGANIZER_EMAIL}).`,
+      `Could not sign in as ${label} (${email}).`,
       'Run: npm run qa:seed\nThen retry: npm run smoke:checkin',
     );
   }
 
   return client;
+}
+
+async function signInOrganizer(apiUrl: string, anonKey: string): Promise<SupabaseClient> {
+  await ensureQaOrganizerGoTrueReady();
+
+  return signInWithPassword(
+    apiUrl,
+    anonKey,
+    QA_ORGANIZER_EMAIL,
+    QA_ORGANIZER_PASSWORD,
+    'QA organizer',
+  );
 }
 
 async function callValidatePass(
@@ -497,6 +613,7 @@ async function main(): Promise<void> {
   }
 
   await ensureWrongEventFixture();
+  await ensureDeniedScannerUser();
 
   const client = await signInOrganizer(apiUrl, anonKey);
   const results: SmokeCaseResult[] = [];
@@ -621,7 +738,7 @@ async function main(): Promise<void> {
     ok: wrongEventResponse.result === 'wrong_event',
   });
 
-  // E. Second fresh pass
+  // E. Second fresh pass (organizer)
   if (passToken1) {
     let secondValidResponse: ValidatePassResponse;
     try {
@@ -650,6 +767,146 @@ async function main(): Promise<void> {
       detail: secondOk ? `pass status=${pass1After?.status}` : `pass status=${pass1After?.status ?? 'unknown'}`,
     });
   }
+
+  // F. Platform admin can load event stats + already_used authorize path
+  const adminClient = await signInWithPassword(
+    apiUrl,
+    anonKey,
+    QA_PLATFORM_ADMIN_EMAIL,
+    QA_PLATFORM_ADMIN_PASSWORD,
+    'platform admin',
+  );
+
+  const { data: adminEventRow, error: adminEventError } = await adminClient
+    .from('events')
+    .select('id,name')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  results.push({
+    caseName: 'Platform admin event load',
+    expected: 'found',
+    actual: adminEventRow?.id === eventId ? 'found' : 'missing',
+    ok: !adminEventError && adminEventRow?.id === eventId,
+    detail: adminEventError?.message,
+  });
+
+  const { data: adminStats, error: adminStatsError } = await adminClient.rpc('get_event_stats', {
+    p_event_id: eventId,
+  });
+
+  results.push({
+    caseName: 'Platform admin get_event_stats',
+    expected: 'ok',
+    actual: adminStatsError ? 'rpc_error' : 'ok',
+    ok: !adminStatsError && adminStats && typeof adminStats === 'object',
+    detail: adminStatsError?.message,
+  });
+
+  let adminAlreadyUsed: ValidatePassResponse;
+  try {
+    adminAlreadyUsed = await callValidatePass(adminClient, passToken0, eventId);
+  } catch (error) {
+    results.push({
+      caseName: 'Platform admin already_used',
+      expected: 'already_used',
+      actual: 'rpc_error',
+      ok: false,
+      detail: String(error),
+    });
+    printResultsTable(results);
+    process.exit(1);
+  }
+
+  results.push({
+    caseName: 'Platform admin already_used',
+    expected: 'already_used',
+    actual: adminAlreadyUsed.result,
+    ok:
+      adminAlreadyUsed.result === 'already_used' &&
+      typeof adminAlreadyUsed.pass_id === 'string' &&
+      adminAlreadyUsed.pass_id.length > 0,
+    detail:
+      adminAlreadyUsed.result === 'already_used'
+        ? 'authorized platform admin received normal already_used payload'
+        : 'platform admin was not authorized or unexpected result',
+  });
+
+  // G. Non-owner non-admin unauthorized → PII-free invalid
+  const deniedClient = await signInWithPassword(
+    apiUrl,
+    anonKey,
+    QA_DENIED_SCANNER_EMAIL,
+    QA_DENIED_SCANNER_PASSWORD,
+    'denied scanner',
+  );
+
+  let deniedResponse: ValidatePassResponse;
+  try {
+    deniedResponse = await callValidatePass(deniedClient, passToken0, eventId);
+  } catch (error) {
+    results.push({
+      caseName: 'Unauthorized non-owner',
+      expected: 'invalid',
+      actual: 'rpc_error',
+      ok: false,
+      detail: String(error),
+    });
+    printResultsTable(results);
+    process.exit(1);
+  }
+
+  const deniedKeys = Object.keys(deniedResponse).sort();
+  const deniedPiiFree =
+    deniedResponse.result === 'invalid' &&
+    deniedKeys.length === 1 &&
+    deniedKeys[0] === 'result' &&
+    deniedResponse.pass_id === undefined &&
+    deniedResponse.guest_name === undefined;
+
+  results.push({
+    caseName: 'Unauthorized non-owner',
+    expected: 'invalid',
+    actual: deniedResponse.result,
+    ok: deniedPiiFree,
+    detail: deniedPiiFree
+      ? 'PII-free invalid payload'
+      : `keys=${deniedKeys.join(',')}`,
+  });
+
+  const { data: deniedEventRow, error: deniedEventError } = await deniedClient
+    .from('events')
+    .select('id')
+    .eq('id', eventId)
+    .maybeSingle();
+
+  results.push({
+    caseName: 'Denied scanner event load',
+    expected: 'missing',
+    actual: deniedEventRow?.id ? 'found' : 'missing',
+    ok: !deniedEventError && !deniedEventRow,
+  });
+
+  // H. Anon cannot call validate_pass
+  const anonClient = createClient(apiUrl, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  const { error: anonError } = await anonClient.rpc('validate_pass', {
+    p_secure_token: passToken0,
+    p_event_id: eventId,
+  });
+
+  results.push({
+    caseName: 'Anon validate_pass blocked',
+    expected: 'error',
+    actual: anonError ? 'error' : 'ok',
+    ok: Boolean(anonError),
+    detail: anonError?.message,
+  });
 
   printResultsTable(results);
 

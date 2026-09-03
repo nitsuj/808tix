@@ -1,9 +1,50 @@
+import type { StatusBadgeTone } from '@/components/dashboard/status-badge';
 import { buildAbsoluteAppUrl } from '@/lib/app-base-url';
 import { formatEventDateTimeLong } from '@/lib/event-datetime-display';
 
 /** In-app platform admin event cockpit path (Expo Router). */
 export function buildAdminCockpitEventPath(eventId: string): string {
   return `/admin/events/${encodeURIComponent(eventId.trim())}`;
+}
+
+/** Operational buyability from admin RPCs (compute_event_buyability). */
+export type AdminBuyabilityStatus =
+  | 'selling'
+  | 'sales_off'
+  | 'sold_out'
+  | 'no_tickets'
+  | 'draft'
+  | 'canceled'
+  | 'not_buyable';
+
+export function formatAdminBuyabilityLabel(
+  status: string | null | undefined,
+  fallbackLabel?: string | null,
+): string {
+  if (fallbackLabel?.trim()) return fallbackLabel.trim();
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'selling') return 'Selling';
+  if (value === 'sales_off') return 'Sales off';
+  if (value === 'sold_out') return 'Sold out';
+  if (value === 'no_tickets') return 'No tickets';
+  if (value === 'draft') return 'Draft';
+  if (value === 'canceled' || value === 'cancelled') return 'Canceled';
+  if (value === 'not_buyable') return 'Not buyable';
+  return 'Not buyable';
+}
+
+export function adminBuyabilityTone(status: string | null | undefined): StatusBadgeTone {
+  const value = (status ?? '').trim().toLowerCase();
+  if (value === 'selling') return 'positive';
+  if (value === 'draft') return 'draft';
+  if (value === 'canceled' || value === 'cancelled') return 'cancelled';
+  if (value === 'sales_off' || value === 'sold_out' || value === 'no_tickets') return 'warn';
+  return 'neutral';
+}
+
+export function isAdminEventBuyable(status: string | null | undefined, isBuyable?: boolean | null): boolean {
+  if (typeof isBuyable === 'boolean') return isBuyable;
+  return (status ?? '').trim().toLowerCase() === 'selling';
 }
 
 /**

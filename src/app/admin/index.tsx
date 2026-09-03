@@ -14,13 +14,14 @@ import {
 } from '@/components/dashboard/global-admin-dashboard-view';
 import type { StatusBadgeTone } from '@/components/dashboard/status-badge';
 import {
+  adminBuyabilityTone,
   buildAdminCockpitEventPath,
   downloadCsv,
+  formatAdminBuyabilityLabel,
   formatAdminCents,
   formatAdminEventWhen,
   formatAdminFeeSourceLabel,
   formatAdminPayoutStatusSummary,
-  formatAdminSalesLabel,
   formatAdminStatusLabel,
 } from '@/lib/admin-support';
 import { supabase } from '@/lib/supabase';
@@ -32,6 +33,9 @@ type AdminEventRow = {
   event_name: string;
   status: string;
   sales_enabled: boolean;
+  buyability_status?: string | null;
+  buyability_label?: string | null;
+  is_buyable?: boolean | null;
   event_date: string | null;
   start_time: string | null;
   venue_name: string | null;
@@ -69,11 +73,8 @@ function statusTone(status: string): StatusBadgeTone {
   return 'neutral';
 }
 
-function salesTone(salesEnabled: boolean): StatusBadgeTone {
-  return salesEnabled ? 'positive' : 'warn';
-}
-
 function mapEventRow(event: AdminEventRow): DashboardEventRow {
+  const buyabilityStatus = event.buyability_status ?? null;
   return {
     eventId: event.event_id,
     eventName: event.event_name,
@@ -82,8 +83,8 @@ function mapEventRow(event: AdminEventRow): DashboardEventRow {
     organizerEmail: event.organizer_email,
     statusLabel: formatAdminStatusLabel(event.status),
     statusTone: statusTone(event.status),
-    salesLabel: formatAdminSalesLabel(Boolean(event.sales_enabled)),
-    salesTone: salesTone(Boolean(event.sales_enabled)),
+    buyabilityLabel: formatAdminBuyabilityLabel(buyabilityStatus, event.buyability_label),
+    buyabilityTone: adminBuyabilityTone(buyabilityStatus),
     feeSourceLabel: formatAdminFeeSourceLabel(event.fee_config_source),
     payoutLabel: formatAdminPayoutStatusSummary(event.payout_statuses),
     paidOrderCount: event.paid_order_count ?? 0,

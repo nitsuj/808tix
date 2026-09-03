@@ -18,9 +18,11 @@ import { dashboardStyles as styles } from '@/components/dashboard/dashboard-styl
 import { dash } from '@/components/dashboard/dashboard-tokens';
 import type { StatusBadgeTone } from '@/components/dashboard/status-badge';
 import {
+  adminBuyabilityTone,
   buildAdminEventBuyUrl,
   buildAdminEventScanUrl,
   buildAdminPassUrl,
+  formatAdminBuyabilityLabel,
   formatAdminCents,
   formatAdminDateTime,
   formatAdminEventWhen,
@@ -29,6 +31,7 @@ import {
   formatAdminPayoutStatusSummary,
   formatAdminSalesLabel,
   formatAdminStatusLabel,
+  isAdminEventBuyable,
 } from '@/lib/admin-support';
 import { supabase } from '@/lib/supabase';
 
@@ -52,6 +55,11 @@ type EventDetail = {
   processing_fee_cents: number;
   organizer_net_cents: number;
   payout_statuses: string[] | null;
+  buyability_status?: string | null;
+  buyability_label?: string | null;
+  is_buyable?: boolean | null;
+  active_ticket_type_count?: number | null;
+  ticket_quantity_available?: number | null;
 };
 
 type FeeSlice = {
@@ -162,6 +170,12 @@ function formatTicketingMode(mode: string | null | undefined): string {
 
 function toDetailView(detail: EventDetail, pendingPayoutCents: number): EventAdminDetailView {
   const salesOn = Boolean(detail.sales_enabled);
+  const buyabilityStatus = detail.buyability_status ?? null;
+  const isBuyable = isAdminEventBuyable(buyabilityStatus, detail.is_buyable);
+  const qtyRaw = detail.ticket_quantity_available;
+  const ticketQuantityAvailable =
+    qtyRaw === null || qtyRaw === undefined ? null : Number(qtyRaw);
+
   return {
     eventId: detail.event_id,
     eventName: detail.event_name,
@@ -174,6 +188,12 @@ function toDetailView(detail: EventDetail, pendingPayoutCents: number): EventAdm
     statusTone: statusTone(detail.status),
     salesLabel: formatAdminSalesLabel(salesOn),
     salesTone: salesOn ? 'positive' : 'warn',
+    buyabilityLabel: formatAdminBuyabilityLabel(buyabilityStatus, detail.buyability_label),
+    buyabilityTone: adminBuyabilityTone(buyabilityStatus),
+    buyabilityStatus: (buyabilityStatus ?? 'not_buyable').trim().toLowerCase() || 'not_buyable',
+    isBuyable,
+    activeTicketTypeCount: Number(detail.active_ticket_type_count ?? 0),
+    ticketQuantityAvailable,
     feeSourceLabel: formatAdminFeeSourceLabel(detail.fee_config_source),
     payoutLabel: formatAdminPayoutStatusSummary(detail.payout_statuses),
     payoutTone: payoutTone(detail.payout_statuses),
@@ -407,8 +427,14 @@ function EventAdminCockpit({ eventId }: { eventId: string }) {
       }
       eventOverrideDraft={eventOverrideDraft}
       initialUseEventOverride={Boolean(monetization.use_custom_fees)}
-      buyHref={buildAdminEventBuyUrl(detail.event_id)}
+      buyHref={
+        isAdminEventBuyable(detail.buyability_status, detail.is_buyable)
+          ? buildAdminEventBuyUrl(detail.event_id)
+          : null
+      }
       scanHref={buildAdminEventScanUrl(detail.event_id)}
+      scanAvailable
+      scanUnavailableReason={null}
       error={error}
       overviewTools={<GhostButton label="Refresh" onPress={() => void loadAll()} />}
       onBackToAdmin={() => router.push('/admin')}

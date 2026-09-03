@@ -55,6 +55,12 @@ export type EventAdminDetail = {
   statusTone: StatusBadgeTone;
   salesLabel: string;
   salesTone: StatusBadgeTone;
+  buyabilityLabel: string;
+  buyabilityTone: StatusBadgeTone;
+  buyabilityStatus: string;
+  isBuyable: boolean;
+  activeTicketTypeCount: number;
+  ticketQuantityAvailable: number | null;
   feeSourceLabel: string;
   payoutLabel: string;
   payoutTone: StatusBadgeTone;
@@ -81,6 +87,12 @@ export const EVENT_REVIEW_DETAIL: EventAdminDetail = {
   statusTone: 'positive',
   salesLabel: 'Sales on',
   salesTone: 'positive',
+  buyabilityLabel: 'Selling',
+  buyabilityTone: 'positive',
+  buyabilityStatus: 'selling',
+  isBuyable: true,
+  activeTicketTypeCount: 2,
+  ticketQuantityAvailable: 48,
   feeSourceLabel: 'Global',
   payoutLabel: 'Pending',
   payoutTone: 'warn',

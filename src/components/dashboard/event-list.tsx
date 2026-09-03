@@ -17,8 +17,9 @@ export type DashboardEventRow = {
   organizerEmail: string | null;
   statusLabel: string;
   statusTone: StatusBadgeTone;
-  salesLabel: string;
-  salesTone: StatusBadgeTone;
+  /** Operational buy signal (Selling / Sales off / Sold out / …). */
+  buyabilityLabel: string;
+  buyabilityTone: StatusBadgeTone;
   feeSourceLabel: string;
   payoutLabel: string;
   paidOrderCount: number;
@@ -109,7 +110,7 @@ export function DashboardEventList({ events, onOpenEvent, onExportCsv }: Dashboa
               ) : null}
               <View style={styles.badgeRow}>
                 <StatusBadge label={event.statusLabel} tone={event.statusTone} />
-                <StatusBadge label={event.salesLabel} tone={event.salesTone} />
+                <StatusBadge label={event.buyabilityLabel} tone={event.buyabilityTone} />
                 <StatusBadge label={`Fee: ${event.feeSourceLabel}`} tone="magenta" />
                 <StatusBadge label={`Payouts: ${event.payoutLabel}`} tone="neutral" />
               </View>
@@ -152,7 +153,7 @@ export function DashboardEventList({ events, onOpenEvent, onExportCsv }: Dashboa
                   <Text style={styles.tdStrong} numberOfLines={1}>{event.eventName}</Text>
                   <View style={styles.badgeRow}>
                     <StatusBadge label={event.statusLabel} tone={event.statusTone} />
-                    <StatusBadge label={event.salesLabel} tone={event.salesTone} />
+                    <StatusBadge label={event.buyabilityLabel} tone={event.buyabilityTone} />
                     <StatusBadge label={event.feeSourceLabel} tone="magenta" />
                   </View>
                 </View>

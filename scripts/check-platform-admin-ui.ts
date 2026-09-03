@@ -187,7 +187,13 @@ assert(
 );
 assert(!adminPage.includes('status=') && !adminPage.includes('sales='), 'global admin avoids raw key=value status text');
 assert(adminPage.includes('formatAdminStatusLabel') || adminPage.includes('AdminBadge'), 'global admin uses human status presentation');
-assert(adminPage.includes('Sales on') || adminPage.includes('formatAdminSalesLabel'), 'global admin uses human sales labels');
+assert(
+  adminPage.includes('formatAdminBuyabilityLabel') ||
+    adminPage.includes('buyabilityLabel') ||
+    adminPage.includes('Sales on') ||
+    adminPage.includes('formatAdminSalesLabel'),
+  'global admin uses human buyability/sales labels',
+);
 
 assert(adminEventPage.includes('admin_get_event_detail'), 'event admin calls detail RPC');
 assert(adminEventPage.includes('admin_list_event_orders'), 'event admin calls event orders RPC');
@@ -205,6 +211,7 @@ assert(
 );
 assert(adminEventPage.includes('buildAdminEventBuyUrl'), 'event admin has buy support link');
 assert(adminEventPage.includes('buildAdminEventScanUrl'), 'event admin has scanner support link');
+assert(adminEventPage.includes('isAdminEventBuyable'), 'event admin gates buy link on buyability');
 assert(!adminEventPage.includes('buildAdminEventDetailUrl'), 'event admin omits organizer-only event detail as public link');
 assert(
   eventIndexRoute.includes('useOrganizerAuthGate'),
@@ -217,6 +224,26 @@ const eventView = readFileSync(
 assert(
   eventView.includes('808Tickets service fee') && eventView.includes('Payment processing fee'),
   'exact fee labels on shared event admin view',
+);
+assert(
+  !eventView.includes('Copy event ID') && !eventView.includes('Copy organizer email'),
+  'event admin support tools omit copy ID/email',
+);
+assert(
+  eventView.includes('Buy page available') || eventView.includes('isBuyable'),
+  'event admin shows buy availability state',
+);
+assert(eventView.includes('Scanner available'), 'event admin shows scanner availability state');
+assert(
+  adminPage.includes('formatAdminBuyabilityLabel') || adminPage.includes('buyabilityLabel'),
+  'global admin includes buyability/status signal',
+);
+assert(
+  !adminPage.includes('label="Buy"') &&
+    !adminPage.includes('label="Scanner"') &&
+    !adminPage.includes("label='Buy'") &&
+    !adminPage.includes("label='Scanner'"),
+  'global admin events table has no Buy/Scanner action buttons',
 );
 assert(eventView.includes('Existing orders are not recalculated'), 'event fee copy warns existing orders');
 assert(eventView.includes('breadcrumbLink') || eventView.includes('Admin'), 'event admin breadcrumb back to /admin');

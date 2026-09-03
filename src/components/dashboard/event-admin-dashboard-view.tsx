@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
-import { Linking, Platform, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Linking, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
 
 import { DashboardSectionHeader } from '@/components/dashboard/dashboard-section-header';
 import { DashboardShell } from '@/components/dashboard/dashboard-shell';
@@ -67,6 +67,12 @@ export type EventAdminDetailView = {
   statusTone: StatusBadgeTone;
   salesLabel: string;
   salesTone: StatusBadgeTone;
+  buyabilityLabel: string;
+  buyabilityTone: StatusBadgeTone;
+  buyabilityStatus: string;
+  isBuyable: boolean;
+  activeTicketTypeCount: number;
+  ticketQuantityAvailable: number | null;
   feeSourceLabel: string;
   payoutLabel: string;
   payoutTone: StatusBadgeTone;
@@ -108,8 +114,12 @@ export type EventAdminDashboardViewProps = {
   eventOverrideDraft: EventAdminFeeSliceView;
   /** Initial/synced event override toggle (from live monetization.use_custom_fees). */
   initialUseEventOverride?: boolean;
-  buyHref?: string;
-  scanHref?: string;
+  /** Buy page href only when the event is actually buyable. */
+  buyHref?: string | null;
+  /** Scanner href when platform admin / organizer can open scanner for this event. */
+  scanHref?: string | null;
+  scanAvailable?: boolean;
+  scanUnavailableReason?: string | null;
   chartSeries?: readonly number[];
   chartLabels?: readonly string[];
   chartYAxisLabels?: readonly [string, string, string];
@@ -191,6 +201,8 @@ export function EventAdminDashboardView({
   initialUseEventOverride = false,
   buyHref,
   scanHref,
+  scanAvailable = Boolean(scanHref),
+  scanUnavailableReason = null,
   chartSeries,
   chartLabels,
   chartYAxisLabels,
@@ -212,17 +224,8 @@ export function EventAdminDashboardView({
   const [payoutNotes, setPayoutNotes] = useState<Record<string, string>>(() =>
     Object.fromEntries(payouts.map((payout) => [payout.payoutId, payout.notes])),
   );
-  const [copied, setCopied] = useState<string | null>(null);
 
-  const copyText = async (label: string, value: string) => {
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(value);
-      setCopied(label);
-      setTimeout(() => setCopied(null), 1200);
-    }
-  };
-
-  const openHref = (href?: string) => {
+  const openHref = (href?: string | null) => {
     if (!href) return;
     void Linking.openURL(href);
   };
@@ -278,6 +281,7 @@ export function EventAdminDashboardView({
         </Text>
         <View style={[styles.badgeRow, { marginTop: 10 }]}>
           <StatusBadge label={detail.statusLabel} tone={detail.statusTone} />
+          <StatusBadge label={detail.buyabilityLabel} tone={detail.buyabilityTone} />
           <StatusBadge label={detail.salesLabel} tone={detail.salesTone} />
           <StatusBadge label={`Fee: ${detail.feeSourceLabel}`} tone="magenta" />
           <StatusBadge label={`Payouts: ${detail.payoutLabel}`} tone={detail.payoutTone} />
@@ -306,23 +310,48 @@ export function EventAdminDashboardView({
         />
         <View style={styles.summaryCard}>
           <DashboardSectionHeader title="Support tools" />
-          <Text style={styles.muted}>Event ops links and copy helpers for this event.</Text>
-          <View style={styles.actionRow}>
-            <GhostButton label="Open buy page" onPress={() => openHref(buyHref)} />
-            <GhostButton label="Open scanner" onPress={() => openHref(scanHref)} />
-            <GhostButton
-              label={copied === 'id' ? 'Copied event ID' : 'Copy event ID'}
-              onPress={() => void copyText('id', detail.eventId)}
+          <Text style={styles.muted}>
+            Working ops actions only. Buy opens when the event is sellable; scanner is available to
+            platform admins for any event.
+          </Text>
+          <View style={[styles.badgeRow, { marginTop: 8 }]}>
+            <StatusBadge
+              label={detail.isBuyable ? 'Buy page available' : detail.buyabilityLabel}
+              tone={detail.buyabilityTone}
             />
-            <GhostButton
-              label={copied === 'email' ? 'Copied email' : 'Copy organizer email'}
-              onPress={() => void copyText('email', detail.organizerEmail)}
-              disabled={!detail.organizerEmail.trim()}
+            <StatusBadge
+              label={scanAvailable ? 'Scanner available' : 'Scanner unavailable'}
+              tone={scanAvailable ? 'positive' : 'warn'}
             />
           </View>
+          <View style={styles.actionRow}>
+            {detail.isBuyable && buyHref ? (
+              <GhostButton label="Open buy page" onPress={() => openHref(buyHref)} />
+            ) : (
+              <GhostButton
+                label={`Buy unavailable · ${detail.buyabilityLabel}`}
+                onPress={() => undefined}
+                disabled
+              />
+            )}
+            {scanAvailable && scanHref ? (
+              <GhostButton label="Open scanner" onPress={() => openHref(scanHref)} />
+            ) : (
+              <GhostButton
+                label={`Scanner unavailable${scanUnavailableReason ? ` · ${scanUnavailableReason}` : ''}`}
+                onPress={() => undefined}
+                disabled
+              />
+            )}
+          </View>
           <Text style={[styles.muted, { marginTop: 8, color: dash.textDim }]}>
-            Scanner requires an authenticated organizer/admin session. Ticketing mode:{' '}
-            {detail.ticketingModeLabel}.
+            Active ticket types: {detail.activeTicketTypeCount}
+            {detail.ticketQuantityAvailable === null
+              ? ' · Remaining capacity: unlimited'
+              : ` · Remaining capacity: ${detail.ticketQuantityAvailable}`}
+            {' · '}
+            Sales: {detail.salesLabel} · Mode: {detail.ticketingModeLabel} · Status:{' '}
+            {detail.statusLabel}.
           </Text>
         </View>
       </View>

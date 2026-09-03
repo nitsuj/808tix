@@ -31,6 +31,8 @@ export function AdminEventDetailReviewShell() {
       eventOverrideDraft={EVENT_REVIEW_EVENT_OVERRIDE_DRAFT}
       buyHref={EVENT_REVIEW_BUY_PATH}
       scanHref={EVENT_REVIEW_SCAN_PATH}
+      scanAvailable
+      scanUnavailableReason={null}
       chartSeries={EVENT_REVIEW_CHART_SERIES}
       chartLabels={EVENT_REVIEW_CHART_LABELS}
       chartYAxisLabels={EVENT_REVIEW_CHART_Y_AXIS}
