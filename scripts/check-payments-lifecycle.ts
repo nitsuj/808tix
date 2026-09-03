@@ -11,6 +11,10 @@ const LIFECYCLE_MIGRATION = join(
   ROOT,
   'supabase/migrations/20260610130000_payments_phase1_lifecycle.sql',
 );
+const HARDENING_MIGRATION = join(
+  ROOT,
+  'supabase/migrations/20260902120000_launch_security_hardening.sql',
+);
 const VERIFICATION_PATH = join(ROOT, 'supabase/verification-payments.sql');
 const VALIDATE_PASS_MIGRATION = join(
   ROOT,
@@ -23,6 +27,7 @@ const GET_PASS_MIGRATION = join(
 const SRC_DIR = join(ROOT, 'src');
 
 const lifecycleMigration = readFileSync(LIFECYCLE_MIGRATION, 'utf8');
+const hardeningMigration = readFileSync(HARDENING_MIGRATION, 'utf8');
 const verification = readFileSync(VERIFICATION_PATH, 'utf8');
 const validatePassMigration = readFileSync(VALIDATE_PASS_MIGRATION, 'utf8');
 const getPassMigration = readFileSync(GET_PASS_MIGRATION, 'utf8');
@@ -88,7 +93,16 @@ assert(
 assert(
   lifecycleMigration.includes("grant execute on function public.create_pending_order") &&
     lifecycleMigration.includes('to anon'),
-  'create_pending_order granted to anon',
+  'historical lifecycle migration granted create_pending_order to anon',
+);
+assert(
+  hardeningMigration.includes('revoke all on function public.create_pending_order') &&
+    hardeningMigration.includes('from anon, authenticated') &&
+    hardeningMigration.includes('to service_role') &&
+    !/grant execute on function public\.create_pending_order\([^)]+\)\s+to anon/.test(
+      hardeningMigration,
+    ),
+  'create_pending_order not granted to anon (service_role only after hardening)',
 );
 assert(
   lifecycleMigration.includes("grant execute on function public.get_order_by_public_token") &&
@@ -151,8 +165,9 @@ const postLifecycleSql = readdirSync(MIGRATIONS_DIR)
   .join('\n');
 
 assert(
-  !postLifecycleSql.includes('create or replace function public.validate_pass('),
-  'no post-lifecycle migration redefines validate_pass',
+  !postLifecycleSql.includes('create or replace function public.validate_pass(') ||
+    postLifecycleSql.includes('Unauthorized scanners must not receive guest_name'),
+  'post-lifecycle validate_pass redefine only allowed for PII-hardening migration',
 );
 assert(
   !postLifecycleSql.includes(

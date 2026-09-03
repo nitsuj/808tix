@@ -27,7 +27,6 @@ import {
   normalizeRouteParam,
   type PurchaseUnavailableReason,
 } from '@/lib/get-public-purchase-options';
-import { buildPurchaseCancelUrl, buildPurchaseSuccessUrl } from '@/lib/purchase-urls';
 import {
   calculateOrderFees,
   PROCESSING_FEE_LABEL,
@@ -366,18 +365,14 @@ function EventBuyContent({
     setErrorMessage(null);
 
     try {
-      const cancelUrl = new URL(buildPurchaseCancelUrl());
-      cancelUrl.searchParams.set('event_id', eventId);
-      cancelUrl.searchParams.set('ticket_type_id', selectedTicketType.id);
-
+      // Redirect URLs are built server-side (PUBLIC_SITE_URL allowlist). Client no longer
+      // supplies success_url/cancel_url or receives order_public_access_token pre-payment.
       const result = await startCheckoutSession({
         eventId,
         ticketTypeId: selectedTicketType.id,
         quantity,
         buyerEmail,
         buyerName: buyerName.trim() || null,
-        successUrl: buildPurchaseSuccessUrl(),
-        cancelUrl: cancelUrl.toString(),
       });
 
       setPhase('redirecting');

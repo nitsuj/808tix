@@ -54,7 +54,10 @@ type CheckResult = { ok: boolean; detail?: string };
 type CheckoutResponse = {
   ok?: boolean;
   checkout_url?: string;
+  checkout_session_id?: string;
   order_public_access_token?: string;
+  public_access_token?: string;
+  order_token?: string;
   status?: string;
   message?: string;
   code?: string;
@@ -922,7 +925,7 @@ async function createCheckoutSession(
   publishableKey: string,
   eventId: string,
   ticketTypeId: string,
-): Promise<CheckoutResponse> {
+): Promise<{ checkout_url: string; checkout_session_id: string; order_public_access_token: string; status: string }> {
   console.log('\n=== Create checkout session ===\n');
 
   const payload = {
@@ -932,8 +935,9 @@ async function createCheckoutSession(
     buyer_email: BUYER_EMAIL,
     buyer_name: 'Test Buyer',
     buyer_phone: '8085551212',
-    success_url: SUCCESS_PAGE_URL,
-    cancel_url: CANCEL_PAGE_URL,
+    // Intentionally untrusted URLs — server must ignore and use PUBLIC_SITE_URL allowlist.
+    success_url: 'https://evil.example/steal',
+    cancel_url: 'https://evil.example/cancel',
   };
 
   const response = await fetch(CHECKOUT_FUNCTION_URL, {
@@ -954,7 +958,16 @@ async function createCheckoutSession(
     body = { message: bodyText };
   }
 
-  if (!response.ok || !body.checkout_url || !body.order_public_access_token) {
+  if (
+    body.order_public_access_token ||
+    body.public_access_token ||
+    body.order_token
+  ) {
+    console.error(bodyText);
+    failAndExit('create-checkout-session leaked a pre-payment order token.');
+  }
+
+  if (!response.ok || !body.checkout_url || !body.checkout_session_id) {
     console.error(`HTTP ${response.status}`);
     console.error(bodyText);
     console.error('\nDiagnostics:');
@@ -969,11 +982,36 @@ async function createCheckoutSession(
     failAndExit('create-checkout-session returned unexpected status.');
   }
 
+  const orderLookup = await queryResultJson<{
+    public_access_token: string;
+    stripe_checkout_session_id: string;
+  } | null>(`
+    select (
+      select json_build_object(
+        'public_access_token', o.public_access_token,
+        'stripe_checkout_session_id', o.stripe_checkout_session_id
+      )::text
+      from public.orders o
+      where o.stripe_checkout_session_id = ${sqlLiteral(body.checkout_session_id)}
+      limit 1
+    ) as result;
+  `);
+
+  if (!orderLookup?.public_access_token) {
+    failAndExit('Could not resolve order public_access_token from checkout_session_id (service-role SQL).');
+  }
+
   console.log(`checkout_url: ${body.checkout_url}`);
-  console.log(`order_public_access_token: ${body.order_public_access_token}`);
+  console.log(`checkout_session_id: ${body.checkout_session_id}`);
+  console.log(`order_public_access_token: ${orderLookup.public_access_token} (DB lookup; not from API)`);
   console.log(`status: ${body.status}`);
 
-  return body;
+  return {
+    checkout_url: body.checkout_url,
+    checkout_session_id: body.checkout_session_id,
+    order_public_access_token: orderLookup.public_access_token,
+    status: body.status ?? 'checkout_open',
+  };
 }
 
 async function verifyPrePaymentLookup(currentRunOrderPublicAccessToken: string): Promise<void> {

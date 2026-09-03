@@ -46,8 +46,17 @@ assert(
   'create-checkout-session sets checkout_open after Stripe session creation',
 );
 assert(
-  checkoutFn.includes('order_token'),
-  'create-checkout-session appends order_token to success/cancel URLs',
+  checkoutFn.includes('order_token') || checkoutFn.includes('buildPurchaseSuccessUrl'),
+  'create-checkout-session appends order_token via server-built success URL',
+);
+assert(
+  !checkoutFn.includes('order_public_access_token: publicAccessToken') &&
+    !/order_public_access_token:\s*publicAccessToken/.test(checkoutFn),
+  'create-checkout-session does not return order_public_access_token (no pre-payment order token)',
+);
+assert(
+  checkoutFn.includes('isAllowedCheckoutOrigin') || checkoutFn.includes('resolveCheckoutSiteOrigin'),
+  'create-checkout-session uses allowlisted redirect origins',
 );
 assert(
   !checkoutFn.includes('fulfill_paid_order'),

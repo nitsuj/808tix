@@ -316,9 +316,9 @@ function writePreviewFunctionsEnv(
       statusEnv.SERVICE_ROLE_KEY?.trim() || baseEnv.SUPABASE_SERVICE_ROLE_KEY || '',
     STRIPE_WEBHOOK_SECRET: webhookSecret,
     PUBLIC_SITE_URL:
-      process.env.PUBLIC_SITE_URL?.trim() ||
-      baseEnv.PUBLIC_SITE_URL?.trim() ||
-      EXPO_WEB_URL,
+      // Preview smoke always redirects buyers to local Expo web, even if
+      // supabase/functions/.env has hosted PUBLIC_SITE_URL for email copy.
+      process.env.PUBLIC_SITE_URL?.trim() || EXPO_WEB_URL,
     EMAIL_DELIVERY_MODE: allowSend
       ? process.env.EMAIL_DELIVERY_MODE?.trim() || baseEnv.EMAIL_DELIVERY_MODE?.trim() || 'send'
       : 'preview',

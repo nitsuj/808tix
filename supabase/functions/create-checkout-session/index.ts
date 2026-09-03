@@ -1,10 +1,16 @@
 import { createStripeCheckoutSession } from '../_shared/stripe.ts';
+import {
+  buildPurchaseSuccessUrl,
+  normalizePublicSiteUrl,
+} from '../_shared/pass-link-server.ts';
 import { createServiceClient } from '../_shared/supabase-service.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const MAX_CHECKOUT_QUANTITY = 10;
 
 type RequestBody = {
   event_id?: string;
@@ -13,7 +19,9 @@ type RequestBody = {
   buyer_email?: string;
   buyer_name?: string | null;
   buyer_phone?: string | null;
+  /** Ignored for redirect building — kept only for backward-compatible request bodies. */
   success_url?: string;
+  /** Ignored for redirect building — kept only for backward-compatible request bodies. */
   cancel_url?: string;
 };
 
@@ -41,17 +49,88 @@ function errorResponse(status: number, message: string, code: string): Response 
   return jsonResponse({ ok: false, message, code }, status);
 }
 
-function appendOrderToken(url: string, token: string): string {
-  const parsed = new URL(url);
-  parsed.searchParams.set('order_token', token);
-  return parsed.toString();
-}
-
 function parsePositiveInt(value: unknown): number | null {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
     return null;
   }
   return value;
+}
+
+function isLocalHostname(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
+function isAllowedCheckoutOrigin(origin: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    return false;
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (host === '808tickets.com' || host === 'www.808tickets.com') {
+    return parsed.protocol === 'https:';
+  }
+
+  if (isLocalHostname(host)) {
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  }
+
+  return false;
+}
+
+/**
+ * Server-controlled checkout redirect origin.
+ * Priority:
+ * 1) Allowlisted local PUBLIC_SITE_URL (local smoke / local Expo)
+ * 2) Local Supabase → http://127.0.0.1:8081
+ * 3) Allowlisted hosted PUBLIC_SITE_URL
+ * 4) https://808tickets.com
+ */
+function resolveCheckoutSiteOrigin(): string {
+  const configured = normalizePublicSiteUrl(Deno.env.get('PUBLIC_SITE_URL'));
+  if (configured) {
+    try {
+      const parsed = new URL(configured);
+      if (isAllowedCheckoutOrigin(configured) && isLocalHostname(parsed.hostname)) {
+        return configured;
+      }
+    } catch {
+      // continue
+    }
+  }
+
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim() ?? '';
+  let supabaseLocal = false;
+  try {
+    supabaseLocal = isLocalHostname(new URL(supabaseUrl).hostname);
+  } catch {
+    supabaseLocal = false;
+  }
+
+  if (supabaseLocal) {
+    return 'http://127.0.0.1:8081';
+  }
+
+  if (configured && isAllowedCheckoutOrigin(configured)) {
+    try {
+      const parsed = new URL(configured);
+      if (parsed.hostname.toLowerCase() === 'www.808tickets.com') {
+        return 'https://808tickets.com';
+      }
+    } catch {
+      // fall through
+    }
+    return configured;
+  }
+
+  return 'https://808tickets.com';
+}
+
+function buildCheckoutCancelUrl(siteOrigin: string, eventId: string): string {
+  const url = new URL(`/events/${encodeURIComponent(eventId)}/buy`, `${siteOrigin}/`);
+  return url.toString();
 }
 
 Deno.serve(async (req) => {
@@ -81,23 +160,28 @@ Deno.serve(async (req) => {
     const buyerEmail = body.buyer_email?.trim();
     const buyerName = body.buyer_name?.trim() || null;
     const buyerPhone = body.buyer_phone?.trim() || null;
-    const successUrl = body.success_url?.trim();
-    const cancelUrl = body.cancel_url?.trim();
     const quantity = parsePositiveInt(body.quantity);
 
-    if (!eventId || !ticketTypeId || !buyerEmail || !successUrl || !cancelUrl || !quantity) {
+    if (!eventId || !ticketTypeId || !buyerEmail || !quantity) {
       return errorResponse(
         400,
-        'event_id, ticket_type_id, quantity, buyer_email, success_url, and cancel_url are required.',
+        'event_id, ticket_type_id, quantity, and buyer_email are required.',
         'REQUEST_FIELDS_MISSING',
       );
     }
 
-    try {
-      new URL(successUrl);
-      new URL(cancelUrl);
-    } catch {
-      return errorResponse(400, 'success_url and cancel_url must be valid URLs.', 'URL_INVALID');
+    if (quantity > MAX_CHECKOUT_QUANTITY) {
+      return errorResponse(
+        400,
+        `quantity cannot exceed ${MAX_CHECKOUT_QUANTITY}.`,
+        'QUANTITY_TOO_LARGE',
+      );
+    }
+
+    // Client-supplied success/cancel URLs are ignored (open-redirect hardening).
+    const siteOrigin = resolveCheckoutSiteOrigin();
+    if (!isAllowedCheckoutOrigin(siteOrigin)) {
+      return errorResponse(500, 'Checkout redirect origin is not allowed.', 'REDIRECT_ORIGIN_INVALID');
     }
 
     const supabase = createServiceClient();
@@ -140,6 +224,9 @@ Deno.serve(async (req) => {
       ? Math.floor(reservedUntilMs / 1000)
       : undefined;
 
+    const successUrl = buildPurchaseSuccessUrl(publicAccessToken, siteOrigin);
+    const cancelUrl = buildCheckoutCancelUrl(siteOrigin, eventId);
+
     let checkoutSession;
     try {
       checkoutSession = await createStripeCheckoutSession({
@@ -151,8 +238,8 @@ Deno.serve(async (req) => {
         platformFeeCents: order.platform_fee_cents,
         processingFeeCents: order.processing_fee_cents ?? 0,
         customerEmail: buyerEmail,
-        successUrl: appendOrderToken(successUrl, publicAccessToken),
-        cancelUrl: appendOrderToken(cancelUrl, publicAccessToken),
+        successUrl,
+        cancelUrl,
         metadata: {
           order_id: orderId,
           event_id: eventId,
@@ -185,10 +272,12 @@ Deno.serve(async (req) => {
       return errorResponse(500, 'Checkout started but order could not be updated.', 'ORDER_UPDATE_FAILED');
     }
 
+    // Do not return order_public_access_token / public_access_token pre-payment.
+    // Buyer receives order_token only via Stripe redirect to our allowlisted success URL.
     return jsonResponse({
       ok: true,
       checkout_url: checkoutSession.url,
-      order_public_access_token: publicAccessToken,
+      checkout_session_id: checkoutSession.id,
       status: 'checkout_open',
     });
   } catch (error) {

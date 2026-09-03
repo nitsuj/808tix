@@ -125,8 +125,9 @@ const postPaymentMigrationSql = readdirSync(MIGRATIONS_DIR)
   .join('\n');
 
 assert(
-  !postPaymentMigrationSql.includes('create or replace function public.validate_pass('),
-  'no post-payments migration redefines validate_pass',
+  !postPaymentMigrationSql.includes('create or replace function public.validate_pass(') ||
+    postPaymentMigrationSql.includes('Unauthorized scanners must not receive guest_name'),
+  'post-payments validate_pass redefine only allowed for PII-hardening migration',
 );
 assert(
   !postPaymentMigrationSql.includes(

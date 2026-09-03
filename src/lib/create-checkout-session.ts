@@ -5,20 +5,21 @@ export type StartCheckoutSessionInput = {
   buyerEmail: string;
   buyerName?: string | null;
   buyerPhone?: string | null;
-  successUrl: string;
-  cancelUrl: string;
 };
 
 export type StartCheckoutSessionResult = {
   checkoutUrl: string;
-  orderPublicAccessToken: string;
+  checkoutSessionId: string | null;
   status: string;
 };
 
 type CheckoutApiResponse = {
   ok?: boolean;
   checkout_url?: string;
+  checkout_session_id?: string;
   order_public_access_token?: string;
+  public_access_token?: string;
+  order_token?: string;
   status?: string;
   message?: string;
   code?: string;
@@ -57,8 +58,6 @@ export async function startCheckoutSession(
       buyer_email: input.buyerEmail.trim(),
       buyer_name: input.buyerName?.trim() || null,
       buyer_phone: input.buyerPhone?.trim() || null,
-      success_url: input.successUrl,
-      cancel_url: input.cancelUrl,
     }),
   });
 
@@ -70,14 +69,22 @@ export async function startCheckoutSession(
     throw new Error('Checkout could not be started. Please try again.');
   }
 
-  if (!response.ok || !body.ok || !body.checkout_url || !body.order_public_access_token) {
+  if (
+    body.order_public_access_token ||
+    body.public_access_token ||
+    body.order_token
+  ) {
+    throw new Error('Checkout response exposed a pre-payment order token.');
+  }
+
+  if (!response.ok || !body.ok || !body.checkout_url) {
     const message = body.message?.trim() || 'Checkout could not be started. Please try again.';
     throw new Error(message);
   }
 
   return {
     checkoutUrl: body.checkout_url,
-    orderPublicAccessToken: body.order_public_access_token,
+    checkoutSessionId: body.checkout_session_id?.trim() || null,
     status: body.status ?? 'checkout_open',
   };
 }

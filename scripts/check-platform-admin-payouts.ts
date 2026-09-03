@@ -169,8 +169,9 @@ const laterMigrations = readdirSync(MIGRATIONS_DIR)
   .join('\n');
 
 assert(
-  !laterMigrations.includes('create or replace function public.validate_pass('),
-  'no later migration redefines validate_pass',
+  !laterMigrations.includes('create or replace function public.validate_pass(') ||
+    laterMigrations.includes('Unauthorized scanners must not receive guest_name'),
+  'later validate_pass redefine only allowed for PII-hardening migration',
 );
 
 if (failures > 0) {
